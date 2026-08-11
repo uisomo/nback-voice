@@ -20,6 +20,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "N-backの音声回答にマイクを使用します。",
+          "speechRecognitionPermission": "回答の聞き取りに音声認識を使用します。"
+        }
+      ]
+    ]
   }
 }

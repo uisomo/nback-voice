@@ -5,6 +5,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
     "expo": "~57.0.12",
+    "expo-speech": "~57.0.1",
+    "expo-speech-recognition": "^56.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.2"
