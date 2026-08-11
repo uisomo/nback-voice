@@ -27,7 +27,6 @@ describe('FakeListener', () => {
   it('ignores pushes while not listening', () => {
     const listener = new FakeListener();
     listener.push('わん');
-    listener.start();
     expect(listener.stop()).toBe('');
   });
 

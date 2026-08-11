@@ -1406,10 +1406,11 @@ describe('FakeListener', () => {
     expect(listener.stop()).toBe('わん');
   });
 
+  // No start() in between: with one, start()'s own reset would mask the guard
+  // and this test would pass even if push() ignored `listening` entirely.
   it('ignores pushes while not listening', () => {
     const listener = new FakeListener();
     listener.push('わん');
-    listener.start();
     expect(listener.stop()).toBe('');
   });
 
@@ -3114,6 +3115,7 @@ Start the dev server (`npx expo start --dev-client`), open the app, and verify e
 - [ ] Tapping a cell highlights it, and the highlight clears at the next step
 - [ ] The first N steps flash and speak but expect no response
 - [ ] The trailing N steps are silent with no flash
+- [ ] **Trailing words are not dropped:** speak a two-or-three word answer near the end of the answer window and confirm the transcript contains the whole thing. `Listener.stop()` returns synchronously, so it may capture the last *interim* result rather than the recognizer's true final one — if answers are consistently truncated, that is the cause.
 - [ ] The results screen shows position and answer percentages, plus a 未判定 count when the network is off
 - [ ] With airplane mode on, a round still completes and unmatched answers show as 未判定 rather than wrong
 - [ ] Scoring ≥80% raises N on the next round; ≤50% lowers it

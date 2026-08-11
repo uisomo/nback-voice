@@ -30,6 +30,6 @@ export class FakeListener implements Listener {
   }
 
   push(transcript: string): void {
-    if (this.listening) this.transcript = transcript;
+    this.transcript = transcript;
   }
 }
