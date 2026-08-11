@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": ".tmp-scaffold",
-    "slug": ".tmp-scaffold",
+    "name": "音声N-back",
+    "slug": "nback-voice",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
