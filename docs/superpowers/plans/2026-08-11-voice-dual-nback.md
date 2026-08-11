@@ -2134,22 +2134,91 @@ git commit -m "feat(store): 設定・履歴・適応N・学習済み同義語の
 
 ---
 
-### Task 10: UI and wiring
+### Task 10: Presentational screens
 
-The only layer that touches React. Verified by device smoke test in Task 11, not by unit tests.
+The three screens with no device dependencies, each test-driven. `GameScreen` and the app wiring are Task 11.
 
 **Files:**
 - Create: `src/ui/Grid.tsx`
-- Create: `src/ui/GameScreen.tsx`
 - Create: `src/ui/ResultsScreen.tsx`
 - Create: `src/ui/SettingsScreen.tsx`
-- Modify: `App.tsx`
+- Test: `src/ui/__tests__/Grid.test.tsx`
+- Test: `src/ui/__tests__/ResultsScreen.test.tsx`
+- Test: `src/ui/__tests__/SettingsScreen.test.tsx`
 
 **Interfaces:**
-- Consumes: everything from Tasks 1–9
-- Produces: `<App />` rendering a three-screen flow (game → results → settings)
+- Consumes: `Position` (Task 2), `RoundEngine` (Task 3), storage functions (Task 9)
+- Produces:
+  - `<Grid flashPosition selected onTap disabled />` — cells carry `testID={`cell-${i}`}`
+  - `<ResultsScreen engine n onAgain />`
+  - `<SettingsScreen onClose />`
 
-- [ ] **Step 1: Write the grid component**
+- [ ] **Step 1: Install the testing library**
+
+```bash
+cd /mnt/c/Projects/nback-voice
+npm install --save-dev @testing-library/react-native react-test-renderer
+```
+
+- [ ] **Step 2: Write the failing Grid test**
+
+Create `src/ui/__tests__/Grid.test.tsx`:
+
+```tsx
+import { fireEvent, render } from '@testing-library/react-native';
+import { Grid } from '../Grid';
+
+describe('Grid', () => {
+  it('renders 9 cells', () => {
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={null} onTap={() => {}} />,
+    );
+    for (let i = 0; i < 9; i++) {
+      expect(getByTestId(`cell-${i}`)).toBeTruthy();
+    }
+  });
+
+  it('reports the tapped position', () => {
+    const onTap = jest.fn();
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={null} onTap={onTap} />,
+    );
+    fireEvent.press(getByTestId('cell-4'));
+    expect(onTap).toHaveBeenCalledWith(4);
+  });
+
+  it('does not report taps while disabled', () => {
+    const onTap = jest.fn();
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={null} onTap={onTap} disabled />,
+    );
+    fireEvent.press(getByTestId('cell-4'));
+    expect(onTap).not.toHaveBeenCalled();
+  });
+
+  it('marks the flashing cell', () => {
+    const { getByTestId } = render(
+      <Grid flashPosition={3} selected={null} onTap={() => {}} />,
+    );
+    expect(getByTestId('cell-3').props.accessibilityState.selected).toBe(true);
+    expect(getByTestId('cell-2').props.accessibilityState.selected).toBe(false);
+  });
+
+  it('marks the selected cell distinctly from the flashing one', () => {
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={7} onTap={() => {}} />,
+    );
+    expect(getByTestId('cell-7').props.accessibilityLabel).toContain('選択');
+  });
+});
+```
+
+- [ ] **Step 3: Run the test to verify it fails**
+
+Run: `npm test -- Grid`
+Expected: FAIL — `Cannot find module '../Grid'`
+
+- [ ] **Step 4: Write the grid component**
 
 Create `src/ui/Grid.tsx`:
 
@@ -2170,7 +2239,13 @@ export function Grid({ flashPosition, selected, onTap, disabled }: Props) {
       {Array.from({ length: 9 }, (_, i) => (
         <Pressable
           key={i}
+          testID={`cell-${i}`}
           disabled={disabled}
+          accessibilityRole="button"
+          accessibilityState={{ selected: flashPosition === i, disabled }}
+          accessibilityLabel={
+            selected === i ? `マス${i + 1} 選択中` : `マス${i + 1}`
+          }
           onPress={() => onTap(i)}
           style={[
             styles.cell,
@@ -2203,165 +2278,97 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 2: Write the game screen**
+- [ ] **Step 5: Run the Grid test to verify it passes**
 
-Create `src/ui/GameScreen.tsx`:
+Run: `npm test -- Grid`
+Expected: PASS, 5 tests
+
+- [ ] **Step 6: Write the failing ResultsScreen test**
+
+Create `src/ui/__tests__/ResultsScreen.test.tsx`:
 
 ```tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { RoundEngine, RoundRunner, buildRound } from '../engine';
-import type { Position, RoundPlan } from '../engine/types';
-import { loadBank } from '../content/bank';
-import { ClaudeJudgeClient } from '../judge/claude';
-import { JudgeQueue } from '../judge/queue';
-import { ExpoListener } from '../speech/listener';
-import { ExpoSpeaker } from '../speech/speaker';
-import {
-  addLearned,
-  appendHistory,
-  loadLearned,
-  loadN,
-  loadSettings,
-  phaseDurations,
-  saveN,
-} from '../store/storage';
-import { Grid } from './Grid';
+import { fireEvent, render } from '@testing-library/react-native';
+import { RoundEngine, buildRound } from '../../engine';
+import type { Question } from '../../engine/types';
+import { ResultsScreen } from '../ResultsScreen';
 
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+const BANK: Question[] = Array.from({ length: 20 }, (_, i) => ({
+  id: `q${i}`,
+  tier: 1,
+  q: `質問${i}`,
+  accept: [`答え${i}`],
+}));
 
-interface Props {
-  onFinished: (engine: RoundEngine, plan: RoundPlan) => void;
+/** A finished round: all taps correct, `resolved` answers graded correct. */
+function finishedEngine(resolved: number): RoundEngine {
+  const plan = buildRound(2, BANK, Math.random);
+  const engine = new RoundEngine(plan);
+  for (const step of plan.steps) {
+    engine.submitStep(step.index, {
+      tap: step.recallTarget === null ? null : plan.steps[step.recallTarget].position,
+      transcript: step.recallTarget === null ? null : 'こたえ',
+    });
+  }
+  const pending = engine.takePending();
+  for (let i = 0; i < resolved; i++) engine.resolveAnswer(pending[i].index, true);
+  return engine;
 }
 
-export function GameScreen({ onFinished }: Props) {
-  const [ready, setReady] = useState(false);
-  const [flash, setFlash] = useState<Position | null>(null);
-  const [selected, setSelected] = useState<Position | null>(null);
-  const [label, setLabel] = useState('準備中…');
-
-  const listener = useMemo(() => new ExpoListener(), []);
-  const runnerRef = useRef<RoundRunner | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useSpeechRecognitionEvent('result', (event) => {
-    const transcript = event.results[0]?.transcript;
-    if (transcript) listener.push(transcript);
+describe('ResultsScreen', () => {
+  it('shows the N of the round', () => {
+    const { getByText } = render(
+      <ResultsScreen engine={finishedEngine(9)} n={3} onAgain={() => {}} />,
+    );
+    expect(getByText(/3-back/)).toBeTruthy();
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  it('shows both channel percentages', () => {
+    const { getByText } = render(
+      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={() => {}} />,
+    );
+    expect(getByText(/位置.*100%/)).toBeTruthy();
+    expect(getByText(/回答.*100%/)).toBeTruthy();
+  });
 
-    (async () => {
-      const granted = await ExpoListener.requestPermissions();
-      if (!granted) {
-        setLabel('マイクの許可が必要です');
-        return;
-      }
+  it('shows an em dash for the answer channel when nothing resolved', () => {
+    const { getByText } = render(
+      <ResultsScreen engine={finishedEngine(0)} n={2} onAgain={() => {}} />,
+    );
+    expect(getByText(/回答.*—/)).toBeTruthy();
+  });
 
-      const [settings, storedN, learned] = await Promise.all([
-        loadSettings(),
-        loadN(),
-        loadLearned(),
-      ]);
-      if (cancelled) return;
+  it('reports the 未判定 count when some answers went ungraded', () => {
+    const { getByText } = render(
+      <ResultsScreen engine={finishedEngine(4)} n={2} onAgain={() => {}} />,
+    );
+    expect(getByText(/未判定 5 件/)).toBeTruthy();
+  });
 
-      const n = settings.adaptive ? storedN : settings.fixedN;
-      const bank = loadBank(learned).filter((q) => q.tier <= settings.maxTier);
-      const plan = buildRound(n, bank);
-      const engine = new RoundEngine(plan);
-      const queue = new JudgeQueue(new ClaudeJudgeClient(API_KEY), {
-        onVerdict: (index, correct) => engine.resolveAnswer(index, correct),
-        onLearn: (questionId, answer) => {
-          void addLearned(questionId, answer);
-        },
-      });
+  it('hides the 未判定 line when everything resolved', () => {
+    const { queryByText } = render(
+      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={() => {}} />,
+    );
+    expect(queryByText(/未判定/)).toBeNull();
+  });
 
-      const runner = new RoundRunner({
-        plan,
-        engine,
-        speaker: new ExpoSpeaker(),
-        listener,
-        onJudge: (answer) => queue.enqueue(answer),
-      });
-      runnerRef.current = runner;
-
-      const { a, b } = phaseDurations(settings);
-
-      const schedule = () => {
-        const phase = runner.state.phase;
-        if (phase === 'done') {
-          void (async () => {
-            await queue.drain();
-            if (settings.adaptive) await saveN(engine.nextN(n));
-            await appendHistory({
-              date: new Date().toISOString().slice(0, 10),
-              n,
-              positionScore: engine.positionScore,
-              answerScore: engine.answerScore,
-              unresolved: engine.unresolvedCount,
-            });
-            onFinished(engine, plan);
-          })();
-          return;
-        }
-
-        setFlash(runner.state.flashPosition);
-        setSelected(null);
-        setLabel(
-          `${runner.state.stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
-            (phase === 'A' ? '出題中' : 'どうぞ'),
-        );
-
-        timerRef.current = setTimeout(async () => {
-          await runner.tick();
-          setFlash(runner.state.flashPosition);
-          schedule();
-        }, phase === 'A' ? a : b);
-      };
-
-      await runner.start();
-      setReady(true);
-      schedule();
-    })();
-
-    return () => {
-      cancelled = true;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [listener, onFinished]);
-
-  const handleTap = useCallback((position: Position) => {
-    runnerRef.current?.onTap(position);
-    setSelected(position);
-  }, []);
-
-  return (
-    <View style={styles.screen}>
-      <Text style={styles.label}>{label}</Text>
-      <Grid
-        flashPosition={flash}
-        selected={selected}
-        onTap={handleTap}
-        disabled={!ready}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, justifyContent: 'center', backgroundColor: '#000' },
-  label: {
-    color: '#f4f1ea',
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  it('fires onAgain when the button is pressed', () => {
+    const onAgain = jest.fn();
+    const { getByText } = render(
+      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={onAgain} />,
+    );
+    fireEvent.press(getByText('もう一度'));
+    expect(onAgain).toHaveBeenCalled();
+  });
 });
 ```
 
-- [ ] **Step 3: Write the results screen**
+- [ ] **Step 7: Run the test to verify it fails**
+
+Run: `npm test -- ResultsScreen`
+Expected: FAIL — `Cannot find module '../ResultsScreen'`
+
+- [ ] **Step 8: Write the results screen**
 
 Create `src/ui/ResultsScreen.tsx`:
 
@@ -2412,7 +2419,69 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 4: Write the settings screen**
+- [ ] **Step 9: Run the test to verify it passes**
+
+Run: `npm test -- ResultsScreen`
+Expected: PASS, 6 tests
+
+- [ ] **Step 10: Write the failing SettingsScreen test**
+
+Create `src/ui/__tests__/SettingsScreen.test.tsx`:
+
+```tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { loadSettings } from '../../store/storage';
+import { SettingsScreen } from '../SettingsScreen';
+
+beforeEach(async () => {
+  await AsyncStorage.clear();
+});
+
+describe('SettingsScreen', () => {
+  it('persists a new step duration', async () => {
+    const { getByText } = render(<SettingsScreen onClose={() => {}} />);
+    fireEvent.press(getByText('8秒'));
+    await waitFor(async () => {
+      expect((await loadSettings()).stepDurationMs).toBe(8000);
+    });
+  });
+
+  it('persists the difficulty tier', async () => {
+    const { getByText } = render(<SettingsScreen onClose={() => {}} />);
+    fireEvent.press(getByText('やさしい'));
+    await waitFor(async () => {
+      expect((await loadSettings()).maxTier).toBe(1);
+    });
+  });
+
+  it('hides the fixed-N picker while adaptive is on', () => {
+    const { queryByText } = render(<SettingsScreen onClose={() => {}} />);
+    expect(queryByText('Nを自動調整')).toBeTruthy();
+    expect(queryByText('5')).toBeNull();
+  });
+
+  it('reveals the fixed-N picker when adaptive is turned off', async () => {
+    const { getByRole, findByText } = render(<SettingsScreen onClose={() => {}} />);
+    fireEvent(getByRole('switch'), 'valueChange', false);
+    expect(await findByText('5')).toBeTruthy();
+  });
+
+  it('fires onClose', () => {
+    const onClose = jest.fn();
+    const { getByText } = render(<SettingsScreen onClose={onClose} />);
+    fireEvent.press(getByText('閉じる'));
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+```
+
+- [ ] **Step 11: Run the test to verify it fails**
+
+Run: `npm test -- SettingsScreen`
+Expected: FAIL — `Cannot find module '../SettingsScreen'`
+
+- [ ] **Step 12: Write the settings screen**
 
 Create `src/ui/SettingsScreen.tsx`:
 
@@ -2431,6 +2500,10 @@ interface Props {
 }
 
 const STEP_CHOICES = [3000, 4000, 5000, 6000, 8000];
+const TIER_CHOICES = [
+  { tier: 1, label: 'やさしい' },
+  { tier: 2, label: 'ふつう' },
+];
 
 export function SettingsScreen({ onClose }: Props) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -2486,10 +2559,7 @@ export function SettingsScreen({ onClose }: Props) {
 
       <Text style={styles.label}>問題の難易度</Text>
       <View style={styles.row}>
-        {[
-          { tier: 1, label: 'やさしい' },
-          { tier: 2, label: 'ふつう' },
-        ].map(({ tier, label }) => (
+        {TIER_CHOICES.map(({ tier, label }) => (
           <Pressable
             key={tier}
             onPress={() => update({ maxTier: tier })}
@@ -2518,6 +2588,386 @@ const styles = StyleSheet.create({
   button: { marginTop: 'auto', padding: 16, backgroundColor: '#1c1c1e', borderRadius: 12, alignItems: 'center' },
 });
 ```
+
+- [ ] **Step 13: Run the whole suite**
+
+Run: `npm test`
+Expected: PASS, all tests from Tasks 1–10
+
+- [ ] **Step 14: Commit**
+
+```bash
+cd /mnt/c/Projects/nback-voice
+git add -A
+git commit -m "feat(ui): グリッド・結果画面・設定画面 (テスト付き)"
+```
+
+---
+
+### Task 11: GameScreen and app wiring
+
+Drives the round on real timers. Its device dependencies are injected so the whole loop can be exercised in Jest with fakes.
+
+**Files:**
+- Create: `src/ui/GameScreen.tsx`
+- Test: `src/ui/__tests__/GameScreen.test.tsx`
+- Modify: `App.tsx`
+- Create: `.env`
+
+**Interfaces:**
+- Consumes: `RoundRunner`, `RoundEngine`, `buildRound` (Tasks 2–3, 8), `loadBank` (Task 4), `ClaudeJudgeClient` (Task 5), `JudgeQueue` (Task 6), `ExpoSpeaker`/`ExpoListener` (Task 7), storage (Task 9), `Grid` (Task 10)
+- Produces:
+  - `interface GameScreenDeps { speaker: Speaker; listener: Listener; judgeClient: JudgeClient; requestPermissions(): Promise<boolean> }`
+  - `<GameScreen onFinished deps? />` — `deps` defaults to the real Expo/Claude implementations, and is overridden in tests
+  - `<App />` rendering game → results → settings
+
+- [ ] **Step 1: Write the failing integration test**
+
+This drives a whole round through the component with fakes: 9 questions spoken, every answer judged, history written, `onFinished` called.
+
+Create `src/ui/__tests__/GameScreen.test.tsx`:
+
+```tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { act, render } from '@testing-library/react-native';
+import type { RoundEngine } from '../../engine';
+import type { Listener } from '../../speech/types';
+import { FakeSpeaker } from '../../speech/fakes';
+import type { JudgeClient, Verdict } from '../../judge/types';
+import { loadHistory, loadN } from '../../store/storage';
+import { GameScreen } from '../GameScreen';
+
+jest.mock('expo-speech-recognition', () => ({
+  useSpeechRecognitionEvent: jest.fn(),
+  ExpoSpeechRecognitionModule: {
+    requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+    start: jest.fn(),
+    stop: jest.fn(),
+  },
+}));
+jest.mock('expo-speech', () => ({ speak: jest.fn(), stop: jest.fn() }));
+
+/** Always returns the same transcript, so every step produces an answer. */
+class CannedListener implements Listener {
+  sessions = 0;
+  constructor(private readonly canned: string) {}
+  start(): void {
+    this.sessions++;
+  }
+  stop(): string {
+    return this.canned;
+  }
+  push(): void {}
+}
+
+function makeDeps(judge: JudgeClient) {
+  const speaker = new FakeSpeaker();
+  const listener = new CannedListener('ぶぶぶ');
+  return {
+    deps: {
+      speaker,
+      listener,
+      judgeClient: judge,
+      requestPermissions: async () => true,
+    },
+    speaker,
+    listener,
+  };
+}
+
+const alwaysCorrect: JudgeClient = {
+  judge: async (): Promise<Verdict> => ({ correct: true, matched: null }),
+};
+
+beforeEach(async () => {
+  await AsyncStorage.clear();
+  jest.useFakeTimers();
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+/** Run long enough for all 9 + N steps at the default 5s pacing. */
+async function runWholeRound() {
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(120_000);
+  });
+}
+
+describe('GameScreen', () => {
+  it('speaks 9 questions and finishes the round', async () => {
+    const onFinished = jest.fn();
+    const { deps, speaker } = makeDeps(alwaysCorrect);
+    render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await runWholeRound();
+
+    expect(speaker.spoken).toHaveLength(9);
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the mic once per step, including the trailing recall steps', async () => {
+    const { deps, listener } = makeDeps(alwaysCorrect);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await runWholeRound();
+
+    expect(listener.sessions).toBe(11); // 9 stimuli + N=2 trailing
+  });
+
+  it('grades every answer through the judge and reports a full answer score', async () => {
+    const onFinished = jest.fn();
+    const { deps } = makeDeps(alwaysCorrect);
+    render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await runWholeRound();
+
+    const engine: RoundEngine = onFinished.mock.calls[0][0];
+    expect(engine.answerScore).toBe(1);
+    expect(engine.unresolvedCount).toBe(0);
+  });
+
+  it('leaves answers 未判定 when the judge is unreachable', async () => {
+    const offline: JudgeClient = {
+      judge: async () => {
+        throw new Error('network down');
+      },
+    };
+    const onFinished = jest.fn();
+    const { deps } = makeDeps(offline);
+    render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await runWholeRound();
+
+    const engine: RoundEngine = onFinished.mock.calls[0][0];
+    expect(engine.answerScore).toBeNull();
+    expect(engine.unresolvedCount).toBe(9);
+  });
+
+  it('writes a history record for the round', async () => {
+    const { deps } = makeDeps(alwaysCorrect);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await runWholeRound();
+
+    const history = await loadHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0].n).toBe(2);
+  });
+
+  it('lowers N after a round with no taps', async () => {
+    const { deps } = makeDeps(alwaysCorrect);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await runWholeRound();
+
+    // Position 0/9, answers 9/9 → round score 0.5 → N drops to 1.
+    expect(await loadN()).toBe(1);
+  });
+
+  it('stops with a message when permission is refused', async () => {
+    const { deps } = makeDeps(alwaysCorrect);
+    const { findByText } = render(
+      <GameScreen
+        onFinished={jest.fn()}
+        deps={{ ...deps, requestPermissions: async () => false }}
+      />,
+    );
+    expect(await findByText(/マイクの許可/)).toBeTruthy();
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `npm test -- GameScreen`
+Expected: FAIL — `Cannot find module '../GameScreen'`
+
+- [ ] **Step 3: Write the game screen**
+
+Create `src/ui/GameScreen.tsx`:
+
+```tsx
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import { RoundEngine, RoundRunner, buildRound } from '../engine';
+import type { Position, RoundPlan } from '../engine/types';
+import { loadBank } from '../content/bank';
+import { ClaudeJudgeClient } from '../judge/claude';
+import { JudgeQueue } from '../judge/queue';
+import type { JudgeClient } from '../judge/types';
+import { ExpoListener } from '../speech/listener';
+import { ExpoSpeaker } from '../speech/speaker';
+import type { Listener, Speaker } from '../speech/types';
+import {
+  addLearned,
+  appendHistory,
+  loadLearned,
+  loadN,
+  loadSettings,
+  phaseDurations,
+  saveN,
+} from '../store/storage';
+import { Grid } from './Grid';
+
+const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+
+export interface GameScreenDeps {
+  speaker: Speaker;
+  listener: Listener;
+  judgeClient: JudgeClient;
+  requestPermissions(): Promise<boolean>;
+}
+
+function realDeps(): GameScreenDeps {
+  return {
+    speaker: new ExpoSpeaker(),
+    listener: new ExpoListener(),
+    judgeClient: new ClaudeJudgeClient(API_KEY),
+    requestPermissions: ExpoListener.requestPermissions,
+  };
+}
+
+interface Props {
+  onFinished: (engine: RoundEngine, plan: RoundPlan) => void;
+  /** Overridden in tests; defaults to the real Expo and Claude implementations. */
+  deps?: GameScreenDeps;
+}
+
+export function GameScreen({ onFinished, deps }: Props) {
+  const resolved = useMemo(() => deps ?? realDeps(), [deps]);
+  const [ready, setReady] = useState(false);
+  const [flash, setFlash] = useState<Position | null>(null);
+  const [selected, setSelected] = useState<Position | null>(null);
+  const [label, setLabel] = useState('準備中…');
+
+  const runnerRef = useRef<RoundRunner | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useSpeechRecognitionEvent('result', (event) => {
+    const transcript = event.results[0]?.transcript;
+    if (transcript) resolved.listener.push(transcript);
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const granted = await resolved.requestPermissions();
+      if (cancelled) return;
+      if (!granted) {
+        setLabel('マイクの許可が必要です');
+        return;
+      }
+
+      const [settings, storedN, learned] = await Promise.all([
+        loadSettings(),
+        loadN(),
+        loadLearned(),
+      ]);
+      if (cancelled) return;
+
+      const n = settings.adaptive ? storedN : settings.fixedN;
+      const bank = loadBank(learned).filter((q) => q.tier <= settings.maxTier);
+      const plan = buildRound(n, bank);
+      const engine = new RoundEngine(plan);
+      const queue = new JudgeQueue(resolved.judgeClient, {
+        onVerdict: (index, correct) => engine.resolveAnswer(index, correct),
+        onLearn: (questionId, answer) => {
+          void addLearned(questionId, answer);
+        },
+      });
+
+      const runner = new RoundRunner({
+        plan,
+        engine,
+        speaker: resolved.speaker,
+        listener: resolved.listener,
+        onJudge: (answer) => queue.enqueue(answer),
+      });
+      runnerRef.current = runner;
+
+      const { a, b } = phaseDurations(settings);
+
+      const finish = async () => {
+        await queue.drain();
+        if (cancelled) return;
+        if (settings.adaptive) await saveN(engine.nextN(n));
+        await appendHistory({
+          date: new Date().toISOString().slice(0, 10),
+          n,
+          positionScore: engine.positionScore,
+          answerScore: engine.answerScore,
+          unresolved: engine.unresolvedCount,
+        });
+        if (!cancelled) onFinished(engine, plan);
+      };
+
+      const schedule = () => {
+        if (cancelled) return;
+        const { phase, stepIndex, flashPosition } = runner.state;
+
+        if (phase === 'done') {
+          void finish();
+          return;
+        }
+
+        setFlash(flashPosition);
+        if (phase === 'A') setSelected(null);
+        setLabel(
+          `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
+            (phase === 'A' ? '出題中' : 'どうぞ'),
+        );
+
+        timerRef.current = setTimeout(
+          () => {
+            void runner.tick().then(schedule);
+          },
+          phase === 'A' ? a : b,
+        );
+      };
+
+      await runner.start();
+      if (cancelled) return;
+      setReady(true);
+      schedule();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [resolved, onFinished]);
+
+  const handleTap = useCallback((position: Position) => {
+    runnerRef.current?.onTap(position);
+    setSelected(position);
+  }, []);
+
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.label}>{label}</Text>
+      <Grid
+        flashPosition={flash}
+        selected={selected}
+        onTap={handleTap}
+        disabled={!ready}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, justifyContent: 'center', backgroundColor: '#000' },
+  label: {
+    color: '#f4f1ea',
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+});
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `npm test -- GameScreen`
+Expected: PASS, 7 tests
 
 - [ ] **Step 5: Wire the screens together**
 
@@ -2586,11 +3036,13 @@ const styles = StyleSheet.create({
 
 - [ ] **Step 6: Add the API key to the environment**
 
-Create `.env` (and add `.env` to `.gitignore` — verify it is listed before committing):
+Confirm `.env` is listed in `.gitignore` (the Expo template includes it; add the line if absent), then create `.env`:
 
 ```
 EXPO_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+Verify it is not tracked: `git check-ignore -v .env` must print a match.
 
 - [ ] **Step 7: Typecheck and run the suite**
 
@@ -2607,12 +3059,12 @@ Expected: no type errors; all tests pass.
 ```bash
 cd /mnt/c/Projects/nback-voice
 git add -A
-git commit -m "feat(ui): グリッド・ゲーム画面・結果画面・設定画面の配線"
+git commit -m "feat(ui): ゲーム画面と画面遷移の配線 (依存注入で1ラウンド統合テスト)"
 ```
 
 ---
 
-### Task 11: Device build and smoke test
+### Task 12: Device build and smoke test
 
 The only verification that cannot be automated from Windows.
 
@@ -2695,7 +3147,7 @@ JSだけの変更に再ビルドは不要。
 `npx expo start --dev-client --clear` で戻る。
 
 ## 実機スモークテスト
-(Task 11 Step 3 のチェックリストをここに転記)
+(Task 12 Step 3 のチェックリストをここに転記)
 ```
 
 - [ ] **Step 5: Commit**
