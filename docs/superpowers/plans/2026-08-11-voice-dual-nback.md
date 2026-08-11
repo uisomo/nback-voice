@@ -41,11 +41,15 @@ Scaffolds the Expo app and proves the pure-TypeScript test cycle works by implem
 
 The repo already contains `.git` and `docs/`, so scaffold into a temp directory and move the files in.
 
+`create-expo-app` runs `git init` in the directory it creates. Its `.git` **must** be removed before copying, or it overwrites this repo's history.
+
 ```bash
 cd /mnt/c/Projects/nback-voice
 npx create-expo-app@latest .tmp-scaffold --template blank-typescript
+rm -rf .tmp-scaffold/.git
 cp -r .tmp-scaffold/. .
 rm -rf .tmp-scaffold
+git log --oneline | head -3   # must still show the design and plan commits
 ```
 
 - [ ] **Step 2: Install Jest**
