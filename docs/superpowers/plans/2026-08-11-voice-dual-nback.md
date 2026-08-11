@@ -2161,6 +2161,12 @@ cd /mnt/c/Projects/nback-voice
 npm install --save-dev @testing-library/react-native react-test-renderer
 ```
 
+`react-test-renderer` must match the installed React exactly — a newer minor
+requires a newer React and fails to resolve. Pin it with a tilde (e.g.
+`"react-test-renderer": "~19.2.3"`), matching the repo's convention for its
+other pinned devDependencies; a caret range would let the conflicting version
+back in on the next install.
+
 - [ ] **Step 2: Write the failing Grid test**
 
 Create `src/ui/__tests__/Grid.test.tsx`:
@@ -2456,21 +2462,27 @@ describe('SettingsScreen', () => {
     });
   });
 
-  it('hides the fixed-N picker while adaptive is on', () => {
+  // `await waitFor(() => {})` right after render() flushes the component's
+  // pending loadSettings() effect inside act(). Without it the state update
+  // lands outside act() and every run prints a React warning.
+  it('hides the fixed-N picker while adaptive is on', async () => {
     const { queryByText } = render(<SettingsScreen onClose={() => {}} />);
+    await waitFor(() => {});
     expect(queryByText('Nを自動調整')).toBeTruthy();
     expect(queryByText('5')).toBeNull();
   });
 
   it('reveals the fixed-N picker when adaptive is turned off', async () => {
     const { getByRole, findByText } = render(<SettingsScreen onClose={() => {}} />);
+    await waitFor(() => {});
     fireEvent(getByRole('switch'), 'valueChange', false);
     expect(await findByText('5')).toBeTruthy();
   });
 
-  it('fires onClose', () => {
+  it('fires onClose', async () => {
     const onClose = jest.fn();
     const { getByText } = render(<SettingsScreen onClose={onClose} />);
+    await waitFor(() => {});
     fireEvent.press(getByText('閉じる'));
     expect(onClose).toHaveBeenCalled();
   });
