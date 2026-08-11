@@ -1,0 +1,99 @@
+import { JudgeQueue } from '../queue';
+import type { JudgeClient, Verdict } from '../types';
+import type { Question } from '../../engine/types';
+
+const DOG: Question = {
+  id: 'q042',
+  tier: 2,
+  q: '犬の鳴き声は？',
+  accept: ['わん', 'わんわん'],
+};
+
+function makeQueue(client: JudgeClient) {
+  const verdicts: Array<[number, boolean]> = [];
+  const learned: Array<[string, string]> = [];
+  const queue = new JudgeQueue(client, {
+    onVerdict: (i, c) => verdicts.push([i, c]),
+    onLearn: (id, a) => learned.push([id, a]),
+  });
+  return { queue, verdicts, learned };
+}
+
+const neverCalled: JudgeClient = {
+  judge: async () => {
+    throw new Error('should not have called the API');
+  },
+};
+
+describe('JudgeQueue', () => {
+  it('resolves a locally matched answer without calling the API', async () => {
+    const { queue, verdicts } = makeQueue(neverCalled);
+    queue.enqueue({ index: 2, question: DOG, transcript: 'ワンワン' });
+    await queue.drain();
+    expect(verdicts).toEqual([[2, true]]);
+  });
+
+  it('calls the API only when the local match misses', async () => {
+    const calls: string[] = [];
+    const client: JudgeClient = {
+      judge: async (_q, t): Promise<Verdict> => {
+        calls.push(t);
+        return { correct: true, matched: 'わんこ' };
+      },
+    };
+    const { queue, verdicts } = makeQueue(client);
+    queue.enqueue({ index: 3, question: DOG, transcript: 'わんこ' });
+    await queue.drain();
+    expect(calls).toEqual(['わんこ']);
+    expect(verdicts).toEqual([[3, true]]);
+  });
+
+  it('learns an accepted answer that was not in the bank', async () => {
+    const client: JudgeClient = {
+      judge: async (): Promise<Verdict> => ({ correct: true, matched: 'わんこ' }),
+    };
+    const { queue, learned } = makeQueue(client);
+    queue.enqueue({ index: 3, question: DOG, transcript: 'わんこ' });
+    await queue.drain();
+    expect(learned).toEqual([['q042', 'わんこ']]);
+  });
+
+  it('does not learn from a rejected answer', async () => {
+    const client: JudgeClient = {
+      judge: async (): Promise<Verdict> => ({ correct: false, matched: null }),
+    };
+    const { queue, learned, verdicts } = makeQueue(client);
+    queue.enqueue({ index: 3, question: DOG, transcript: 'にゃー' });
+    await queue.drain();
+    expect(learned).toEqual([]);
+    expect(verdicts).toEqual([[3, false]]);
+  });
+
+  it('leaves the answer 未判定 when the API fails — never marks it wrong', async () => {
+    const client: JudgeClient = {
+      judge: async () => {
+        throw new Error('network down');
+      },
+    };
+    const { queue, verdicts } = makeQueue(client);
+    queue.enqueue({ index: 3, question: DOG, transcript: 'わんこ' });
+    await queue.drain();
+    expect(verdicts).toEqual([]);
+  });
+
+  it('keeps grading later answers after one fails', async () => {
+    let call = 0;
+    const client: JudgeClient = {
+      judge: async (): Promise<Verdict> => {
+        call++;
+        if (call === 1) throw new Error('network blip');
+        return { correct: true, matched: null };
+      },
+    };
+    const { queue, verdicts } = makeQueue(client);
+    queue.enqueue({ index: 3, question: DOG, transcript: 'あ' });
+    queue.enqueue({ index: 4, question: DOG, transcript: 'い' });
+    await queue.drain();
+    expect(verdicts).toEqual([[4, true]]);
+  });
+});
