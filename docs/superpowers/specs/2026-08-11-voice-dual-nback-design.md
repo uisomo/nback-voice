@@ -38,10 +38,19 @@ once on the iPhone, after which JS updates stream over QR exactly like Expo Go.
 
 | Concern | Choice |
 |---|---|
-| Speech → text | `expo-speech-recognition` (Apple `SFSpeechRecognizer`, `ja-JP`), on-device, ¥0 |
+| Speech → text | `expo-speech-recognition` (Apple `SFSpeechRecognizer`, `ja-JP`), ¥0. On-device is requested when the recognizer reports ja-JP support, with a server fallback — see below |
 | Text → speech | `expo-speech` (Apple `AVSpeechSynthesizer`, `ja-JP`), ¥0, no shipped audio assets |
 | Storage | `AsyncStorage` |
 | Answer grading | Anthropic TypeScript SDK, `claude-opus-5` |
+
+**On-device recognition is requested, not guaranteed.** Forcing it fails outright
+if the ja-JP model isn't downloaded on the device, so the app asks for it only
+when the recognizer reports ja-JP availability and otherwise falls back to Apple's
+servers. The startup log records which mode was *requested* — iOS does not report
+which it actually used, and the availability probe is weaker than it looks, so the
+only real confirmation is whether recognition still works in airplane mode. This
+matters for §6.2: under server recognition, no network means no transcript at all,
+not merely no Claude verdict, so an offline round degrades to a position-only score.
 
 Considered and rejected for v1: Kyutai **Pocket TTS** — English-only as of 2026-08
 (roadmap is es/fr/de/pt/it; Japanese not listed) and no official iOS/Swift build. The
@@ -73,11 +82,24 @@ The mic must not hear the synthesizer: the app speaks Q₅ while the user is say
 Rather than rely on echo cancellation across the RN module boundary, each step is split:
 
 ```
-one step (default 5s, configurable 3-8s)
-  phase A  ~2s   flash block + speak question       mic OFF
-  phase B  ~3s   answer window                      mic ON
+one step (phase A floor 2s, phase B 3s, from a 5s default; configurable 3-8s)
+  phase A  max(2s, utterance)   flash block + speak question   mic OFF
+  phase B  ~3s                  answer window                  mic ON
   tap is accepted during either phase
 ```
+
+**Phase A ends when the utterance ends, not on a fixed timer** — revised during
+implementation. Two facts forced this. The block must flash *immediately*, at the
+same moment the question starts, or the visual and auditory stimuli become serial
+and the task stops being a dual n-back. But the mic must not open until the
+synthesizer is silent. A fixed 2s phase A satisfies neither: at iOS's ja-JP rate
+the median question in the bank takes ~2.2-2.6s and the longest over 4s, so the
+question was being cut off mid-word — and since each question is spoken exactly
+once, a clipped question is unanswerable N steps later.
+
+So phase A paints instantly and lasts `max(configured, utterance)`, bounded by a
+watchdog so a synthesizer that never reports completion cannot freeze the round.
+**Step length is therefore variable**, and a round is not a fixed ~55s.
 
 The transcript present at the close of phase B is the answer for that step. No
 end-of-utterance detection, no VAD tuning. During trailing recall-only steps phase A is
@@ -160,8 +182,16 @@ Cost, at ~160 input / ~25 output tokens × 9 answers per round:
 
 | | per round | 10 rounds/day |
 |---|---|---|
-| `claude-opus-5` ($5 / $25 per MTok) | ≈ ¥2 | ≈ ¥20/day |
-| `claude-haiku-4-5` ($1 / $5 per MTok) | ≈ ¥0.4 | ≈ ¥4/day |
+| `claude-opus-5` ($5 / $25 per MTok) | ≥ ¥2 | ≥ ¥20/day |
+| `claude-haiku-4-5` ($1 / $5 per MTok) | ≥ ¥0.4 | ≥ ¥4/day |
+
+**These are floors, not estimates.** Thinking is on by default on `claude-opus-5`
+and thinking tokens are billed as output, so the real figure is several times the
+number above — the ~25-output-token assumption counts only the JSON verdict.
+`effort: 'low'` keeps it small but not zero. `max_tokens` is 4096 rather than a
+tight bound, because it caps thinking *and* response together and a truncated
+response would fail to parse and silently become 未判定. Measure real spend before
+trusting any of these figures.
 
 Default is Opus 5; the model id is a single config constant, so switching tiers after
 measuring real accuracy is a one-line change.
