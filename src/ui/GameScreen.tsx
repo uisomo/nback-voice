@@ -16,12 +16,36 @@ import {
   loadLearned,
   loadN,
   loadSettings,
+  localDate,
   phaseDurations,
   saveN,
 } from '../store/storage';
 import { Grid } from './Grid';
 
 const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+
+/**
+ * Hard cap on waiting for background grading at round end. Answers still in
+ * flight are handled as 未判定 (spec §4.2), so the results screen must never be
+ * held hostage by a stalled request.
+ */
+const DRAIN_TIMEOUT_MS = 15_000;
+
+function within<T>(promise: Promise<T>, ms: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    void promise.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 export interface GameScreenDeps {
   speaker: Speaker;
@@ -101,17 +125,24 @@ export function GameScreen({ onFinished, deps }: Props) {
 
         const { a, b } = phaseDurations(settings);
 
+        // Invoked from schedule(), long after this setup block has returned, so
+        // it owns its error handling — and always reaches the results screen.
         const finish = async () => {
-          await queue.drain();
-          if (cancelled) return;
-          if (settings.adaptive) await saveN(engine.nextN(n));
-          await appendHistory({
-            date: new Date().toISOString().slice(0, 10),
-            n,
-            positionScore: engine.positionScore,
-            answerScore: engine.answerScore,
-            unresolved: engine.unresolvedCount,
-          });
+          try {
+            await within(queue.drain(), DRAIN_TIMEOUT_MS);
+            if (!cancelled) {
+              if (settings.adaptive) await saveN(engine.nextN(n));
+              await appendHistory({
+                date: localDate(),
+                n,
+                positionScore: engine.positionScore,
+                answerScore: engine.answerScore,
+                unresolved: engine.unresolvedCount,
+              });
+            }
+          } catch (error) {
+            console.error('[nback] ラウンド終了処理に失敗しました', error);
+          }
           if (!cancelled) onFinished(engine, plan);
         };
 
@@ -133,17 +164,21 @@ export function GameScreen({ onFinished, deps }: Props) {
 
           timerRef.current = setTimeout(
             () => {
-              void runner.tick().then(schedule);
+              // tick() transitions synchronously, so the repaint below lands
+              // while the question is still being spoken rather than after it.
+              runner.tick();
+              schedule();
             },
             phase === 'A' ? a : b,
           );
         };
 
-        await runner.start();
+        runner.start();
         if (cancelled) return;
         setReady(true);
         schedule();
-      } catch {
+      } catch (error) {
+        console.error('[nback] ラウンドの準備に失敗しました', error);
         if (!cancelled) setLabel('準備に失敗しました。アプリを再起動してください');
       }
     })();
