@@ -4,6 +4,9 @@ import type { JudgeClient, Verdict } from './types';
 
 export const JUDGE_MODEL = 'claude-opus-5';
 
+/** Per-request ceiling. Grading is off the critical path; a slow call is 未判定. */
+export const JUDGE_TIMEOUT_MS = 8_000;
+
 const VERDICT_SCHEMA = {
   type: 'object',
   properties: {
@@ -42,6 +45,11 @@ export class ClaudeJudgeClient implements JudgeClient {
   constructor(apiKey: string) {
     this.client = new Anthropic({
       apiKey,
+      // The SDK defaults to a 10 minute timeout and 2 retries; a stalled
+      // connection would then hold the results screen for tens of minutes.
+      // An unanswered call is 未判定, which the engine already handles.
+      timeout: JUDGE_TIMEOUT_MS,
+      maxRetries: 1,
       // React Native's fetch environment is detected as browser-like by the
       // SDK's guard. This is a private development build, not a web page.
       dangerouslyAllowBrowser: true,
@@ -49,9 +57,12 @@ export class ClaudeJudgeClient implements JudgeClient {
   }
 
   async judge(question: Question, transcript: string): Promise<Verdict> {
-    const response = await this.client.messages.create({
+    const params: Anthropic.MessageCreateParamsNonStreaming = {
       model: JUDGE_MODEL,
-      max_tokens: 1024,
+      // Thinking is on by default on this model and max_tokens caps thinking
+      // plus response text together: too small a budget truncates the JSON and
+      // the answer silently becomes 未判定. effort:"low" keeps the spend small.
+      max_tokens: 4096,
       output_config: {
         effort: 'low',
         format: { type: 'json_schema', schema: VERDICT_SCHEMA },
@@ -67,7 +78,8 @@ export class ClaudeJudgeClient implements JudgeClient {
           ].join('\n'),
         },
       ],
-    } as Anthropic.MessageCreateParamsNonStreaming);
+    };
+    const response = await this.client.messages.create(params);
 
     const block = response.content.find((b) => b.type === 'text');
     if (!block || block.type !== 'text') {

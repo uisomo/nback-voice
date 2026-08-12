@@ -26,20 +26,25 @@ export class JudgeQueue {
       return;
     }
 
+    // Two-argument then(), not .then().catch(): only the API call's own
+    // rejection means 未判定. A throw from onVerdict/onLearn is a bug in the
+    // caller and must stay visible rather than masquerading as a dead network.
     const task = this.client
       .judge(answer.question, answer.transcript)
-      .then((verdict) => {
-        this.callbacks.onVerdict(answer.index, verdict.correct);
-        if (verdict.correct) {
-          this.callbacks.onLearn(
-            answer.question.id,
-            verdict.matched ?? answer.transcript,
-          );
-        }
-      })
-      .catch(() => {
-        // 未判定. Deliberately no onVerdict call.
-      })
+      .then(
+        (verdict) => {
+          this.callbacks.onVerdict(answer.index, verdict.correct);
+          if (verdict.correct) {
+            this.callbacks.onLearn(
+              answer.question.id,
+              verdict.matched ?? answer.transcript,
+            );
+          }
+        },
+        () => {
+          // 未判定. Deliberately no onVerdict call.
+        },
+      )
       .finally(() => {
         this.inFlight.delete(task);
       });

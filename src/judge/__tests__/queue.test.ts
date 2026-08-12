@@ -81,6 +81,23 @@ describe('JudgeQueue', () => {
     expect(verdicts).toEqual([]);
   });
 
+  it('does not disguise a throwing callback as 未判定', async () => {
+    // .then().catch() would swallow this and leave the answer unresolved,
+    // indistinguishable from a dead network. Only the API call's own rejection
+    // means 未判定.
+    const client: JudgeClient = {
+      judge: async (): Promise<Verdict> => ({ correct: true, matched: null }),
+    };
+    const queue = new JudgeQueue(client, {
+      onVerdict: () => {
+        throw new Error('bug in the caller');
+      },
+      onLearn: () => {},
+    });
+    queue.enqueue({ index: 3, question: DOG, transcript: 'わんこ' });
+    await expect(queue.drain()).rejects.toThrow('bug in the caller');
+  });
+
   it('keeps grading later answers after one fails', async () => {
     let call = 0;
     const client: JudgeClient = {
