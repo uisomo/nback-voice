@@ -1,8 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DEFAULT_SETTINGS,
+  addCustom,
   addLearned,
   appendHistory,
+  clearLearned,
+  deleteCustom,
+  loadCustom,
   loadHistory,
   loadLearned,
   loadN,
@@ -11,6 +15,7 @@ import {
   phaseDurations,
   saveN,
   saveSettings,
+  updateCustom,
 } from '../storage';
 
 beforeEach(async () => {
@@ -116,5 +121,102 @@ describe('phaseDurations', () => {
       a: 2000,
       b: 3000,
     });
+  });
+});
+
+describe('settings defaults for the new fields', () => {
+  it('defaults to dual mode and the built-in bank', async () => {
+    const s = await loadSettings();
+    expect(s.mode).toBe('dual');
+    expect(s.questionSource).toBe('builtin');
+  });
+
+  it('still fills missing new keys from an older stored shape', async () => {
+    await AsyncStorage.setItem(
+      'nback.settings',
+      JSON.stringify({ stepDurationMs: 4000 }),
+    );
+    const s = await loadSettings();
+    expect(s.stepDurationMs).toBe(4000);
+    expect(s.mode).toBe('dual');
+    expect(s.questionSource).toBe('builtin');
+  });
+});
+
+describe('custom questions', () => {
+  it('starts empty', async () => {
+    expect(await loadCustom()).toEqual([]);
+  });
+
+  it('adds a question with tier 0 and the single answer', async () => {
+    const created = await addCustom('犬の鳴き声は？', 'わん');
+    expect(created).toMatchObject({
+      tier: 0,
+      q: '犬の鳴き声は？',
+      accept: ['わん'],
+    });
+    expect(await loadCustom()).toHaveLength(1);
+  });
+
+  it('never reuses an id, even after a delete', async () => {
+    const first = await addCustom('一問目', 'あ');
+    await deleteCustom(first.id);
+    const second = await addCustom('二問目', 'い');
+    expect(second.id).not.toBe(first.id);
+  });
+
+  it('updates both fields in place', async () => {
+    const created = await addCustom('元の問題', 'もと');
+    await updateCustom(created.id, '新しい問題', 'あたらしい');
+    const [stored] = await loadCustom();
+    expect(stored).toMatchObject({
+      id: created.id,
+      q: '新しい問題',
+      accept: ['あたらしい'],
+    });
+  });
+
+  it('deletes only the named question', async () => {
+    const a = await addCustom('残る', 'あ');
+    const b = await addCustom('消える', 'い');
+    await deleteCustom(b.id);
+    expect((await loadCustom()).map((q) => q.id)).toEqual([a.id]);
+  });
+});
+
+describe('learned synonyms follow the question', () => {
+  it('drops learned synonyms when a question is edited', async () => {
+    const created = await addCustom('犬の鳴き声は？', 'わん');
+    await addLearned(created.id, 'ワンワン');
+    await updateCustom(created.id, '猫の鳴き声は？', 'にゃー');
+    expect(await loadLearned()).toEqual({});
+  });
+
+  it('drops learned synonyms when a question is deleted', async () => {
+    const created = await addCustom('犬の鳴き声は？', 'わん');
+    await addLearned(created.id, 'ワンワン');
+    await deleteCustom(created.id);
+    expect(await loadLearned()).toEqual({});
+  });
+
+  it('leaves other questions untouched', async () => {
+    const a = await addCustom('一問目', 'あ');
+    const b = await addCustom('二問目', 'い');
+    await addLearned(a.id, 'えー');
+    await addLearned(b.id, 'びー');
+    await deleteCustom(a.id);
+    expect(await loadLearned()).toEqual({ [b.id]: ['びー'] });
+  });
+
+  it('serializes against concurrent learning so a clear cannot be undone', async () => {
+    const created = await addCustom('問題', 'こたえ');
+    // Both writes touch the same key; without the shared chain the add could
+    // land after the clear and resurrect the synonym.
+    await Promise.all([
+      addLearned(created.id, 'べつかい'),
+      clearLearned(created.id),
+    ]);
+    const learned = await loadLearned();
+    expect(learned[created.id] ?? []).toEqual([]);
   });
 });

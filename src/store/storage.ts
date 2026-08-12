@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { QuestionSource } from '../content/pool';
+import type { Question, RoundMode } from '../engine/types';
 
 export interface Settings {
   /** Total step length in ms; split 40% phase A / 60% phase B. */
@@ -6,14 +8,19 @@ export interface Settings {
   adaptive: boolean;
   /** Used only when adaptive is false. */
   fixedN: number;
-  /** Highest question tier to draw from. */
+  /** Highest question tier to draw from. Built-ins only. */
   maxTier: number;
+  /** 'dual' scores position and answer; 'question' drops the visual channel. */
+  mode: RoundMode;
+  /** Which questions a round draws from. */
+  questionSource: QuestionSource;
 }
 
 export interface RoundRecord {
   date: string;
   n: number;
-  positionScore: number;
+  /** null in question mode: the channel was absent, not scored zero. */
+  positionScore: number | null;
   answerScore: number | null;
   unresolved: number;
 }
@@ -23,12 +30,16 @@ export const DEFAULT_SETTINGS: Settings = {
   adaptive: true,
   fixedN: 2,
   maxTier: 2,
+  mode: 'dual',
+  questionSource: 'builtin',
 };
 
 const KEY_SETTINGS = 'nback.settings';
 const KEY_N = 'nback.n';
 const KEY_HISTORY = 'nback.history';
 const KEY_LEARNED = 'nback.learned';
+const KEY_CUSTOM = 'nback.custom';
+const KEY_CUSTOM_SEQ = 'nback.customSeq';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
   const raw = await AsyncStorage.getItem(key);
@@ -91,6 +102,73 @@ export function addLearned(questionId: string, answer: string): Promise<void> {
   // The chain must survive a failed write; the caller still sees the rejection.
   learnedWrites = next.catch(() => undefined);
   return next;
+}
+
+async function clearLearnedNow(questionId: string): Promise<void> {
+  const learned = await loadLearned();
+  if (!(questionId in learned)) return;
+  delete learned[questionId];
+  await AsyncStorage.setItem(KEY_LEARNED, JSON.stringify(learned));
+}
+
+/**
+ * Forget everything learned for one question. Goes through the same write
+ * chain as addLearned — otherwise an in-flight learn could land afterwards
+ * and resurrect a synonym the owner just invalidated.
+ */
+export function clearLearned(questionId: string): Promise<void> {
+  const next = learnedWrites.then(() => clearLearnedNow(questionId));
+  learnedWrites = next.catch(() => undefined);
+  return next;
+}
+
+export async function loadCustom(): Promise<Question[]> {
+  return readJson<Question[]>(KEY_CUSTOM, []);
+}
+
+/**
+ * Ids come from a monotonic counter rather than the array length, so deleting
+ * a question can never cause a later one to reuse its id — and with it, its
+ * learned synonyms.
+ */
+export async function addCustom(q: string, answer: string): Promise<Question> {
+  const seq = (await readJson<number>(KEY_CUSTOM_SEQ, 0)) + 1;
+  const question: Question = {
+    id: `user_${seq}`,
+    tier: 0,
+    q,
+    accept: [answer],
+  };
+  const custom = await loadCustom();
+  await AsyncStorage.setItem(KEY_CUSTOM, JSON.stringify([...custom, question]));
+  await AsyncStorage.setItem(KEY_CUSTOM_SEQ, JSON.stringify(seq));
+  return question;
+}
+
+/**
+ * Editing either field invalidates phrasings Claude accepted against the old
+ * pair, so the learned list is cleared and rebuilds itself from the next answer.
+ */
+export async function updateCustom(
+  id: string,
+  q: string,
+  answer: string,
+): Promise<void> {
+  const custom = await loadCustom();
+  const next = custom.map((item) =>
+    item.id === id ? { ...item, q, accept: [answer] } : item,
+  );
+  await AsyncStorage.setItem(KEY_CUSTOM, JSON.stringify(next));
+  await clearLearned(id);
+}
+
+export async function deleteCustom(id: string): Promise<void> {
+  const custom = await loadCustom();
+  await AsyncStorage.setItem(
+    KEY_CUSTOM,
+    JSON.stringify(custom.filter((item) => item.id !== id)),
+  );
+  await clearLearned(id);
 }
 
 /**
