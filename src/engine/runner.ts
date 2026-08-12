@@ -47,9 +47,13 @@ function settleWithin(promise: Promise<void>, ms: number): Promise<void> {
  *
  * start() and tick() are **synchronous**: the state transition lands before
  * they return, so the UI can paint the new step immediately. The utterance is
- * fired and forgotten so that it overlaps phase A instead of preceding it —
+ * started, not awaited, so that it overlaps phase A instead of preceding it —
  * spec §4.1 puts the flash and the question in the same phase. Being
  * synchronous also makes overlapping ticks structurally impossible.
+ *
+ * Only the *closing* of phase A waits for the speech: see readyToClose().
+ * The paint happens at once; the mic simply does not open until the question
+ * has been said.
  */
 export class RoundRunner {
   private readonly deps: RoundRunnerDeps;
@@ -77,8 +81,9 @@ export class RoundRunner {
 
   /**
    * Resolves when the current utterance finishes, errors, or hits
-   * SPEAK_TIMEOUT_MS. Never rejects. The step machine does not await it — it
-   * exists so tests and teardown have a handle on the speech in flight.
+   * SPEAK_TIMEOUT_MS. Never rejects. Nothing about the *paint* waits on it;
+   * readyToClose() uses it to hold phase A open until the question has been
+   * said.
    */
   get utterance(): Promise<void> {
     return this.speaking;
@@ -96,14 +101,34 @@ export class RoundRunner {
     this.tap = position;
   }
 
-  /** Called by the UI when the current phase's timer expires. */
+  /**
+   * Resolves when the current phase may close — i.e. when it is safe for the
+   * UI to call tick(). Phase A additionally waits out the utterance, so its
+   * real length is `max(configured phase A, utterance)`: the question is
+   * spoken exactly once, and clipping 「〜は？」 makes that item unanswerable N
+   * steps later. Bounded by SPEAK_TIMEOUT_MS, so a synthesizer that never
+   * calls back cannot freeze the round. Phase B closes on its timer alone.
+   *
+   * The wait lives here rather than in the UI so that the rule travels with
+   * the state machine, and the runner still owns no timers.
+   */
+  readyToClose(): Promise<void> {
+    return this.phase === 'A' ? this.speaking : Promise.resolve();
+  }
+
+  /**
+   * Called by the UI once the phase's timer has expired *and* readyToClose()
+   * has resolved. Synchronous: the transition lands before it returns, so the
+   * caller repaints immediately rather than chaining off a promise.
+   */
   tick(): void {
     if (this.phase === 'done') return;
 
     if (this.phase === 'A') {
       this.phase = 'B';
-      // Silence the synthesizer before the mic opens: a long question must not
-      // bleed into the answer window (spec §4.1).
+      // The utterance has normally already finished (readyToClose waited for
+      // it); this only bites when the watchdog fired, and then silencing the
+      // synthesizer before the mic opens is exactly right (spec §4.1).
       this.deps.speaker.stop();
       this.deps.listener.start();
       return;

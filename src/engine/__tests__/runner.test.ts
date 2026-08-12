@@ -113,6 +113,8 @@ describe('RoundRunner utterance overlap', () => {
   });
 
   it('reaches the end of the round with every utterance still unresolved', () => {
+    // tick() itself never blocks; only readyToClose() does. A caller that
+    // ignores the gate must still drive the machine to completion.
     const speaker = new SlowFakeSpeaker();
     const { runner } = setup(2, speaker);
     runner.start();
@@ -129,6 +131,79 @@ describe('RoundRunner utterance overlap', () => {
     runner.tick(); // phase A -> B
     expect(speaker.stopped).toBe(1);
     expect(listener.sessions).toBe(1);
+  });
+});
+
+describe('RoundRunner phase A closing', () => {
+  /** Whether a promise has settled, without blocking on it. */
+  async function settled(promise: Promise<void>): Promise<boolean> {
+    let done = false;
+    void promise.then(() => {
+      done = true;
+    });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    return done;
+  }
+
+  it('holds phase A open until the question has actually been said', async () => {
+    const speaker = new SlowFakeSpeaker();
+    const { runner } = setup(2, speaker);
+    runner.start();
+
+    expect(await settled(runner.readyToClose())).toBe(false);
+
+    speaker.resolveSpeak();
+    await runner.readyToClose();
+    expect(await settled(runner.readyToClose())).toBe(true);
+  });
+
+  it('closes phase B on its timer alone, never on the speech', async () => {
+    const speaker = new SlowFakeSpeaker();
+    const { runner } = setup(2, speaker);
+    runner.start();
+    speaker.resolveSpeak();
+    await runner.readyToClose();
+    runner.tick(); // -> phase B
+
+    // The next question is not spoken yet, but even a lingering utterance
+    // must not extend the answer window.
+    expect(await settled(runner.readyToClose())).toBe(true);
+  });
+
+  it('closes a silent recall-only phase A immediately', async () => {
+    const speaker = new SlowFakeSpeaker();
+    const { runner, plan } = setup(2, speaker);
+    runner.start();
+    for (let i = 0; i < 9 * 2; i++) runner.tick(); // into the trailing steps
+    expect(plan.steps[9].question).toBeNull();
+    expect(await settled(runner.readyToClose())).toBe(true);
+  });
+
+  it('caps a never-settling utterance with the watchdog so the round proceeds', async () => {
+    jest.useFakeTimers();
+    try {
+      const speaker = new SlowFakeSpeaker();
+      const { runner, listener } = setup(2, speaker);
+      runner.start();
+
+      let closed = false;
+      void runner.readyToClose().then(() => {
+        closed = true;
+      });
+
+      await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS - 1);
+      expect(closed).toBe(false);
+      expect(listener.sessions).toBe(0); // mic still shut during phase A
+
+      await jest.advanceTimersByTimeAsync(2);
+      expect(closed).toBe(true);
+
+      runner.tick();
+      expect(speaker.stopped).toBe(1); // the runaway utterance is cut off
+      expect(listener.sessions).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('settles the utterance handle once the speech finishes', async () => {

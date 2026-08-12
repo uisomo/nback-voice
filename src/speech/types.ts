@@ -1,5 +1,9 @@
 export interface Speaker {
-  /** Resolves when the utterance finishes, so phase A can end on speech end. */
+  /**
+   * Starts speaking at once and resolves when the utterance finishes. Phase A
+   * paints immediately and closes at max(its configured length, this promise),
+   * so a question is never clipped — see RoundRunner.readyToClose().
+   */
   speak(text: string): Promise<void>;
   stop(): void;
 }
