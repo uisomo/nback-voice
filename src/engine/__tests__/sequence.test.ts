@@ -77,3 +77,25 @@ describe('buildRound', () => {
     expect(buildRound(1, BANK, zeroRng).steps).toHaveLength(10);
   });
 });
+
+describe('buildRound mode', () => {
+  it('defaults to dual and emits positions', () => {
+    const { mode, steps } = buildRound(2, BANK, Math.random);
+    expect(mode).toBe('dual');
+    expect(steps[0].position).not.toBeNull();
+  });
+
+  it('emits no positions at all in question mode', () => {
+    const { mode, steps } = buildRound(2, BANK, Math.random, 'question');
+    expect(mode).toBe('question');
+    for (const step of steps) expect(step.position).toBeNull();
+  });
+
+  it('keeps the round shape and question sampling in question mode', () => {
+    const { steps } = buildRound(3, BANK, Math.random, 'question');
+    expect(steps).toHaveLength(12);
+    expect(steps.filter((s) => s.recallTarget !== null)).toHaveLength(9);
+    const ids = steps.slice(0, 9).map((s) => s.question!.id);
+    expect(new Set(ids).size).toBe(9);
+  });
+});

@@ -75,7 +75,9 @@ export class RoundEngine {
     return out;
   }
 
-  get positionScore(): number {
+  /** null in question mode — the visual channel is absent, not zero. */
+  get positionScore(): number | null {
+    if (this.plan.mode === 'question') return null;
     return this.correctTaps / STIMULI_PER_ROUND;
   }
 
@@ -92,13 +94,18 @@ export class RoundEngine {
     return [...this.answers.values()].filter((a) => a.correct === null).length;
   }
 
-  get roundScore(): number {
-    const answer = this.answerScore;
-    if (answer === null) return this.positionScore;
-    return (this.positionScore + answer) / 2;
+  /** null when no channel has data — nothing to score, so nothing to adapt on. */
+  get roundScore(): number | null {
+    const channels = [this.positionScore, this.answerScore].filter(
+      (channel): channel is number => channel !== null,
+    );
+    if (channels.length === 0) return null;
+    return channels.reduce((sum, channel) => sum + channel, 0) / channels.length;
   }
 
   nextN(currentN: number): number {
-    return adaptiveNextN(this.roundScore, currentN);
+    const score = this.roundScore;
+    if (score === null) return currentN;
+    return adaptiveNextN(score, currentN);
   }
 }

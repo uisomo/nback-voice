@@ -173,3 +173,78 @@ describe('RoundEngine round score', () => {
     expect(engine.nextN(2)).toBe(3);
   });
 });
+
+describe('RoundEngine in question mode', () => {
+  function questionPlan(n = 2) {
+    return buildRound(n, BANK, Math.random, 'question');
+  }
+
+  it('reports no position channel', () => {
+    const p = questionPlan();
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      engine.submitStep(step.index, { tap: null, transcript: 'こたえ' });
+    }
+    expect(engine.positionScore).toBeNull();
+  });
+
+  it('scores the round on the answer channel alone', () => {
+    const p = questionPlan();
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      engine.submitStep(step.index, { tap: null, transcript: 'こたえ' });
+    }
+    const pending = engine.takePending();
+    pending.forEach((a, i) => engine.resolveAnswer(a.index, i < 6));
+    // 6 of 9 correct; the position channel must not dilute it.
+    expect(engine.answerScore).toBeCloseTo(6 / 9);
+    expect(engine.roundScore).toBeCloseTo(6 / 9);
+  });
+
+  it('ignores taps entirely', () => {
+    const p = questionPlan();
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      engine.submitStep(step.index, { tap: 4, transcript: null });
+    }
+    expect(engine.positionScore).toBeNull();
+    expect(engine.roundScore).toBeNull();
+  });
+
+  it('has no round score when both channels are absent', () => {
+    const p = questionPlan();
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      engine.submitStep(step.index, { tap: null, transcript: 'こたえ' });
+    }
+    // Nothing resolved: answers all 未判定, position absent by mode.
+    expect(engine.roundScore).toBeNull();
+    expect(engine.unresolvedCount).toBe(9);
+  });
+
+  it('leaves N unchanged when there is no round score', () => {
+    const p = questionPlan();
+    const engine = new RoundEngine(p);
+    expect(engine.nextN(3)).toBe(3);
+  });
+
+  it('still adapts N from the answer channel alone', () => {
+    const p = questionPlan();
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      engine.submitStep(step.index, { tap: null, transcript: 'こたえ' });
+    }
+    for (const a of engine.takePending()) engine.resolveAnswer(a.index, true);
+    expect(engine.roundScore).toBe(1);
+    expect(engine.nextN(2)).toBe(3);
+  });
+});
+
+describe('RoundEngine in dual mode (unchanged)', () => {
+  it('still returns a number for the position channel', () => {
+    const p = buildRound(2, BANK, Math.random);
+    const engine = new RoundEngine(p);
+    expect(engine.positionScore).toBe(0);
+    expect(p.mode).toBe('dual');
+  });
+});

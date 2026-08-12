@@ -20,8 +20,12 @@ export interface StepPlan {
   recallTarget: number | null;
 }
 
+/** 'dual' scores position and answer; 'question' drops the visual channel. */
+export type RoundMode = 'dual' | 'question';
+
 export interface RoundPlan {
   n: number;
+  mode: RoundMode;
   steps: StepPlan[];
 }
 
