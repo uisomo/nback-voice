@@ -1087,13 +1087,16 @@ describe('SettingsScreen mode selector', () => {
 });
 
 describe('SettingsScreen question source', () => {
+  // Query the source chips by testID, not by text: the label 自分の問題 also
+  // appears in the 自分の問題を編集 link, and a text query would match both
+  // and throw on the ambiguity.
   it('shows the shortfall and refuses "自分の問題" below nine', async () => {
     await addCustom('一問だけ', 'あ');
-    const { findByText, getByText } = render(
+    const { findByText, getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     expect(await findByText(/あと 8 問/)).toBeTruthy();
-    fireEvent.press(getByText(/自分の問題/));
+    fireEvent.press(getByTestId('source-custom'));
     await waitFor(() => {});
     // Still the default — the disabled option must not have been applied.
     expect((await loadSettings()).questionSource).toBe('builtin');
@@ -1101,22 +1104,22 @@ describe('SettingsScreen question source', () => {
 
   it('allows "自分の問題" once there are nine', async () => {
     for (let i = 0; i < 9; i++) await addCustom(`問題${i}`, `答え${i}`);
-    const { findByText, getByText } = render(
+    const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
-    await findByText(/自分の問題/);
-    fireEvent.press(getByText(/自分の問題/));
+    await waitFor(() => {});
+    fireEvent.press(getByTestId('source-custom'));
     await waitFor(async () => {
       expect((await loadSettings()).questionSource).toBe('custom');
     });
   });
 
   it('always allows "両方"', async () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     await waitFor(() => {});
-    fireEvent.press(getByText(/両方/));
+    fireEvent.press(getByTestId('source-both'));
     await waitFor(async () => {
       expect((await loadSettings()).questionSource).toBe('both');
     });
@@ -1146,7 +1149,7 @@ Expected: FAIL — `onEditQuestions` is not a prop; the mode and source controls
 In `src/ui/SettingsScreen.tsx`, replace the imports and the component (keep the existing `styles` block, adding the three new entries shown at the end):
 
 ```tsx
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { MIN_QUESTIONS, type QuestionSource } from '../content/pool';
 import type { RoundMode } from '../engine/types';
@@ -1187,16 +1190,18 @@ export function SettingsScreen({ onClose, onEditQuestions }: Props) {
     void loadCustom().then((custom) => setCustomCount(custom.length));
   }, []);
 
-  const update = useCallback(
-    (patch: Partial<Settings>) => {
-      setSettings((current) => {
-        const next = { ...current, ...patch };
-        void saveSettings(next);
-        return next;
-      });
-    },
-    [],
-  );
+  // A ref, not the state value, so two rapid taps don't both build their patch
+  // from the same stale object and lose the first change. The write stays out
+  // of the setState updater, which must be pure.
+  const latest = useRef(settings);
+  latest.current = settings;
+
+  const update = useCallback((patch: Partial<Settings>) => {
+    const next = { ...latest.current, ...patch };
+    latest.current = next;
+    setSettings(next);
+    void saveSettings(next);
+  }, []);
 
   // 'custom' draws from the owner's questions alone, so it is only usable once
   // there are enough for a full round. 'both' always has the built-ins behind it.
@@ -1230,6 +1235,7 @@ export function SettingsScreen({ onClose, onEditQuestions }: Props) {
           return (
             <Pressable
               key={source}
+              testID={`source-${source}`}
               onPress={() => usable && update({ questionSource: source })}
               style={[
                 styles.chip,
@@ -1306,8 +1312,6 @@ export function SettingsScreen({ onClose, onEditQuestions }: Props) {
   );
 }
 ```
-
-Note the `update` callback now uses the functional form of `setSettings`. The previous version closed over `settings`, so two rapid taps could each build their patch from the same stale object and the second would discard the first.
 
 Add to the existing `styles` object:
 
