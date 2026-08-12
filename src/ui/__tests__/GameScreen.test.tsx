@@ -4,7 +4,12 @@ import type { RoundEngine } from '../../engine';
 import type { Listener } from '../../speech/types';
 import { FakeSpeaker } from '../../speech/fakes';
 import type { JudgeClient, Verdict } from '../../judge/types';
-import { loadHistory, loadN } from '../../store/storage';
+import {
+  DEFAULT_SETTINGS,
+  loadHistory,
+  loadN,
+  saveSettings,
+} from '../../store/storage';
 import { GameScreen } from '../GameScreen';
 
 jest.mock('expo-speech-recognition', () => ({
@@ -20,11 +25,13 @@ jest.mock('expo-speech', () => ({ speak: jest.fn(), stop: jest.fn() }));
 /** Always returns the same transcript, so every step produces an answer. */
 class CannedListener implements Listener {
   sessions = 0;
+  stopped = 0;
   constructor(private readonly canned: string) {}
   start(): void {
     this.sessions++;
   }
   stop(): string {
+    this.stopped++;
     return this.canned;
   }
   push(): void {}
@@ -139,5 +146,33 @@ describe('GameScreen', () => {
       />,
     );
     expect(await findByText(/マイクの許可/)).toBeTruthy();
+  });
+
+  it('stops the listener on unmount mid-round', async () => {
+    const { deps, listener } = makeDeps(alwaysCorrect);
+    const { unmount } = render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+
+    // Land inside phase B of the first step (A=2000ms, B=3000ms at the
+    // default 5000ms pacing) — the mic is open and has not yet been
+    // stopped by the step's own tick().
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3000);
+    });
+    expect(listener.sessions).toBe(1);
+    expect(listener.stopped).toBe(0);
+
+    unmount();
+
+    expect(listener.stopped).toBe(1);
+  });
+
+  it('shows an error message when the round cannot be set up', async () => {
+    // maxTier: 0 filters out every question in the bank (tiers are 1 and 2),
+    // so buildRound() throws for want of 9 questions — a genuine setup
+    // failure, not a contrived one.
+    await saveSettings({ ...DEFAULT_SETTINGS, maxTier: 0 });
+    const { deps } = makeDeps(alwaysCorrect);
+    const { findByText } = render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    expect(await findByText(/準備に失敗しました/)).toBeTruthy();
   });
 });

@@ -71,82 +71,88 @@ export function GameScreen({ onFinished, deps }: Props) {
         return;
       }
 
-      const [settings, storedN, learned] = await Promise.all([
-        loadSettings(),
-        loadN(),
-        loadLearned(),
-      ]);
-      if (cancelled) return;
-
-      const n = settings.adaptive ? storedN : settings.fixedN;
-      const bank = loadBank(learned).filter((q) => q.tier <= settings.maxTier);
-      const plan = buildRound(n, bank);
-      const engine = new RoundEngine(plan);
-      const queue = new JudgeQueue(resolved.judgeClient, {
-        onVerdict: (index, correct) => engine.resolveAnswer(index, correct),
-        onLearn: (questionId, answer) => {
-          void addLearned(questionId, answer);
-        },
-      });
-
-      const runner = new RoundRunner({
-        plan,
-        engine,
-        speaker: resolved.speaker,
-        listener: resolved.listener,
-        onJudge: (answer) => queue.enqueue(answer),
-      });
-      runnerRef.current = runner;
-
-      const { a, b } = phaseDurations(settings);
-
-      const finish = async () => {
-        await queue.drain();
+      try {
+        const [settings, storedN, learned] = await Promise.all([
+          loadSettings(),
+          loadN(),
+          loadLearned(),
+        ]);
         if (cancelled) return;
-        if (settings.adaptive) await saveN(engine.nextN(n));
-        await appendHistory({
-          date: new Date().toISOString().slice(0, 10),
-          n,
-          positionScore: engine.positionScore,
-          answerScore: engine.answerScore,
-          unresolved: engine.unresolvedCount,
-        });
-        if (!cancelled) onFinished(engine, plan);
-      };
 
-      const schedule = () => {
-        if (cancelled) return;
-        const { phase, stepIndex, flashPosition } = runner.state;
-
-        if (phase === 'done') {
-          void finish();
-          return;
-        }
-
-        setFlash(flashPosition);
-        if (phase === 'A') setSelected(null);
-        setLabel(
-          `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
-            (phase === 'A' ? '出題中' : 'どうぞ'),
-        );
-
-        timerRef.current = setTimeout(
-          () => {
-            void runner.tick().then(schedule);
+        const n = settings.adaptive ? storedN : settings.fixedN;
+        const bank = loadBank(learned).filter((q) => q.tier <= settings.maxTier);
+        const plan = buildRound(n, bank);
+        const engine = new RoundEngine(plan);
+        const queue = new JudgeQueue(resolved.judgeClient, {
+          onVerdict: (index, correct) => engine.resolveAnswer(index, correct),
+          onLearn: (questionId, answer) => {
+            void addLearned(questionId, answer);
           },
-          phase === 'A' ? a : b,
-        );
-      };
+        });
 
-      await runner.start();
-      if (cancelled) return;
-      setReady(true);
-      schedule();
+        const runner = new RoundRunner({
+          plan,
+          engine,
+          speaker: resolved.speaker,
+          listener: resolved.listener,
+          onJudge: (answer) => queue.enqueue(answer),
+        });
+        runnerRef.current = runner;
+
+        const { a, b } = phaseDurations(settings);
+
+        const finish = async () => {
+          await queue.drain();
+          if (cancelled) return;
+          if (settings.adaptive) await saveN(engine.nextN(n));
+          await appendHistory({
+            date: new Date().toISOString().slice(0, 10),
+            n,
+            positionScore: engine.positionScore,
+            answerScore: engine.answerScore,
+            unresolved: engine.unresolvedCount,
+          });
+          if (!cancelled) onFinished(engine, plan);
+        };
+
+        const schedule = () => {
+          if (cancelled) return;
+          const { phase, stepIndex, flashPosition } = runner.state;
+
+          if (phase === 'done') {
+            void finish();
+            return;
+          }
+
+          setFlash(flashPosition);
+          if (phase === 'A') setSelected(null);
+          setLabel(
+            `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
+              (phase === 'A' ? '出題中' : 'どうぞ'),
+          );
+
+          timerRef.current = setTimeout(
+            () => {
+              void runner.tick().then(schedule);
+            },
+            phase === 'A' ? a : b,
+          );
+        };
+
+        await runner.start();
+        if (cancelled) return;
+        setReady(true);
+        schedule();
+      } catch {
+        if (!cancelled) setLabel('準備に失敗しました。アプリを再起動してください');
+      }
     })();
 
     return () => {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
+      resolved.listener.stop();
+      resolved.speaker.stop();
     };
   }, [resolved, onFinished]);
 
