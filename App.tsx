@@ -1,20 +1,58 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import type { RoundEngine } from './src/engine';
+import type { RoundPlan } from './src/engine/types';
+import { GameScreen } from './src/ui/GameScreen';
+import { ResultsScreen } from './src/ui/ResultsScreen';
+import { SettingsScreen } from './src/ui/SettingsScreen';
+
+type Screen =
+  | { name: 'game'; key: number }
+  | { name: 'results'; engine: RoundEngine; plan: RoundPlan }
+  | { name: 'settings' };
 
 export default function App() {
+  const [screen, setScreen] = useState<Screen>({ name: 'game', key: 0 });
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      {screen.name === 'game' && (
+        <>
+          <GameScreen
+            key={screen.key}
+            onFinished={(engine, plan) =>
+              setScreen({ name: 'results', engine, plan })
+            }
+          />
+          <Pressable
+            style={styles.settingsButton}
+            onPress={() => setScreen({ name: 'settings' })}
+          >
+            <Text style={styles.settingsLabel}>設定</Text>
+          </Pressable>
+        </>
+      )}
+
+      {screen.name === 'results' && (
+        <ResultsScreen
+          engine={screen.engine}
+          n={screen.plan.n}
+          onAgain={() => setScreen({ name: 'game', key: Date.now() })}
+        />
+      )}
+
+      {screen.name === 'settings' && (
+        <SettingsScreen
+          onClose={() => setScreen({ name: 'game', key: Date.now() })}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  root: { flex: 1, backgroundColor: '#000' },
+  settingsButton: { position: 'absolute', top: 60, right: 24 },
+  settingsLabel: { color: '#8e8e93', fontSize: 16 },
 });
