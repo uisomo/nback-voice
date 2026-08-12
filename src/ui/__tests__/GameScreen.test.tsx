@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, render } from '@testing-library/react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import type { RoundEngine } from '../../engine';
+import { SPEAK_TIMEOUT_MS } from '../../engine/runner';
 import type { Listener, Speaker } from '../../speech/types';
 import { FakeListener, FakeSpeaker, SlowFakeSpeaker } from '../../speech/fakes';
 import type { JudgeClient, Verdict } from '../../judge/types';
@@ -151,6 +152,23 @@ describe('GameScreen', () => {
     expect(engine.unresolvedCount).toBe(9);
   });
 
+  it('reaches the results screen even if a grading call never returns', async () => {
+    // A stalled connection must not hold the results screen: answers still in
+    // flight are already handled as 未判定.
+    const stalled: JudgeClient = {
+      judge: () => new Promise<Verdict>(() => {}),
+    };
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(stalled);
+    render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await runWholeRound();
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
+    const engine: RoundEngine = onFinished.mock.calls[0][0];
+    expect(engine.answerScore).toBeNull();
+    expect(engine.unresolvedCount).toBe(9);
+  });
+
   it('writes a history record for the round', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
@@ -238,11 +256,14 @@ describe('GameScreen paints during the utterance, not after it', () => {
     expect(queryByText(/準備中/)).toBeNull();
     expect(queryByText('1 / 11　2-back　出題中')).toBeTruthy();
 
-    // Cross into step 1 phase A. Still nothing has finished speaking.
+    // Let step 0's question finish and cross into step 1, whose question is
+    // then in flight. The new step is painted at the transition, not when its
+    // speech ends.
     await act(async () => {
+      speaker.resolveSpeak();
       await jest.advanceTimersByTimeAsync(5_000);
     });
-    expect(speaker.pending).toBe(2);
+    expect(speaker.pending).toBe(1);
     expect(queryByText('2 / 11　2-back　出題中')).toBeTruthy();
   });
 
@@ -264,6 +285,75 @@ describe('GameScreen paints during the utterance, not after it', () => {
     ).toHaveLength(1);
     // The grid must be tappable from the first frame, not after the utterance.
     expect(cells[0].props.accessibilityState.disabled).toBe(false);
+  });
+});
+
+describe('GameScreen phase A pacing', () => {
+  it('keeps the mic shut past the configured phase A until the question ends', async () => {
+    // Bank median is 9 chars; at ja-JP default TTS rate that is ~2.2-2.6s,
+    // longer than the 2000ms phase A at the 5s default. The question is
+    // spoken once and answered N steps later, so clipping it would silently
+    // make that item unanswerable.
+    const speaker = new SlowFakeSpeaker();
+    const listener = new CannedListener('ぶぶぶ');
+    const { deps } = makeDeps(alwaysCorrect, speaker, listener);
+    const { queryByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+
+    // Well past the 2000ms phase A, with the question still being spoken.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(4_000);
+    });
+    expect(listener.sessions).toBe(0); // mic never opened
+    expect(speaker.stopped).toBe(0); // the question was not cut off
+    expect(queryByText('1 / 11　2-back　出題中')).toBeTruthy();
+
+    // The synthesizer finishes: the mic opens now, not before.
+    await act(async () => {
+      speaker.resolveSpeak();
+    });
+    expect(listener.sessions).toBe(1);
+    expect(queryByText('1 / 11　2-back　どうぞ')).toBeTruthy();
+  });
+
+  it('does not let a fast question shorten the step', async () => {
+    // Phase A is a floor as well as a target: a 1-char answer bank must not
+    // turn the round into a rush.
+    const speaker = new SlowFakeSpeaker();
+    const listener = new CannedListener('ぶぶぶ');
+    const { deps } = makeDeps(alwaysCorrect, speaker, listener);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10);
+      speaker.resolveSpeak(); // question over almost immediately
+      await jest.advanceTimersByTimeAsync(1_900); // t = 1910ms
+    });
+    expect(listener.sessions).toBe(0); // still inside the configured phase A
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(200); // t = 2110ms
+    });
+    expect(listener.sessions).toBe(1);
+  });
+
+  it('opens the mic anyway when the synthesizer never calls back', async () => {
+    const speaker = new SlowFakeSpeaker();
+    const listener = new CannedListener('ぶぶぶ');
+    const { deps } = makeDeps(alwaysCorrect, speaker, listener);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS - 1);
+    });
+    expect(listener.sessions).toBe(0);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2);
+    });
+    expect(listener.sessions).toBe(1);
+    expect(speaker.stopped).toBe(1);
   });
 });
 

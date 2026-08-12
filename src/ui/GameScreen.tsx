@@ -164,10 +164,16 @@ export function GameScreen({ onFinished, deps }: Props) {
 
           timerRef.current = setTimeout(
             () => {
-              // tick() transitions synchronously, so the repaint below lands
-              // while the question is still being spoken rather than after it.
-              runner.tick();
-              schedule();
+              // Phase A closes at max(a, utterance) — readyToClose() resolves
+              // at once unless the question is still being spoken. The paint
+              // above already happened, so this only delays the mic opening.
+              void runner.readyToClose().then(() => {
+                if (cancelled) return;
+                // tick() transitions synchronously, so the repaint lands with
+                // the transition rather than chaining off another promise.
+                runner.tick();
+                schedule();
+              });
             },
             phase === 'A' ? a : b,
           );
