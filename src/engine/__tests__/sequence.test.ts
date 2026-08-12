@@ -65,4 +65,15 @@ describe('buildRound', () => {
       /at least 9 questions/,
     );
   });
+
+  it('rejects an N below 1 rather than building a malformed plan', () => {
+    // N=0 would make every step its own recall target; N<0 indexes backwards.
+    for (const n of [0, -1, 1.5, Number.NaN]) {
+      expect(() => buildRound(n, BANK, zeroRng)).toThrow(/at least 1/);
+    }
+  });
+
+  it('accepts the adaptive floor of 1', () => {
+    expect(buildRound(1, BANK, zeroRng).steps).toHaveLength(10);
+  });
 });

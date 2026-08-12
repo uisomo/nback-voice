@@ -1,6 +1,6 @@
 import { RoundEngine } from '../round';
 import { buildRound } from '../sequence';
-import type { Question, RoundPlan } from '../types';
+import type { Question, Rng, RoundPlan } from '../types';
 
 const BANK: Question[] = Array.from({ length: 20 }, (_, i) => ({
   id: `q${i}`,
@@ -11,6 +11,22 @@ const BANK: Question[] = Array.from({ length: 20 }, (_, i) => ({
 
 function plan(n = 2): RoundPlan {
   return buildRound(n, BANK, Math.random);
+}
+
+/**
+ * buildRound draws position then question per stimulus step. This hands it
+ * 0/9, 1/9, 2/9 … so the 9 stimuli occupy 9 *distinct* cells — the lag tests
+ * below are only meaningful when the current and the N-back position differ,
+ * and under Math.random they collide about 11% of the time.
+ */
+function distinctPositionsRng(): Rng {
+  let call = 0;
+  return () => {
+    const isPositionDraw = call % 2 === 0;
+    const step = Math.floor(call / 2);
+    call++;
+    return isPositionDraw ? step / 9 : 0;
+  };
 }
 
 /** Submit every scored step with a correct tap and some transcript. */
@@ -36,14 +52,13 @@ describe('RoundEngine position scoring', () => {
   });
 
   it('marks a tap wrong when it matches the current step instead of the lagged one', () => {
-    const p = plan(2);
+    const p = buildRound(2, BANK, distinctPositionsRng());
+    expect(p.steps[2].position).not.toBe(p.steps[0].position);
+
     const engine = new RoundEngine(p);
     // Step 2 recalls step 0. Tap step 2's own position instead.
     engine.submitStep(2, { tap: p.steps[2].position, transcript: null });
-    // Guard: only meaningful if the two positions actually differ.
-    if (p.steps[2].position !== p.steps[0].position) {
-      expect(engine.positionScore).toBe(0);
-    }
+    expect(engine.positionScore).toBe(0);
   });
 
   it('divides by 9 scored steps, not by total steps', () => {

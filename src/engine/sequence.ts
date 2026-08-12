@@ -16,6 +16,9 @@ export function buildRound(
   bank: Question[],
   rng: Rng = Math.random,
 ): RoundPlan {
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`n must be an integer of at least 1, got ${n}`);
+  }
   if (bank.length < STIMULI_PER_ROUND) {
     throw new Error(
       `bank must contain at least 9 questions, got ${bank.length}`,
