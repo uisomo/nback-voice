@@ -71,15 +71,35 @@ export async function loadLearned(): Promise<Record<string, string[]>> {
   return readJson<Record<string, string[]>>(KEY_LEARNED, {});
 }
 
-export async function addLearned(
-  questionId: string,
-  answer: string,
-): Promise<void> {
+async function writeLearned(questionId: string, answer: string): Promise<void> {
   const learned = await loadLearned();
   const existing = learned[questionId] ?? [];
   if (existing.includes(answer)) return;
   learned[questionId] = [...existing, answer];
   await AsyncStorage.setItem(KEY_LEARNED, JSON.stringify(learned));
+}
+
+/**
+ * Serializes every write, because this is read-modify-write over one key and
+ * a round can learn several synonyms at once: two concurrent calls would both
+ * read the same map and the later write would drop the earlier one's answer.
+ */
+let learnedWrites: Promise<unknown> = Promise.resolve();
+
+export function addLearned(questionId: string, answer: string): Promise<void> {
+  const next = learnedWrites.then(() => writeLearned(questionId, answer));
+  // The chain must survive a failed write; the caller still sees the rejection.
+  learnedWrites = next.catch(() => undefined);
+  return next;
+}
+
+/**
+ * The device's local calendar date. Deliberately not toISOString(), which is
+ * UTC and would file every round played before 09:00 JST under the day before.
+ */
+export function localDate(date: Date = new Date()): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 export function phaseDurations(settings: Settings): { a: number; b: number } {

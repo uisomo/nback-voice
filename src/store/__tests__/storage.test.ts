@@ -7,6 +7,7 @@ import {
   loadLearned,
   loadN,
   loadSettings,
+  localDate,
   phaseDurations,
   saveN,
   saveSettings,
@@ -69,6 +70,43 @@ describe('learned synonyms', () => {
     await addLearned('q042', 'わんこ');
     await addLearned('q042', 'ばうわう');
     expect(await loadLearned()).toEqual({ q042: ['わんこ', 'ばうわう'] });
+  });
+
+  it('keeps both answers when two writes are started together', async () => {
+    // Read-modify-write over one key: unserialized, the second write would read
+    // the pre-first-write map and drop 'わんこ'. A round can learn several
+    // synonyms at once, so this is the real concurrency, not a contrived one.
+    await Promise.all([
+      addLearned('q042', 'わんこ'),
+      addLearned('q100', 'にゃんこ'),
+    ]);
+    expect(await loadLearned()).toEqual({
+      q042: ['わんこ'],
+      q100: ['にゃんこ'],
+    });
+  });
+
+  it('keeps both answers for the same question written together', async () => {
+    await Promise.all([
+      addLearned('q042', 'わんこ'),
+      addLearned('q042', 'ばうわう'),
+    ]);
+    expect((await loadLearned()).q042.sort()).toEqual(
+      ['ばうわう', 'わんこ'].sort(),
+    );
+  });
+});
+
+describe('localDate', () => {
+  it('uses the device calendar date, not UTC', () => {
+    // 2026-08-12 06:30 JST is still 2026-08-11 in UTC. Filing the round under
+    // the UTC day would misdate every morning session.
+    const morningInJst = new Date(2026, 7, 12, 6, 30, 0);
+    expect(localDate(morningInJst)).toBe('2026-08-12');
+  });
+
+  it('zero-pads month and day', () => {
+    expect(localDate(new Date(2026, 0, 3))).toBe('2026-01-03');
   });
 });
 
