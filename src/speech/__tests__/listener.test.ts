@@ -51,7 +51,7 @@ async function flush() {
 }
 
 describe('on-device recognition selection', () => {
-  it('enables on-device recognition when ja-JP is installed', async () => {
+  it('requests on-device recognition when the probe reports ja-JP support', async () => {
     mocked.supportsOnDeviceRecognition.mockReturnValue(true);
     mocked.getSupportedLocales.mockResolvedValue({
       locales: ['en-US', 'ja-JP'],
@@ -66,7 +66,9 @@ describe('on-device recognition selection', () => {
       lang: 'ja-JP',
       requiresOnDeviceRecognition: true,
     });
-    expect(logged.mock.calls[0][0]).toContain('on-device');
+    // The probe cannot prove the ja-JP model is downloaded, so the log must
+    // not claim it is in use — iOS may still fall back to server recognition.
+    expect(logged.mock.calls[0][0]).toContain('on-device requested');
   });
 
   it('accepts the underscore locale form Apple sometimes reports', async () => {

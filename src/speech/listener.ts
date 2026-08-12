@@ -33,6 +33,14 @@ function sameLocale(a: string, b: string): boolean {
  * Spec §3 wants recognition on-device (¥0, works offline). Enabling it blindly
  * fails outright when the model is not installed, so probe first and fall back
  * to server recognition. Memoised: one probe and one log line per app launch.
+ *
+ * The probe is a *request*, not a guarantee. On iOS the package builds a bare
+ * SFSpeechRecognizer for the device locale, and getSupportedLocales() returns
+ * supportedLocales() for installedLocales, so neither signal is specific to
+ * ja-JP being downloaded. The native layer gates the real flag on the ja-JP
+ * recognizer's own supportsOnDeviceRecognition, so a false positive here
+ * degrades silently to server recognition rather than failing — which is why
+ * the log says "requested", not "using".
  */
 let onDeviceProbe: Promise<boolean> | null = null;
 
@@ -52,7 +60,9 @@ export function detectOnDeviceRecognition(): Promise<boolean> {
     }
     console.log(
       `[nback] speech recognition: ${
-        available ? `on-device (${RECOGNITION_LANG})` : 'server'
+        available
+          ? 'on-device requested (iOS may still fall back to server)'
+          : 'server'
       }`,
     );
     return available;
