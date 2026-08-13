@@ -86,10 +86,18 @@ export function GameScreen({ onFinished, deps }: Props) {
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript;
     if (!transcript) return;
-    resolved.listener.push(transcript);
+    // isFinal marks the recognizer's last word for this session; the step
+    // closes on it rather than waiting out the settle bound.
+    resolved.listener.push(transcript, event.isFinal);
     // Shown as-is: the owner needs to see a mis-hear as a mis-hear, before the
     // judge has said anything about it.
     setHeard(transcript);
+  });
+
+  // A session can end with nothing said at all. Without this the step would
+  // sit out the whole settle bound waiting for a result that is not coming.
+  useSpeechRecognitionEvent('end', () => {
+    resolved.listener.sessionEnded();
   });
 
   useEffect(() => {

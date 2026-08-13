@@ -80,10 +80,20 @@ export function resetOnDeviceProbe(): void {
  * useSpeechRecognitionEvent and calls push(). That keeps the native event API
  * confined to ui/.
  */
+/**
+ * Ceiling on waiting for a recognizer to hand over its final result after
+ * being stopped. Reached only when the recognizer says nothing at all —
+ * normally the final result or the session's end arrives well inside it.
+ */
+export const SETTLE_TIMEOUT_MS = 1_500;
+
 export class ExpoListener implements Listener {
   private listening = false;
   private transcript = '';
   private onDevice = false;
+  private settleResolvers: Array<() => void> = [];
+  /** This session has said its last word — nothing more is coming. */
+  private finished = false;
 
   constructor() {
     // Fires well before the first phase B; until it answers we use the safe
@@ -101,6 +111,7 @@ export class ExpoListener implements Listener {
   start(): void {
     this.transcript = '';
     this.listening = true;
+    this.finished = false;
     ExpoSpeechRecognitionModule.start({
       lang: RECOGNITION_LANG,
       interimResults: true,
@@ -111,13 +122,52 @@ export class ExpoListener implements Listener {
     });
   }
 
+  /**
+   * Asks the recognizer to finish and waits for its last word. Everything the
+   * owner said is delivered by then; reading the transcript before this
+   * resolves is what silently turned real answers into 聞き取れず.
+   */
+  settle(): Promise<void> {
+    // Nothing to wait for: either no session is open, or this one already
+    // delivered its last word — a quick answer ends the session well inside
+    // phase B, and waiting out the bound for it would just stall the round.
+    if (!this.listening || this.finished) return Promise.resolve();
+    ExpoSpeechRecognitionModule.stop();
+    return new Promise<void>((resolve) => {
+      const timer = setTimeout(() => this.releaseSettle(), SETTLE_TIMEOUT_MS);
+      this.settleResolvers.push(() => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+
+  private releaseSettle(): void {
+    const waiting = this.settleResolvers;
+    this.settleResolvers = [];
+    for (const resolve of waiting) resolve();
+  }
+
   stop(): string {
     this.listening = false;
+    this.releaseSettle();
     ExpoSpeechRecognitionModule.stop();
     return this.transcript;
   }
 
-  push(transcript: string): void {
-    if (this.listening) this.transcript = transcript;
+  push(transcript: string, isFinal = false): void {
+    if (!this.listening) return;
+    this.transcript = transcript;
+    // The final result is the last thing this session will say, so anything
+    // waiting on settle() can stop waiting.
+    if (isFinal) {
+      this.finished = true;
+      this.releaseSettle();
+    }
+  }
+
+  sessionEnded(): void {
+    this.finished = true;
+    this.releaseSettle();
   }
 }

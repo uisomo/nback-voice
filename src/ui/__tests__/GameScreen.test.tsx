@@ -6,7 +6,12 @@ import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import type { RoundEngine } from '../../engine';
 import { SPEAK_TIMEOUT_MS } from '../../engine/runner';
 import type { Listener, Speaker } from '../../speech/types';
-import { FakeListener, FakeSpeaker, SlowFakeSpeaker } from '../../speech/fakes';
+import {
+  FakeListener,
+  FakeSpeaker,
+  LateFinalListener,
+  SlowFakeSpeaker,
+} from '../../speech/fakes';
 import type { JudgeClient, Verdict } from '../../judge/types';
 import {
   addCustom,
@@ -46,11 +51,15 @@ class CannedListener implements Listener {
   start(): void {
     this.sessions++;
   }
+  settle(): Promise<void> {
+    return Promise.resolve();
+  }
   stop(): string {
     this.stopped++;
     return this.canned;
   }
   push(): void {}
+  sessionEnded(): void {}
 }
 
 /** A synthesizer that cannot be started at all. */
@@ -542,5 +551,78 @@ describe('GameScreen live transcript', () => {
       getByTestId('live-transcript').props.style as StyleProp<TextStyle>,
     );
     expect(style?.color).toBe('#8e8e93');
+  });
+});
+
+/** The handler GameScreen registered for a given recognizer event. */
+function capturedHandler(name: string): (payload?: unknown) => void {
+  const mocked = useSpeechRecognitionEvent as unknown as jest.Mock;
+  const call = mocked.mock.calls.find(([event]) => event === name);
+  if (!call) throw new Error(`GameScreen never subscribed to ${name}`);
+  return call[1];
+}
+
+describe('GameScreen late final results', () => {
+  it('grades the answer the recognizer only delivers after the mic is asked to close', async () => {
+    // The reported bug: the transcript showed on screen but the step was
+    // recorded as 聞き取れず, because the final result lands after stop().
+    const heard: string[] = [];
+    const recording: JudgeClient = {
+      judge: async (_q, transcript): Promise<Verdict> => {
+        heard.push(transcript);
+        return { correct: true, matched: null };
+      },
+    };
+    const { deps } = makeDeps(
+      recording,
+      new FakeSpeaker(),
+      new LateFinalListener('わんわん'),
+    );
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await runWholeRound();
+
+    expect(heard).toHaveLength(9);
+    expect(new Set(heard)).toEqual(new Set(['わんわん']));
+  });
+
+  it('forwards the recognizer session end so a silent step cannot stall the round', async () => {
+    const listener = new LateFinalListener(null); // never delivers by itself
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), listener);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(6_000);
+    });
+    // Phase B of step 0 is over by the clock, but the recognizer has not
+    // spoken, so the round is waiting on it.
+    expect(listener.settles).toBe(1);
+    expect(listener.sessions).toBe(1);
+
+    await act(async () => {
+      capturedHandler('end')();
+      await jest.advanceTimersByTimeAsync(6_000);
+    });
+    expect(listener.sessions).toBe(2);
+  });
+
+  it('marks a result final so the wait ends with the last word, not the bound', async () => {
+    const listener = new LateFinalListener(null);
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), listener);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+    const onResult = capturedHandler('result') as (event: {
+      results: Array<{ transcript: string }>;
+      isFinal?: boolean;
+    }) => void;
+    await act(async () => {
+      onResult({ results: [{ transcript: 'わんわん' }], isFinal: true });
+      await jest.advanceTimersByTimeAsync(6_000);
+    });
+
+    // The final push released the settle wait: the round moved on.
+    expect(listener.sessions).toBe(2);
   });
 });

@@ -4,6 +4,7 @@ import { buildRound } from '../sequence';
 import {
   FakeListener,
   FakeSpeaker,
+  LateFinalListener,
   SlowFakeSpeaker,
 } from '../../speech/fakes';
 import type { PendingAnswer } from '../round';
@@ -295,5 +296,66 @@ describe('RoundRunner scoring integration', () => {
     runner.tick(); // step 3 phase B, no tap this time
     runner.tick(); // step 3 closes
     expect(engine.positionScore).toBeCloseTo(1 / 9);
+  });
+});
+
+describe('RoundRunner phase B closing', () => {
+  function lateSetup(canned: string | null = null) {
+    const plan = buildRound(2, BANK, Math.random);
+    const engine = new RoundEngine(plan);
+    const listener = new LateFinalListener(canned);
+    const judged: PendingAnswer[] = [];
+    const runner = new RoundRunner({
+      plan,
+      engine,
+      speaker: new FakeSpeaker(),
+      listener,
+      onJudge: (a) => judged.push(a),
+    });
+    return { plan, engine, listener, runner, judged };
+  }
+
+  it('holds phase B open until the recognizer has settled', async () => {
+    const { runner, listener } = lateSetup();
+    runner.start();
+    runner.tick(); // into phase B, mic open
+
+    let closed = false;
+    void runner.readyToClose().then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(listener.settles).toBe(1);
+    expect(closed).toBe(false);
+
+    listener.deliverFinal('わんわん');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(closed).toBe(true);
+  });
+
+  it('captures a transcript that only arrives once the session is asked to finish', async () => {
+    // The bug this guards: the round used to read the transcript on its own
+    // clock, so the answer the owner actually gave was recorded as 聞き取れず.
+    const { runner, judged } = lateSetup('わんわん');
+    runner.start();
+
+    // Step 2 is the first scored step at N=2.
+    for (let step = 0; step < 3; step++) {
+      runner.tick(); // A -> B
+      await runner.readyToClose();
+      runner.tick(); // B -> next A
+      await runner.readyToClose();
+    }
+
+    expect(judged).toHaveLength(1);
+    expect(judged[0]).toMatchObject({ index: 2, transcript: 'わんわん' });
+  });
+
+  it('does not settle the listener while phase A is open', async () => {
+    const { runner, listener } = lateSetup('わんわん');
+    runner.start();
+    await runner.readyToClose();
+    expect(listener.settles).toBe(0);
   });
 });

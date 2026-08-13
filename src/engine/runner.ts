@@ -103,17 +103,23 @@ export class RoundRunner {
 
   /**
    * Resolves when the current phase may close — i.e. when it is safe for the
-   * UI to call tick(). Phase A additionally waits out the utterance, so its
-   * real length is `max(configured phase A, utterance)`: the question is
-   * spoken exactly once, and clipping 「〜は？」 makes that item unanswerable N
-   * steps later. Bounded by SPEAK_TIMEOUT_MS, so a synthesizer that never
-   * calls back cannot freeze the round. Phase B closes on its timer alone.
+   * UI to call tick(). Both phases wait out the hardware they drive:
+   *
+   * - Phase A waits out the utterance, so its real length is
+   *   `max(configured phase A, utterance)`: the question is spoken exactly
+   *   once, and clipping 「〜は？」 makes that item unanswerable N steps later.
+   *   Bounded by SPEAK_TIMEOUT_MS.
+   * - Phase B waits out the recognizer, which hands over its final result
+   *   only after being asked to stop. Reading the transcript on the timer
+   *   alone loses the last thing the owner said — it lands as 聞き取れず, or
+   *   worse, against the next step's question. Bounded inside the listener.
    *
    * The wait lives here rather than in the UI so that the rule travels with
    * the state machine, and the runner still owns no timers.
    */
   readyToClose(): Promise<void> {
-    return this.phase === 'A' ? this.speaking : Promise.resolve();
+    if (this.phase === 'done') return Promise.resolve();
+    return this.phase === 'A' ? this.speaking : this.deps.listener.settle();
   }
 
   /**

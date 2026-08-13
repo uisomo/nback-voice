@@ -28,8 +28,12 @@ const mocked = ExpoSpeechRecognitionModule as unknown as {
 
 // Imported after the mock so the module picks it up.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { ExpoListener, detectOnDeviceRecognition, resetOnDeviceProbe } =
-  require('../listener') as typeof import('../listener');
+const {
+  ExpoListener,
+  SETTLE_TIMEOUT_MS,
+  detectOnDeviceRecognition,
+  resetOnDeviceProbe,
+} = require('../listener') as typeof import('../listener');
 
 let logged: jest.SpyInstance;
 
@@ -178,5 +182,147 @@ describe('transcript buffer', () => {
     listener.push('聞こえないはず');
     listener.start();
     expect(listener.stop()).toBe('');
+  });
+});
+
+describe('settling a session', () => {
+  it('captures the final result the recognizer delivers after being asked to stop', async () => {
+    // Chrome and SFSpeechRecognizer both emit their final result *after*
+    // stop() — the transcript the owner actually said arrives in that gap.
+    const listener = new ExpoListener();
+    await flush();
+    listener.start();
+
+    const settled = listener.settle();
+    expect(mocked.stop).toHaveBeenCalled();
+    listener.push('わんわん', true);
+    await settled;
+
+    expect(listener.stop()).toBe('わんわん');
+  });
+
+  it('resolves as soon as the final result lands, without waiting out the bound', async () => {
+    jest.useFakeTimers();
+    try {
+      const listener = new ExpoListener();
+      await flush();
+      listener.start();
+
+      let done = false;
+      const settled = listener.settle().then(() => {
+        done = true;
+      });
+      listener.push('わんわん', true);
+      await settled;
+
+      expect(done).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('resolves when the session ends without ever producing a result', async () => {
+    const listener = new ExpoListener();
+    await flush();
+    listener.start();
+
+    const settled = listener.settle();
+    listener.sessionEnded();
+    await settled;
+
+    expect(listener.stop()).toBe('');
+  });
+
+  it('gives up after the bound so a silent recognizer cannot stall the round', async () => {
+    jest.useFakeTimers();
+    try {
+      const listener = new ExpoListener();
+      await flush();
+      listener.start();
+
+      const settled = listener.settle();
+      await jest.advanceTimersByTimeAsync(SETTLE_TIMEOUT_MS + 1);
+      await settled;
+
+      expect(listener.stop()).toBe('');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does nothing when there is no open session', async () => {
+    const listener = new ExpoListener();
+    await flush();
+    await listener.settle();
+    expect(mocked.stop).not.toHaveBeenCalled();
+  });
+
+  it('still ignores results that arrive with no session open at all', async () => {
+    const listener = new ExpoListener();
+    await flush();
+    listener.start();
+    listener.stop();
+    listener.push('ラウンド外', true);
+    listener.start();
+
+    expect(listener.stop()).toBe('');
+  });
+});
+
+describe('sessions that finish before the step does', () => {
+  it('settles at once when the final result already arrived', async () => {
+    jest.useFakeTimers();
+    try {
+      const listener = new ExpoListener();
+      await flush();
+      listener.start();
+      // A quick answer: Chrome ends the session on its own, well inside phase B.
+      listener.push('わんわん', true);
+
+      let done = false;
+      void listener.settle().then(() => {
+        done = true;
+      });
+      await Promise.resolve();
+
+      // No waiting out the bound for an event that has already happened.
+      expect(done).toBe(true);
+      expect(listener.stop()).toBe('わんわん');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('settles at once when the session already ended in silence', async () => {
+    const listener = new ExpoListener();
+    await flush();
+    listener.start();
+    listener.sessionEnded();
+
+    let done = false;
+    void listener.settle().then(() => {
+      done = true;
+    });
+    await Promise.resolve();
+
+    expect(done).toBe(true);
+  });
+
+  it('waits again for the next session', async () => {
+    const listener = new ExpoListener();
+    await flush();
+    listener.start();
+    listener.push('わんわん', true);
+    listener.stop();
+
+    listener.start();
+    let done = false;
+    void listener.settle().then(() => {
+      done = true;
+    });
+    await Promise.resolve();
+
+    // A fresh session has said nothing yet, so this one really must wait.
+    expect(done).toBe(false);
   });
 });
