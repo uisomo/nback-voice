@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { RoundEngine } from '../engine';
+import type { AnswerReview } from '../engine/round';
 
 interface Props {
   engine: RoundEngine;
@@ -7,8 +8,30 @@ interface Props {
   onAgain: () => void;
 }
 
+const CORRECT = '#4caf7d';
+const WRONG = '#e5534b';
+const NEUTRAL = '#8e8e93';
+
 function pct(v: number | null): string {
   return v === null ? '—' : `${Math.round(v * 100)}%`;
+}
+
+/** Green only for a verdict of correct: 未判定 and 聞き取れず are not failures. */
+function answerColor(row: AnswerReview): string {
+  if (row.transcript === null || row.correct === null) return NEUTRAL;
+  return row.correct ? CORRECT : WRONG;
+}
+
+function verdictLabel(row: AnswerReview): string {
+  if (row.transcript === null) return '—';
+  if (row.correct === null) return '未判定';
+  return row.correct ? '○' : '×';
+}
+
+function positionMark(row: AnswerReview): { label: string; color: string } {
+  if (row.position === 'correct') return { label: '位置 ○', color: CORRECT };
+  if (row.position === 'wrong') return { label: '位置 ×', color: WRONG };
+  return { label: '位置 —', color: NEUTRAL };
 }
 
 export function ResultsScreen({ engine, n, onAgain }: Props) {
@@ -21,6 +44,46 @@ export function ResultsScreen({ engine, n, onAgain }: Props) {
         <Text style={styles.note}>未判定 {engine.unresolvedCount} 件</Text>
       )}
       <Text style={styles.row}>総合　{pct(engine.roundScore)}</Text>
+
+      <ScrollView style={styles.list}>
+        {engine.review.map((item) => {
+          const position = positionMark(item);
+          return (
+            <View
+              key={item.index}
+              testID={`review-row-${item.index}`}
+              style={styles.item}
+            >
+              <Text style={styles.question}>{item.question.q}</Text>
+              <View style={styles.itemRow}>
+                <Text
+                  testID={`review-heard-${item.index}`}
+                  style={[styles.heard, { color: answerColor(item) }]}
+                >
+                  {item.transcript === null
+                    ? '（聞き取れず）'
+                    : `「${item.transcript}」`}
+                </Text>
+                <Text
+                  testID={`review-verdict-${item.index}`}
+                  style={[styles.verdict, { color: answerColor(item) }]}
+                >
+                  {verdictLabel(item)}
+                </Text>
+                {item.position !== null && (
+                  <Text
+                    testID={`review-position-${item.index}`}
+                    style={[styles.position, { color: position.color }]}
+                  >
+                    {position.label}
+                  </Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+
       <Pressable style={styles.button} onPress={onAgain}>
         <Text style={styles.buttonLabel}>もう一度</Text>
       </Pressable>
@@ -33,8 +96,15 @@ const styles = StyleSheet.create({
   heading: { color: '#f4f1ea', fontSize: 28, marginBottom: 24 },
   row: { color: '#f4f1ea', fontSize: 20, marginBottom: 8 },
   note: { color: '#c96f4a', fontSize: 16, marginBottom: 8 },
+  list: { flexGrow: 0, marginTop: 16, marginBottom: 8 },
+  item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1c1c1e' },
+  question: { color: '#8e8e93', fontSize: 14 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 },
+  heard: { fontSize: 17, flexShrink: 1 },
+  verdict: { fontSize: 17 },
+  position: { fontSize: 14, marginLeft: 'auto' },
   button: {
-    marginTop: 32,
+    marginTop: 24,
     padding: 16,
     backgroundColor: '#c96f4a',
     borderRadius: 12,
