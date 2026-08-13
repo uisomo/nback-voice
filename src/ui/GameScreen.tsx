@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { RoundEngine, RoundRunner, buildRound } from '../engine';
-import type { Position, RoundPlan } from '../engine/types';
-import { loadBank } from '../content/bank';
+import type { Position, RoundMode, RoundPlan } from '../engine/types';
+import { loadBank, mergeLearned } from '../content/bank';
+import { MIN_QUESTIONS, resolvePool } from '../content/pool';
 import { ClaudeJudgeClient } from '../judge/claude';
 import { JudgeQueue } from '../judge/queue';
 import type { JudgeClient } from '../judge/types';
@@ -13,6 +14,7 @@ import type { Listener, Speaker } from '../speech/types';
 import {
   addLearned,
   appendHistory,
+  loadCustom,
   loadLearned,
   loadN,
   loadSettings,
@@ -75,6 +77,7 @@ export function GameScreen({ onFinished, deps }: Props) {
   const [flash, setFlash] = useState<Position | null>(null);
   const [selected, setSelected] = useState<Position | null>(null);
   const [label, setLabel] = useState('準備中…');
+  const [mode, setMode] = useState<RoundMode>('dual');
 
   const runnerRef = useRef<RoundRunner | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,16 +99,31 @@ export function GameScreen({ onFinished, deps }: Props) {
       }
 
       try {
-        const [settings, storedN, learned] = await Promise.all([
+        const [settings, storedN, learned, custom] = await Promise.all([
           loadSettings(),
           loadN(),
           loadLearned(),
+          loadCustom(),
         ]);
         if (cancelled) return;
 
         const n = settings.adaptive ? storedN : settings.fixedN;
-        const bank = loadBank(learned).filter((q) => q.tier <= settings.maxTier);
-        const plan = buildRound(n, bank);
+        const pool = resolvePool(
+          settings.questionSource,
+          loadBank(learned),
+          mergeLearned(custom, learned),
+          settings.maxTier,
+        );
+
+        // Questions can be deleted after the source was chosen, so re-check
+        // here rather than trusting the settings screen's guard alone.
+        if (pool.length < MIN_QUESTIONS) {
+          setLabel('問題が足りません');
+          return;
+        }
+
+        setMode(settings.mode);
+        const plan = buildRound(n, pool, Math.random, settings.mode);
         const engine = new RoundEngine(plan);
         const queue = new JudgeQueue(resolved.judgeClient, {
           onVerdict: (index, correct) => engine.resolveAnswer(index, correct),
@@ -205,12 +223,14 @@ export function GameScreen({ onFinished, deps }: Props) {
   return (
     <View style={styles.screen}>
       <Text style={styles.label}>{label}</Text>
-      <Grid
-        flashPosition={flash}
-        selected={selected}
-        onTap={handleTap}
-        disabled={!ready}
-      />
+      {mode === 'dual' && (
+        <Grid
+          flashPosition={flash}
+          selected={selected}
+          onTap={handleTap}
+          disabled={!ready}
+        />
+      )}
     </View>
   );
 }

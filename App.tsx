@@ -3,13 +3,15 @@ import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import type { RoundEngine } from './src/engine';
 import type { RoundPlan } from './src/engine/types';
 import { GameScreen } from './src/ui/GameScreen';
+import { QuestionsScreen } from './src/ui/QuestionsScreen';
 import { ResultsScreen } from './src/ui/ResultsScreen';
 import { SettingsScreen } from './src/ui/SettingsScreen';
 
 type Screen =
   | { name: 'game'; key: number }
   | { name: 'results'; engine: RoundEngine; plan: RoundPlan }
-  | { name: 'settings' };
+  | { name: 'settings' }
+  | { name: 'questions' };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'game', key: 0 });
@@ -45,7 +47,15 @@ export default function App() {
       {screen.name === 'settings' && (
         <SettingsScreen
           onClose={() => setScreen({ name: 'game', key: Date.now() })}
+          onEditQuestions={() => setScreen({ name: 'questions' })}
         />
+      )}
+
+      {/* Closing the editor returns to Settings rather than starting a round,
+          so the owner can add several questions and then pick the source
+          without a round beginning underneath them. */}
+      {screen.name === 'questions' && (
+        <QuestionsScreen onClose={() => setScreen({ name: 'settings' })} />
       )}
     </View>
   );

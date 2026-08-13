@@ -7,6 +7,7 @@ import type { Listener, Speaker } from '../../speech/types';
 import { FakeListener, FakeSpeaker, SlowFakeSpeaker } from '../../speech/fakes';
 import type { JudgeClient, Verdict } from '../../judge/types';
 import {
+  addCustom,
   DEFAULT_SETTINGS,
   loadHistory,
   loadN,
@@ -48,6 +49,14 @@ class CannedListener implements Listener {
     return this.canned;
   }
   push(): void {}
+}
+
+/** A synthesizer that cannot be started at all. */
+class BrokenSpeaker implements Speaker {
+  speak(): Promise<void> {
+    throw new Error('synthesizer unavailable');
+  }
+  stop(): void {}
 }
 
 function makeDeps<S extends Speaker, L extends Listener>(
@@ -217,14 +226,28 @@ describe('GameScreen', () => {
     expect(listener.stopped).toBe(1);
   });
 
+  it('shows 問題が足りません when the difficulty filter empties the bank', async () => {
+    // maxTier: 0 filters out every question in the bank (tiers are 1 and 2).
+    // An empty pool is a handled state, not a crash: the owner is told what
+    // is wrong rather than being sent to the generic failure message.
+    await saveSettings({ ...DEFAULT_SETTINGS, maxTier: 0 });
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { findByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    expect(await findByText(/問題が足りません/)).toBeTruthy();
+  });
+
   it('shows an error message when the round cannot be set up', async () => {
-    // maxTier: 0 filters out every question in the bank (tiers are 1 and 2),
-    // so buildRound() throws for want of 9 questions — a genuine setup
-    // failure, not a contrived one.
+    // A synthesizer that cannot start is a genuine setup failure: the round
+    // never begins, so the owner must be told rather than left on 準備中….
     const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      await saveSettings({ ...DEFAULT_SETTINGS, maxTier: 0 });
-      const { deps } = makeDefaultDeps(alwaysCorrect);
+      const { deps } = makeDeps(
+        alwaysCorrect,
+        new BrokenSpeaker(),
+        new CannedListener('ぶぶぶ'),
+      );
       const { findByText } = render(
         <GameScreen onFinished={jest.fn()} deps={deps} />,
       );
@@ -354,6 +377,79 @@ describe('GameScreen phase A pacing', () => {
     });
     expect(listener.sessions).toBe(1);
     expect(speaker.stopped).toBe(1);
+  });
+});
+
+describe('GameScreen question-only mode', () => {
+  it('renders no grid', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { queryByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await runWholeRound();
+    expect(queryByTestId('cell-0')).toBeNull();
+  });
+
+  it('still speaks 9 questions and finishes', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    const onFinished = jest.fn();
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await runWholeRound();
+    expect(speaker.spoken).toHaveLength(9);
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('scores on the answer channel alone and adapts N', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await runWholeRound();
+    const engine: RoundEngine = onFinished.mock.calls[0][0];
+    expect(engine.positionScore).toBeNull();
+    expect(engine.answerScore).toBe(1);
+    // Answer channel alone is 1.0, so N rises even with no taps.
+    expect(await loadN()).toBe(3);
+  });
+
+  it('holds N when the judge is unreachable in question mode', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    const offline: JudgeClient = {
+      judge: async () => {
+        throw new Error('network down');
+      },
+    };
+    const { deps } = makeDefaultDeps(offline);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await runWholeRound();
+    // Both channels absent: nothing to adapt on, so N must not move.
+    expect(await loadN()).toBe(2);
+  });
+});
+
+describe('GameScreen question source', () => {
+  it('draws only from custom questions when told to', async () => {
+    for (let i = 0; i < 9; i++) await addCustom(`自作${i}`, `答え${i}`);
+    await saveSettings({ ...DEFAULT_SETTINGS, questionSource: 'custom' });
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await runWholeRound();
+    expect(speaker.spoken).toHaveLength(9);
+    for (const spoken of speaker.spoken) {
+      expect(spoken).toMatch(/^自作\d$/);
+    }
+  });
+
+  it('shows 問題が足りません when the pool is too small', async () => {
+    await addCustom('一問だけ', 'あ');
+    await saveSettings({ ...DEFAULT_SETTINGS, questionSource: 'custom' });
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { findByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    expect(await findByText(/問題が足りません/)).toBeTruthy();
   });
 });
 
