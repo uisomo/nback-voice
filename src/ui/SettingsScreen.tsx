@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { MIN_QUESTIONS, type QuestionSource } from '../content/pool';
+import type { RoundMode } from '../engine/types';
 import {
   DEFAULT_SETTINGS,
+  loadCustom,
   loadSettings,
   saveSettings,
   type Settings,
@@ -9,6 +12,7 @@ import {
 
 interface Props {
   onClose: () => void;
+  onEditQuestions: () => void;
 }
 
 const STEP_CHOICES = [3000, 4000, 5000, 6000, 8000];
@@ -16,23 +20,91 @@ const TIER_CHOICES = [
   { tier: 1, label: 'やさしい' },
   { tier: 2, label: 'ふつう' },
 ];
+const MODE_CHOICES: { mode: RoundMode; label: string }[] = [
+  { mode: 'dual', label: '位置＋質問' },
+  { mode: 'question', label: '質問のみ' },
+];
+const SOURCE_CHOICES: { source: QuestionSource; label: string }[] = [
+  { source: 'builtin', label: '内蔵' },
+  { source: 'custom', label: '自分の問題' },
+  { source: 'both', label: '両方' },
+];
 
-export function SettingsScreen({ onClose }: Props) {
+export function SettingsScreen({ onClose, onEditQuestions }: Props) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [customCount, setCustomCount] = useState(0);
 
   useEffect(() => {
     void loadSettings().then(setSettings);
+    void loadCustom().then((custom) => setCustomCount(custom.length));
   }, []);
 
-  const update = (patch: Partial<Settings>) => {
-    const next = { ...settings, ...patch };
+  // A ref, not the state value, so two rapid taps don't both build their patch
+  // from the same stale object and lose the first change. The write stays out
+  // of the setState updater, which must be pure.
+  const latest = useRef(settings);
+  latest.current = settings;
+
+  const update = useCallback((patch: Partial<Settings>) => {
+    const next = { ...latest.current, ...patch };
+    latest.current = next;
     setSettings(next);
     void saveSettings(next);
-  };
+  }, []);
+
+  // 'custom' draws from the owner's questions alone, so it is only usable once
+  // there are enough for a full round. 'both' always has the built-ins behind it.
+  const customShortfall = Math.max(0, MIN_QUESTIONS - customCount);
+  const customUsable = customShortfall === 0;
+
+  const isSourceUsable = (source: QuestionSource) =>
+    source === 'custom' ? customUsable : true;
 
   return (
     <View style={styles.screen}>
       <Text style={styles.heading}>設定</Text>
+
+      <Text style={styles.label}>モード</Text>
+      <View style={styles.row}>
+        {MODE_CHOICES.map(({ mode, label }) => (
+          <Pressable
+            key={mode}
+            onPress={() => update({ mode })}
+            style={[styles.chip, settings.mode === mode && styles.chipOn]}
+          >
+            <Text style={styles.chipLabel}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={styles.label}>問題の出どころ</Text>
+      <View style={styles.row}>
+        {SOURCE_CHOICES.map(({ source, label }) => {
+          const usable = isSourceUsable(source);
+          return (
+            <Pressable
+              key={source}
+              testID={`source-${source}`}
+              onPress={() => usable && update({ questionSource: source })}
+              style={[
+                styles.chip,
+                settings.questionSource === source && styles.chipOn,
+                !usable && styles.chipOff,
+              ]}
+            >
+              <Text style={styles.chipLabel}>
+                {source === 'custom' && !usable
+                  ? `${label} (あと ${customShortfall} 問)`
+                  : label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Pressable style={styles.link} onPress={onEditQuestions}>
+        <Text style={styles.linkLabel}>自分の問題を編集</Text>
+      </Pressable>
 
       <Text style={styles.label}>1ステップの長さ</Text>
       <View style={styles.row}>
@@ -69,7 +141,7 @@ export function SettingsScreen({ onClose }: Props) {
         </View>
       )}
 
-      <Text style={styles.label}>問題の難易度</Text>
+      <Text style={styles.label}>問題の難易度 (内蔵のみ)</Text>
       <View style={styles.row}>
         {TIER_CHOICES.map(({ tier, label }) => (
           <Pressable
@@ -96,6 +168,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 24 },
   chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#1c1c1e' },
   chipOn: { backgroundColor: '#c96f4a' },
+  chipOff: { opacity: 0.4 },
+  link: { marginBottom: 24 },
+  linkLabel: { color: '#c96f4a', fontSize: 16 },
   chipLabel: { color: '#f4f1ea', fontSize: 16 },
   button: { marginTop: 'auto', padding: 16, backgroundColor: '#1c1c1e', borderRadius: 12, alignItems: 'center' },
 });
