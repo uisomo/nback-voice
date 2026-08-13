@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StyleSheet } from 'react-native';
+import type { StyleProp, TextStyle } from 'react-native';
 import { act, render } from '@testing-library/react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import type { RoundEngine } from '../../engine';
@@ -481,5 +483,64 @@ describe('GameScreen transcript capture', () => {
 
     // Only step 2 produced speech, so exactly one answer reached the judge.
     expect(heard).toEqual(['てすとおんせい']);
+  });
+});
+
+describe('GameScreen live transcript', () => {
+  it('shows what the recognizer is hearing while the mic is open', async () => {
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    // Step 0 phase B (a=2000, b=3000 at the 5s default).
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+
+    const onResult = capturedResultHandler();
+    await act(async () => {
+      onResult({ results: [{ transcript: 'ねこ' }] });
+    });
+
+    expect(getByTestId('live-transcript').props.children).toContain('ねこ');
+  });
+
+  it('clears the heard text when the next step begins', async () => {
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
+    const { queryByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+    const onResult = capturedResultHandler();
+    await act(async () => {
+      onResult({ results: [{ transcript: 'ねこ' }] });
+    });
+
+    // Into step 1's phase A: the previous answer must not linger.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3_000);
+    });
+    expect(queryByTestId('live-transcript')).toBeNull();
+  });
+
+  it('keeps the live text neutral — the verdict is not known yet', async () => {
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+    const onResult = capturedResultHandler();
+    await act(async () => {
+      onResult({ results: [{ transcript: 'ねこ' }] });
+    });
+
+    const style = StyleSheet.flatten(
+      getByTestId('live-transcript').props.style as StyleProp<TextStyle>,
+    );
+    expect(style?.color).toBe('#8e8e93');
   });
 });

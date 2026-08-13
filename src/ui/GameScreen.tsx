@@ -78,13 +78,18 @@ export function GameScreen({ onFinished, deps }: Props) {
   const [selected, setSelected] = useState<Position | null>(null);
   const [label, setLabel] = useState('準備中…');
   const [mode, setMode] = useState<RoundMode>('dual');
+  const [heard, setHeard] = useState('');
 
   const runnerRef = useRef<RoundRunner | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript;
-    if (transcript) resolved.listener.push(transcript);
+    if (!transcript) return;
+    resolved.listener.push(transcript);
+    // Shown as-is: the owner needs to see a mis-hear as a mis-hear, before the
+    // judge has said anything about it.
+    setHeard(transcript);
   });
 
   useEffect(() => {
@@ -174,7 +179,10 @@ export function GameScreen({ onFinished, deps }: Props) {
           }
 
           setFlash(flashPosition);
-          if (phase === 'A') setSelected(null);
+          if (phase === 'A') {
+            setSelected(null);
+            setHeard('');
+          }
           setLabel(
             `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
               (phase === 'A' ? '出題中' : 'どうぞ'),
@@ -223,6 +231,11 @@ export function GameScreen({ onFinished, deps }: Props) {
   return (
     <View style={styles.screen}>
       <Text style={styles.label}>{label}</Text>
+      {heard !== '' && (
+        <Text testID="live-transcript" style={styles.heard}>
+          「{heard}」
+        </Text>
+      )}
       {mode === 'dual' && (
         <Grid
           flashPosition={flash}
@@ -240,6 +253,14 @@ const styles = StyleSheet.create({
   label: {
     color: '#f4f1ea',
     fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  /* Neutral: the judge's verdict lands seconds later, so there is nothing
+     truthful to colour here. The colours belong to the results screen. */
+  heard: {
+    color: '#8e8e93',
+    fontSize: 22,
     textAlign: 'center',
     marginBottom: 24,
   },

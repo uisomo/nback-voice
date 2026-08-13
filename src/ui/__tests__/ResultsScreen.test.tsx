@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import type { StyleProp, TextStyle } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { RoundEngine, buildRound } from '../../engine';
 import type { Question } from '../../engine/types';
@@ -74,8 +75,8 @@ describe('ResultsScreen', () => {
 });
 
 /** The colour a node actually renders with, whatever the style shape. */
-function colorOf(node: { props: { style?: unknown } }): string | undefined {
-  return StyleSheet.flatten(node.props.style as never)?.color;
+function colorOf(node: { props: { style?: StyleProp<TextStyle> } }): unknown {
+  return StyleSheet.flatten(node.props.style)?.color;
 }
 
 const CORRECT = '#4caf7d';
