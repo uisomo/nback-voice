@@ -248,3 +248,94 @@ describe('RoundEngine in dual mode (unchanged)', () => {
     expect(p.mode).toBe('dual');
   });
 });
+
+describe('RoundEngine answer review', () => {
+  it('has one row per scored step, in step order', () => {
+    const p = plan(2);
+    const engine = new RoundEngine(p);
+    submitAllCorrectTaps(engine, p);
+    expect(engine.review.map((r) => r.index)).toEqual([
+      2, 3, 4, 5, 6, 7, 8, 9, 10,
+    ]);
+  });
+
+  it('carries the recalled question, not the one asked on this step', () => {
+    const p = plan(2);
+    const engine = new RoundEngine(p);
+    submitAllCorrectTaps(engine, p);
+    // Step 2 recalls step 0 at N=2.
+    expect(engine.review[0].question.id).toBe(p.steps[0].question!.id);
+  });
+
+  it('reports what was heard and the verdict once it lands', () => {
+    const p = plan(2);
+    const engine = new RoundEngine(p);
+    submitAllCorrectTaps(engine, p);
+    const pending = engine.takePending();
+    engine.resolveAnswer(pending[0].index, true);
+    engine.resolveAnswer(pending[1].index, false);
+
+    expect(engine.review[0]).toMatchObject({
+      transcript: 'こたえ',
+      correct: true,
+    });
+    expect(engine.review[1]).toMatchObject({
+      transcript: 'こたえ',
+      correct: false,
+    });
+    // No verdict yet: 未判定, not wrong.
+    expect(engine.review[2].correct).toBeNull();
+  });
+
+  it('distinguishes 聞き取れず from 未判定', () => {
+    const p = plan(2);
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      const heard = step.index === 2 ? null : 'こたえ';
+      engine.submitStep(step.index, {
+        tap: null,
+        transcript: step.recallTarget === null ? null : heard,
+      });
+    }
+    // Nothing was recognised on step 2 — no transcript at all.
+    expect(engine.review[0].transcript).toBeNull();
+    // Step 3 was heard but never graded.
+    expect(engine.review[1]).toMatchObject({ transcript: 'こたえ', correct: null });
+  });
+
+  it('does not count a step nobody heard as 未判定', () => {
+    const p = plan(2);
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      engine.submitStep(step.index, { tap: null, transcript: null });
+    }
+    // Review still lists all 9, but the score channels stay empty.
+    expect(engine.review).toHaveLength(9);
+    expect(engine.unresolvedCount).toBe(0);
+    expect(engine.answerScore).toBeNull();
+  });
+
+  it('reports the position outcome per step', () => {
+    const p = buildRound(2, BANK, distinctPositionsRng());
+    const engine = new RoundEngine(p);
+    // Step 2 recalls step 0: tap it right.
+    engine.submitStep(2, { tap: p.steps[0].position, transcript: null });
+    // Step 3 recalls step 1: tap the wrong cell.
+    engine.submitStep(3, { tap: p.steps[3].position, transcript: null });
+    // Step 4: no tap at all.
+    engine.submitStep(4, { tap: null, transcript: null });
+
+    expect(engine.review[0].position).toBe('correct');
+    expect(engine.review[1].position).toBe('wrong');
+    expect(engine.review[2].position).toBe('none');
+  });
+
+  it('has no position outcome in question mode', () => {
+    const p = buildRound(2, BANK, Math.random, 'question');
+    const engine = new RoundEngine(p);
+    for (const step of p.steps) {
+      engine.submitStep(step.index, { tap: 4, transcript: 'こたえ' });
+    }
+    for (const row of engine.review) expect(row.position).toBeNull();
+  });
+});

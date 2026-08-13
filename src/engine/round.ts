@@ -13,11 +13,21 @@ export interface PendingAnswer {
   transcript: string;
 }
 
+/** 'none' = the step went by without a tap. null in question mode. */
+export type PositionOutcome = 'correct' | 'wrong' | 'none';
+
 interface AnswerRecord {
   question: Question;
-  transcript: string;
+  /** null = 聞き取れず — the recognizer returned nothing for this step. */
+  transcript: string | null;
   /** null = 未判定 (never counted wrong). */
   correct: boolean | null;
+  position: PositionOutcome | null;
+}
+
+/** One scored step, as the owner reviews it after the round. */
+export interface AnswerReview extends AnswerRecord {
+  index: number;
 }
 
 /**
@@ -28,7 +38,6 @@ interface AnswerRecord {
 export class RoundEngine {
   private readonly plan: RoundPlan;
   private readonly submitted = new Set<number>();
-  private correctTaps = 0;
   private readonly answers = new Map<number, AnswerRecord>();
   private pendingBuffer: PendingAnswer[] = [];
 
@@ -46,20 +55,32 @@ export class RoundEngine {
     if (!step || step.recallTarget === null) return; // observe-only step
 
     const target = this.plan.steps[step.recallTarget];
+    if (!target.question) return;
 
-    if (input.tap !== null && input.tap === target.position) {
-      this.correctTaps++;
-    }
+    const transcript = input.transcript?.trim() || null;
 
-    const transcript = input.transcript?.trim();
-    if (transcript && target.question) {
-      this.answers.set(index, {
-        question: target.question,
-        transcript,
-        correct: null,
-      });
+    // Recorded for every scored step, heard or not, so the round can be
+    // reviewed afterwards. A step nobody was heard on is 聞き取れず, which is
+    // not 未判定: it never reaches the judge, so it is never awaiting a verdict.
+    this.answers.set(index, {
+      question: target.question,
+      transcript,
+      correct: null,
+      position: this.positionOutcome(input.tap, target.position),
+    });
+
+    if (transcript) {
       this.pendingBuffer.push({ index, question: target.question, transcript });
     }
+  }
+
+  private positionOutcome(
+    tap: Position | null,
+    target: Position | null,
+  ): PositionOutcome | null {
+    if (this.plan.mode === 'question') return null;
+    if (tap === null) return 'none';
+    return tap === target ? 'correct' : 'wrong';
   }
 
   resolveAnswer(index: number, correct: boolean): void {
@@ -75,10 +96,20 @@ export class RoundEngine {
     return out;
   }
 
+  /** Every scored step in step order, heard or not. */
+  get review(): AnswerReview[] {
+    return [...this.answers.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([index, record]) => ({ ...record, index }));
+  }
+
   /** null in question mode — the visual channel is absent, not zero. */
   get positionScore(): number | null {
     if (this.plan.mode === 'question') return null;
-    return this.correctTaps / STIMULI_PER_ROUND;
+    const correct = [...this.answers.values()].filter(
+      (a) => a.position === 'correct',
+    ).length;
+    return correct / STIMULI_PER_ROUND;
   }
 
   /** null when no answer has been resolved — the channel is simply absent. */
@@ -90,8 +121,11 @@ export class RoundEngine {
     return resolved.filter((a) => a.correct).length / resolved.length;
   }
 
+  /** Heard, sent to the judge, still without a verdict. 聞き取れず is not this. */
   get unresolvedCount(): number {
-    return [...this.answers.values()].filter((a) => a.correct === null).length;
+    return [...this.answers.values()].filter(
+      (a) => a.transcript !== null && a.correct === null,
+    ).length;
   }
 
   /** null when no channel has data — nothing to score, so nothing to adapt on. */
