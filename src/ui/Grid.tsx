@@ -1,14 +1,29 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import type { PositionOutcome } from '../engine/round';
 import type { Position } from '../engine/types';
 
 interface Props {
   flashPosition: Position | null;
   selected: Position | null;
+  /** How the current tap scored. null on steps that recall nothing. */
+  tapVerdict?: PositionOutcome | null;
   onTap: (position: Position) => void;
   disabled?: boolean;
 }
 
-export function Grid({ flashPosition, selected, onTap, disabled }: Props) {
+export function Grid({
+  flashPosition,
+  selected,
+  tapVerdict,
+  onTap,
+  disabled,
+}: Props) {
+  const ring =
+    tapVerdict === 'correct'
+      ? styles.ringCorrect
+      : tapVerdict === 'wrong'
+        ? styles.ringWrong
+        : null;
   return (
     <View style={styles.grid}>
       {Array.from({ length: 9 }, (_, i) => (
@@ -26,6 +41,7 @@ export function Grid({ flashPosition, selected, onTap, disabled }: Props) {
             styles.cell,
             flashPosition === i && styles.flash,
             selected === i && styles.selected,
+            selected === i && ring,
           ]}
         />
       ))}
@@ -50,4 +66,6 @@ const styles = StyleSheet.create({
   },
   flash: { backgroundColor: '#f4f1ea' },
   selected: { borderWidth: 3, borderColor: '#c96f4a' },
+  ringCorrect: { borderColor: '#4caf7d' },
+  ringWrong: { borderColor: '#e5534b' },
 });

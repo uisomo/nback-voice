@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { RoundEngine, RoundRunner, buildRound } from '../engine';
+import type { PositionOutcome } from '../engine/round';
 import type { Position, RoundMode, RoundPlan } from '../engine/types';
 import { loadBank, mergeLearned } from '../content/bank';
 import { MIN_QUESTIONS, resolvePool } from '../content/pool';
@@ -65,10 +66,48 @@ function realDeps(): GameScreenDeps {
   };
 }
 
+interface LiveAnswer {
+  /** The step whose mic window produced this, so a late verdict lands right. */
+  index: number;
+  text: string;
+  /** null until the judge answers — 判定待ち is not 不正解. */
+  correct: boolean | null;
+}
+
+const CORRECT = '#4caf7d';
+const WRONG = '#e5534b';
+const NEUTRAL = '#8e8e93';
+
 interface Props {
   onFinished: (engine: RoundEngine, plan: RoundPlan) => void;
   /** Overridden in tests; defaults to the real Expo and Claude implementations. */
   deps?: GameScreenDeps;
+}
+
+/**
+ * How a tap scores against the stimulus N steps back — known the moment it
+ * lands, unlike the spoken answer, which has to go to the judge first. null on
+ * the first N steps, which recall nothing.
+ */
+function scoreTap(
+  plan: RoundPlan | null,
+  runner: RoundRunner | null,
+  tap: Position,
+): PositionOutcome | null {
+  if (!plan || !runner || plan.mode === 'question') return null;
+  const step = plan.steps[runner.state.stepIndex];
+  if (!step || step.recallTarget === null) return null;
+  return tap === plan.steps[step.recallTarget].position ? 'correct' : 'wrong';
+}
+
+function answerColor(answer: LiveAnswer): string {
+  if (answer.correct === null) return NEUTRAL;
+  return answer.correct ? CORRECT : WRONG;
+}
+
+function verdictMark(answer: LiveAnswer): string {
+  if (answer.correct === null) return '';
+  return answer.correct ? '　○' : '　×';
 }
 
 export function GameScreen({ onFinished, deps }: Props) {
@@ -78,9 +117,12 @@ export function GameScreen({ onFinished, deps }: Props) {
   const [selected, setSelected] = useState<Position | null>(null);
   const [label, setLabel] = useState('準備中…');
   const [mode, setMode] = useState<RoundMode>('dual');
-  const [heard, setHeard] = useState('');
+  const [tapVerdict, setTapVerdict] = useState<PositionOutcome | null>(null);
+  /** The answer on screen: what was heard, and how it was judged once known. */
+  const [answer, setAnswer] = useState<LiveAnswer | null>(null);
 
   const runnerRef = useRef<RoundRunner | null>(null);
+  const planRef = useRef<RoundPlan | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useSpeechRecognitionEvent('result', (event) => {
@@ -89,9 +131,13 @@ export function GameScreen({ onFinished, deps }: Props) {
     // isFinal marks the recognizer's last word for this session; the step
     // closes on it rather than waiting out the settle bound.
     resolved.listener.push(transcript, event.isFinal);
-    // Shown as-is: the owner needs to see a mis-hear as a mis-hear, before the
-    // judge has said anything about it.
-    setHeard(transcript);
+    // Shown as-is, and tagged with the step it belongs to: the owner needs to
+    // see a mis-hear as a mis-hear, before the judge has said anything.
+    setAnswer({
+      index: runnerRef.current?.state.stepIndex ?? -1,
+      text: transcript,
+      correct: null,
+    });
   });
 
   // A session can end with nothing said at all. Without this the step would
@@ -137,9 +183,18 @@ export function GameScreen({ onFinished, deps }: Props) {
 
         setMode(settings.mode);
         const plan = buildRound(n, pool, Math.random, settings.mode);
+        planRef.current = plan;
         const engine = new RoundEngine(plan);
         const queue = new JudgeQueue(resolved.judgeClient, {
-          onVerdict: (index, correct) => engine.resolveAnswer(index, correct),
+          onVerdict: (index, correct) => {
+            engine.resolveAnswer(index, correct);
+            // Colours the answer only while it is still the one on screen —
+            // a verdict that arrives after the owner has spoken again belongs
+            // to a step they are no longer looking at.
+            setAnswer((current) =>
+              current && current.index === index ? { ...current, correct } : current,
+            );
+          },
           onLearn: (questionId, answer) => {
             void addLearned(questionId, answer);
           },
@@ -189,8 +244,12 @@ export function GameScreen({ onFinished, deps }: Props) {
           setFlash(flashPosition);
           if (phase === 'A') {
             setSelected(null);
-            setHeard('');
+            setTapVerdict(null);
           }
+          // The mic reopening is the owner's turn again, so the previous
+          // answer clears here rather than at the step boundary — it stays up
+          // through the next question, which is when its verdict arrives.
+          if (phase === 'B') setAnswer(null);
           setLabel(
             `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
               (phase === 'A' ? '出題中' : 'どうぞ'),
@@ -234,20 +293,25 @@ export function GameScreen({ onFinished, deps }: Props) {
   const handleTap = useCallback((position: Position) => {
     runnerRef.current?.onTap(position);
     setSelected(position);
+    setTapVerdict(scoreTap(planRef.current, runnerRef.current, position));
   }, []);
 
   return (
     <View style={styles.screen}>
       <Text style={styles.label}>{label}</Text>
-      {heard !== '' && (
-        <Text testID="live-transcript" style={styles.heard}>
-          「{heard}」
+      {answer && (
+        <Text
+          testID="live-transcript"
+          style={[styles.heard, { color: answerColor(answer) }]}
+        >
+          「{answer.text}」{verdictMark(answer)}
         </Text>
       )}
       {mode === 'dual' && (
         <Grid
           flashPosition={flash}
           selected={selected}
+          tapVerdict={tapVerdict}
           onTap={handleTap}
           disabled={!ready}
         />
@@ -264,10 +328,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  /* Neutral: the judge's verdict lands seconds later, so there is nothing
-     truthful to colour here. The colours belong to the results screen. */
+  /* The colour is applied inline: neutral until this step's verdict lands,
+     because 判定待ち is not 不正解. */
   heard: {
-    color: '#8e8e93',
     fontSize: 22,
     textAlign: 'center',
     marginBottom: 24,

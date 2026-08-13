@@ -1,3 +1,5 @@
+import { StyleSheet } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { Grid } from '../Grid';
 
@@ -42,5 +44,66 @@ describe('Grid', () => {
       <Grid flashPosition={null} selected={7} onTap={() => {}} />,
     );
     expect(getByTestId('cell-7').props.accessibilityLabel).toContain('選択');
+  });
+});
+
+/** The border a cell actually renders with, whatever the style shape. */
+function borderOf(node: { props: { style?: StyleProp<ViewStyle> } }): unknown {
+  return StyleSheet.flatten(node.props.style)?.borderColor;
+}
+
+const CORRECT = '#4caf7d';
+const WRONG = '#e5534b';
+const PENDING = '#c96f4a';
+
+describe('Grid tap verdict', () => {
+  it('rings the tapped cell green when the tap was right', () => {
+    const { getByTestId } = render(
+      <Grid
+        flashPosition={null}
+        selected={7}
+        tapVerdict="correct"
+        onTap={() => {}}
+      />,
+    );
+    expect(borderOf(getByTestId('cell-7'))).toBe(CORRECT);
+  });
+
+  it('rings it red when the tap was wrong', () => {
+    const { getByTestId } = render(
+      <Grid
+        flashPosition={null}
+        selected={7}
+        tapVerdict="wrong"
+        onTap={() => {}}
+      />,
+    );
+    expect(borderOf(getByTestId('cell-7'))).toBe(WRONG);
+  });
+
+  it('keeps the neutral ring when there is nothing to score yet', () => {
+    // The first N steps recall nothing, so a tap there is neither right nor
+    // wrong — colouring it either way would be a lie.
+    const { getByTestId } = render(
+      <Grid
+        flashPosition={null}
+        selected={7}
+        tapVerdict={null}
+        onTap={() => {}}
+      />,
+    );
+    expect(borderOf(getByTestId('cell-7'))).toBe(PENDING);
+  });
+
+  it('leaves untapped cells alone', () => {
+    const { getByTestId } = render(
+      <Grid
+        flashPosition={null}
+        selected={7}
+        tapVerdict="correct"
+        onTap={() => {}}
+      />,
+    );
+    expect(borderOf(getByTestId('cell-2'))).toBeUndefined();
   });
 });

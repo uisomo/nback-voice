@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StyleSheet } from 'react-native';
-import type { StyleProp, TextStyle } from 'react-native';
-import { act, render } from '@testing-library/react-native';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import type { RoundEngine } from '../../engine';
 import { SPEAK_TIMEOUT_MS } from '../../engine/runner';
@@ -514,7 +514,9 @@ describe('GameScreen live transcript', () => {
     expect(getByTestId('live-transcript').props.children).toContain('ねこ');
   });
 
-  it('clears the heard text when the next step begins', async () => {
+  it('keeps the answer on screen through the next question', async () => {
+    // The verdict lands about a second after the step closes, so the answer
+    // has to still be there to be coloured.
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { queryByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
@@ -527,9 +529,29 @@ describe('GameScreen live transcript', () => {
       onResult({ results: [{ transcript: 'ねこ' }] });
     });
 
-    // Into step 1's phase A: the previous answer must not linger.
+    // Into step 1's phase A, while the next question is being asked.
     await act(async () => {
       await jest.advanceTimersByTimeAsync(3_000);
+    });
+    expect(queryByTestId('live-transcript')).not.toBeNull();
+  });
+
+  it('clears the answer when the mic opens for the next step', async () => {
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
+    const { queryByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+    const onResult = capturedResultHandler();
+    await act(async () => {
+      onResult({ results: [{ transcript: 'ねこ' }] });
+    });
+
+    // Step 1's phase B: it is the owner's turn again, so the slate is clean.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5_000);
     });
     expect(queryByTestId('live-transcript')).toBeNull();
   });
@@ -624,5 +646,155 @@ describe('GameScreen late final results', () => {
 
     // The final push released the settle wait: the round moved on.
     expect(listener.sessions).toBe(2);
+  });
+});
+
+const CORRECT_COLOR = '#4caf7d';
+const WRONG_COLOR = '#e5534b';
+const NEUTRAL_COLOR = '#8e8e93';
+
+function styleOf(node: {
+  props: { style?: StyleProp<TextStyle | ViewStyle> };
+}): (TextStyle & ViewStyle) | undefined {
+  return StyleSheet.flatten(node.props.style) as
+    | (TextStyle & ViewStyle)
+    | undefined;
+}
+
+/** The cell flashing right now — step 0's stimulus, recalled at step 2. */
+function flashedCell(getByTestId: (id: string) => { props: never }): number {
+  for (let i = 0; i < 9; i++) {
+    const cell = getByTestId(`cell-${i}`) as unknown as {
+      props: { accessibilityState: { selected: boolean } };
+    };
+    if (cell.props.accessibilityState.selected) return i;
+  }
+  throw new Error('no cell is flashing');
+}
+
+describe('GameScreen live tap colour', () => {
+  it('rings the tapped square green when it matches the step N back', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const target = flashedCell(getByTestId as never);
+
+    // Step 2 phase B recalls step 0.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(12_500);
+    });
+    await act(async () => {
+      fireEvent.press(getByTestId(`cell-${target}`));
+    });
+
+    expect(styleOf(getByTestId(`cell-${target}`))?.borderColor).toBe(
+      CORRECT_COLOR,
+    );
+  });
+
+  it('rings it red when it does not', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const wrong = (flashedCell(getByTestId as never) + 1) % 9;
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(12_500);
+    });
+    await act(async () => {
+      fireEvent.press(getByTestId(`cell-${wrong}`));
+    });
+
+    expect(styleOf(getByTestId(`cell-${wrong}`))?.borderColor).toBe(WRONG_COLOR);
+  });
+
+  it('drops the colour when the next step starts', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const target = flashedCell(getByTestId as never);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(12_500);
+    });
+    await act(async () => {
+      fireEvent.press(getByTestId(`cell-${target}`));
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(styleOf(getByTestId(`cell-${target}`))?.borderColor).toBeUndefined();
+  });
+});
+
+describe('GameScreen live answer colour', () => {
+  it('is neutral while the verdict is still out', async () => {
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+    await act(async () => {
+      capturedResultHandler()({ results: [{ transcript: 'ねこ' }] });
+    });
+
+    expect(styleOf(getByTestId('live-transcript'))?.color).toBe(NEUTRAL_COLOR);
+  });
+
+  it('turns green when the judge accepts the answer', async () => {
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    // Step 2 is the first scored step at N=2.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(12_500);
+    });
+    await act(async () => {
+      capturedResultHandler()({ results: [{ transcript: 'ねこ' }] });
+    });
+    // The step closes at t=15000 and the verdict comes back during the next
+    // question — the answer is still the one on screen.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3_000);
+    });
+
+    expect(styleOf(getByTestId('live-transcript'))?.color).toBe(CORRECT_COLOR);
+  });
+
+  it('turns red when the judge rejects it', async () => {
+    const rejecting: JudgeClient = {
+      judge: async (): Promise<Verdict> => ({ correct: false, matched: null }),
+    };
+    const { deps } = makeDeps(rejecting, new FakeSpeaker(), new FakeListener());
+    const { getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(12_500);
+    });
+    await act(async () => {
+      capturedResultHandler()({ results: [{ transcript: 'ねこ' }] });
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3_000);
+    });
+
+    expect(styleOf(getByTestId('live-transcript'))?.color).toBe(WRONG_COLOR);
   });
 });
