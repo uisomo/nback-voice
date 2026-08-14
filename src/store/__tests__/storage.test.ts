@@ -41,8 +41,11 @@ describe('settings', () => {
 });
 
 describe('adaptive N', () => {
-  it('starts at 2', async () => {
-    expect(await loadN()).toBe(2);
+  it('starts at 1', async () => {
+    // The lag is the whole difficulty of the exercise: answering the question
+    // just asked is hard enough to begin with, and the adaptive rule raises N
+    // on its own after a good round.
+    expect(await loadN()).toBe(1);
   });
 
   it('round-trips', async () => {

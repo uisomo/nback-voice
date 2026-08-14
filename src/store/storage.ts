@@ -28,7 +28,7 @@ export interface RoundRecord {
 export const DEFAULT_SETTINGS: Settings = {
   stepDurationMs: 5000,
   adaptive: true,
-  fixedN: 2,
+  fixedN: 1,
   maxTier: 2,
   mode: 'dual',
   questionSource: 'builtin',
@@ -60,8 +60,16 @@ export async function saveSettings(settings: Settings): Promise<void> {
   await AsyncStorage.setItem(KEY_SETTINGS, JSON.stringify(settings));
 }
 
+/**
+ * The lag a new player starts at. 1 — answering the question just asked —
+ * is already demanding with a grid to watch; the adaptive rule raises it
+ * after a round scored 80% or better, so difficulty is earned rather than
+ * assumed.
+ */
+export const STARTING_N = 1;
+
 export async function loadN(): Promise<number> {
-  return readJson<number>(KEY_N, 2);
+  return readJson<number>(KEY_N, STARTING_N);
 }
 
 export async function saveN(n: number): Promise<void> {
