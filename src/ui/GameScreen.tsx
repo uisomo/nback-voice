@@ -120,6 +120,7 @@ export function GameScreen({ onFinished, deps }: Props) {
   const [tapVerdict, setTapVerdict] = useState<PositionOutcome | null>(null);
   /** The answer on screen: what was heard, and how it was judged once known. */
   const [answer, setAnswer] = useState<LiveAnswer | null>(null);
+  const [recogError, setRecogError] = useState<string | null>(null);
 
   const runnerRef = useRef<RoundRunner | null>(null);
   const planRef = useRef<RoundPlan | null>(null);
@@ -131,6 +132,8 @@ export function GameScreen({ onFinished, deps }: Props) {
     // isFinal marks the recognizer's last word for this session; the step
     // closes on it rather than waiting out the settle bound.
     resolved.listener.push(transcript, event.isFinal);
+    // Hearing anything at all means whatever went wrong is over.
+    setRecogError(null);
     // Shown as-is, and tagged with the step it belongs to: the owner needs to
     // see a mis-hear as a mis-hear, before the judge has said anything.
     setAnswer({
@@ -144,6 +147,16 @@ export function GameScreen({ onFinished, deps }: Props) {
   // sit out the whole settle bound waiting for a result that is not coming.
   useSpeechRecognitionEvent('end', () => {
     resolved.listener.sessionEnded();
+  });
+
+  // A refused microphone, an unsupported language or a dead network look
+  // exactly like silence from inside the round. Say which it was, on screen:
+  // by the time the owner notices, the console is long gone.
+  useSpeechRecognitionEvent('error', (event) => {
+    // Saying nothing on one step is ordinary — that is 聞き取れず, not a fault.
+    if (event.error === 'no-speech') return;
+    console.log(`[nback] 認識エラー ${event.error}: ${event.message}`);
+    setRecogError(event.error);
   });
 
   useEffect(() => {
@@ -299,6 +312,11 @@ export function GameScreen({ onFinished, deps }: Props) {
   return (
     <View style={styles.screen}>
       <Text style={styles.label}>{label}</Text>
+      {recogError && (
+        <Text testID="recog-error" style={styles.error}>
+          認識エラー: {recogError}
+        </Text>
+      )}
       {answer && (
         <Text
           testID="live-transcript"
@@ -330,6 +348,12 @@ const styles = StyleSheet.create({
   },
   /* The colour is applied inline: neutral until this step's verdict lands,
      because 判定待ち is not 不正解. */
+  error: {
+    color: '#e5534b',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
   heard: {
     fontSize: 22,
     textAlign: 'center',

@@ -142,7 +142,7 @@ describe('GameScreen', () => {
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
     await runWholeRound();
 
-    expect(listener.sessions).toBe(11); // 9 stimuli + N=2 trailing
+    expect(listener.sessions).toBe(10); // 9 stimuli + N=1 trailing
   });
 
   it('grades every answer through the judge and reports a full answer score', async () => {
@@ -196,7 +196,7 @@ describe('GameScreen', () => {
 
     const history = await loadHistory();
     expect(history).toHaveLength(1);
-    expect(history[0].n).toBe(2);
+    expect(history[0].n).toBe(1);
   });
 
   it('lowers N after a round with no taps', async () => {
@@ -204,7 +204,8 @@ describe('GameScreen', () => {
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
     await runWholeRound();
 
-    // Position 0/9, answers 9/9 → round score 0.5 → N drops to 1.
+    // Position 0/9, answers 9/9 → round score 0.5 → N would drop, but 1 is
+    // the floor: there is no shorter lag than the question just asked.
     expect(await loadN()).toBe(1);
   });
 
@@ -288,7 +289,7 @@ describe('GameScreen paints during the utterance, not after it', () => {
     });
     expect(speaker.pending).toBe(1);
     expect(queryByText(/準備中/)).toBeNull();
-    expect(queryByText('1 / 11　2-back　出題中')).toBeTruthy();
+    expect(queryByText('1 / 10　1-back　出題中')).toBeTruthy();
 
     // Let step 0's question finish and cross into step 1, whose question is
     // then in flight. The new step is painted at the transition, not when its
@@ -298,7 +299,7 @@ describe('GameScreen paints during the utterance, not after it', () => {
       await jest.advanceTimersByTimeAsync(5_000);
     });
     expect(speaker.pending).toBe(1);
-    expect(queryByText('2 / 11　2-back　出題中')).toBeTruthy();
+    expect(queryByText('2 / 10　1-back　出題中')).toBeTruthy();
   });
 
   it('flashes a block and enables the grid while the question is still being spoken', async () => {
@@ -341,14 +342,14 @@ describe('GameScreen phase A pacing', () => {
     });
     expect(listener.sessions).toBe(0); // mic never opened
     expect(speaker.stopped).toBe(0); // the question was not cut off
-    expect(queryByText('1 / 11　2-back　出題中')).toBeTruthy();
+    expect(queryByText('1 / 10　1-back　出題中')).toBeTruthy();
 
     // The synthesizer finishes: the mic opens now, not before.
     await act(async () => {
       speaker.resolveSpeak();
     });
     expect(listener.sessions).toBe(1);
-    expect(queryByText('1 / 11　2-back　どうぞ')).toBeTruthy();
+    expect(queryByText('1 / 10　1-back　どうぞ')).toBeTruthy();
   });
 
   it('does not let a fast question shorten the step', async () => {
@@ -422,7 +423,7 @@ describe('GameScreen question-only mode', () => {
     expect(engine.positionScore).toBeNull();
     expect(engine.answerScore).toBe(1);
     // Answer channel alone is 1.0, so N rises even with no taps.
-    expect(await loadN()).toBe(3);
+    expect(await loadN()).toBe(2);
   });
 
   it('holds N when the judge is unreachable in question mode', async () => {
@@ -436,7 +437,7 @@ describe('GameScreen question-only mode', () => {
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
     await runWholeRound();
     // Both channels absent: nothing to adapt on, so N must not move.
-    expect(await loadN()).toBe(2);
+    expect(await loadN()).toBe(1);
   });
 });
 
@@ -683,9 +684,9 @@ describe('GameScreen live tap colour', () => {
     });
     const target = flashedCell(getByTestId as never);
 
-    // Step 2 phase B recalls step 0.
+    // Step 1 phase B recalls step 0 at N=1.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(12_500);
+      await jest.advanceTimersByTimeAsync(7_500);
     });
     await act(async () => {
       fireEvent.press(getByTestId(`cell-${target}`));
@@ -707,7 +708,7 @@ describe('GameScreen live tap colour', () => {
     const wrong = (flashedCell(getByTestId as never) + 1) % 9;
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(12_500);
+      await jest.advanceTimersByTimeAsync(7_500);
     });
     await act(async () => {
       fireEvent.press(getByTestId(`cell-${wrong}`));
@@ -727,7 +728,7 @@ describe('GameScreen live tap colour', () => {
     const target = flashedCell(getByTestId as never);
 
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(12_500);
+      await jest.advanceTimersByTimeAsync(7_500);
     });
     await act(async () => {
       fireEvent.press(getByTestId(`cell-${target}`));
@@ -796,5 +797,63 @@ describe('GameScreen live answer colour', () => {
     });
 
     expect(styleOf(getByTestId('live-transcript'))?.color).toBe(WRONG_COLOR);
+  });
+});
+
+describe('GameScreen recognizer failures', () => {
+  it('shows the error the recognizer reports instead of swallowing it', async () => {
+    // Without this the round looks alive but hears nothing, and the owner has
+    // no way to tell a refused microphone from their own silence.
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { findByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+
+    await act(async () => {
+      capturedHandler('error')({
+        error: 'not-allowed',
+        message: 'permission denied',
+      });
+    });
+
+    expect(await findByText(/認識エラー/)).toBeTruthy();
+    expect(await findByText(/not-allowed/)).toBeTruthy();
+  });
+
+  it('clears the error once the recognizer produces a result again', async () => {
+    const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
+    const { queryByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+    await act(async () => {
+      capturedHandler('error')({ error: 'no-speech', message: '' });
+    });
+    await act(async () => {
+      capturedResultHandler()({ results: [{ transcript: 'ねこ' }] });
+    });
+
+    expect(queryByText(/認識エラー/)).toBeNull();
+  });
+
+  it('does not treat a bare no-speech as a failure worth reporting', async () => {
+    // Saying nothing on one step is ordinary; it is 聞き取れず, not an error.
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { queryByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+    await act(async () => {
+      capturedHandler('error')({ error: 'no-speech', message: '' });
+    });
+
+    expect(queryByText(/認識エラー/)).toBeNull();
   });
 });
