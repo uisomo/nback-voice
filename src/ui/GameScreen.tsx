@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { RoundEngine, RoundRunner, buildRound } from '../engine';
 import type { PositionOutcome } from '../engine/round';
 import type { Position, RoundMode, RoundPlan } from '../engine/types';
 import { loadBank, mergeLearned } from '../content/bank';
 import { MIN_QUESTIONS, resolvePool } from '../content/pool';
+import { makeWarmup, type Warmup } from '../content/warmup';
 import { ClaudeJudgeClient } from '../judge/claude';
 import { JudgeQueue } from '../judge/queue';
 import type { JudgeClient } from '../judge/types';
@@ -110,6 +111,20 @@ function verdictMark(answer: LiveAnswer): string {
   return answer.correct ? '　○' : '　×';
 }
 
+/**
+ * Which lag this round runs at, in both the name and the instruction — the
+ * label alone ("2-back") does not say whether that means the question just
+ * asked or the one before it, and getting it wrong costs a whole round.
+ */
+function LagHeader({ n }: { n: number | null }) {
+  if (n === null) return null;
+  return (
+    <Text style={styles.lag}>
+      {n}-back ・ {n}つ前の質問に答える
+    </Text>
+  );
+}
+
 export function GameScreen({ onFinished, deps }: Props) {
   const resolved = useMemo(() => deps ?? realDeps(), [deps]);
   const [ready, setReady] = useState(false);
@@ -121,9 +136,15 @@ export function GameScreen({ onFinished, deps }: Props) {
   /** The answer on screen: what was heard, and how it was judged once known. */
   const [answer, setAnswer] = useState<LiveAnswer | null>(null);
   const [recogError, setRecogError] = useState<string | null>(null);
+  const [warmup, setWarmup] = useState<Warmup | null>(null);
+  const [warmupTapped, setWarmupTapped] = useState<number | null>(null);
+  /** The round's N, known before it starts so the owner can be told. */
+  const [lag, setLag] = useState<number | null>(null);
 
   const runnerRef = useRef<RoundRunner | null>(null);
   const planRef = useRef<RoundPlan | null>(null);
+  /** Starts the prepared round; set once setup finishes, called by the tap. */
+  const beginRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useSpeechRecognitionEvent('result', (event) => {
@@ -285,10 +306,24 @@ export function GameScreen({ onFinished, deps }: Props) {
           );
         };
 
-        runner.start();
+        // Prepared but not started: the round waits for the warm-up tap,
+        // which is what lets iOS speak at all.
+        beginRef.current = () => {
+          // Runs from the tap handler, outside this block's try, so it owns
+          // its failures — a synthesizer that cannot start must not leave the
+          // owner on a screen that looks ready.
+          try {
+            runner.start();
+            setReady(true);
+            schedule();
+          } catch (error) {
+            console.error('[nback] ラウンドの開始に失敗しました', error);
+            setLabel('準備に失敗しました。アプリを再起動してください');
+          }
+        };
         if (cancelled) return;
-        setReady(true);
-        schedule();
+        setLag(n);
+        setWarmup(makeWarmup());
       } catch (error) {
         console.error('[nback] ラウンドの準備に失敗しました', error);
         if (!cancelled) setLabel('準備に失敗しました。アプリを再起動してください');
@@ -303,14 +338,59 @@ export function GameScreen({ onFinished, deps }: Props) {
     };
   }, [resolved, onFinished]);
 
+  /**
+   * The warm-up tap. The unlock has to happen here, synchronously: it is the
+   * gesture itself that permits speech, and anything awaited first lands
+   * outside it. Right or wrong answer, the round begins — this is a warm-up,
+   * not a gate.
+   */
+  const handleWarmupTap = useCallback(
+    (choice: number) => {
+      resolved.speaker.unlock();
+      setWarmupTapped(choice);
+      setWarmup(null);
+      beginRef.current?.();
+    },
+    [resolved],
+  );
+
   const handleTap = useCallback((position: Position) => {
     runnerRef.current?.onTap(position);
     setSelected(position);
     setTapVerdict(scoreTap(planRef.current, runnerRef.current, position));
   }, []);
 
+  if (warmup) {
+    return (
+      <View style={styles.screen}>
+        <LagHeader n={lag} />
+        <Text style={styles.warmupCaption}>ウォームアップ</Text>
+        <Text testID="warmup-question" style={styles.warmupQuestion}>
+          {warmup.question} = ?
+        </Text>
+        <View style={styles.warmupRow}>
+          {warmup.choices.map((choice, slot) => (
+            <Pressable
+              key={choice}
+              testID={`warmup-choice-${slot}`}
+              style={styles.warmupChoice}
+              onPress={() => handleWarmupTap(choice)}
+            >
+              <Text style={styles.warmupChoiceLabel}>{choice}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.warmupHint}>タップすると始まります</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
+      <LagHeader n={lag} />
+      {warmupTapped !== null && !ready && (
+        <Text style={styles.warmupCaption}>準備中…</Text>
+      )}
       <Text style={styles.label}>{label}</Text>
       {recogError && (
         <Text testID="recog-error" style={styles.error}>
@@ -348,6 +428,38 @@ const styles = StyleSheet.create({
   },
   /* The colour is applied inline: neutral until this step's verdict lands,
      because 判定待ち is not 不正解. */
+  lag: {
+    color: '#c96f4a',
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  warmupCaption: {
+    color: '#8e8e93',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  warmupQuestion: {
+    color: '#f4f1ea',
+    fontSize: 40,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  warmupRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  warmupChoice: {
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    backgroundColor: '#1c1c1e',
+  },
+  warmupChoiceLabel: { color: '#f4f1ea', fontSize: 28 },
+  warmupHint: { color: '#8e8e93', fontSize: 14, textAlign: 'center' },
   error: {
     color: '#e5534b',
     fontSize: 16,

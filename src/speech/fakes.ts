@@ -3,9 +3,14 @@ import type { Listener, Speaker } from './types';
 export class FakeSpeaker implements Speaker {
   spoken: string[] = [];
   stopped = 0;
+  unlocked = 0;
 
   async speak(text: string): Promise<void> {
     this.spoken.push(text);
+  }
+
+  unlock(): void {
+    this.unlocked++;
   }
 
   stop(): void {
@@ -22,7 +27,12 @@ export class FakeSpeaker implements Speaker {
 export class SlowFakeSpeaker implements Speaker {
   spoken: string[] = [];
   stopped = 0;
+  unlocked = 0;
   private resolvers: Array<() => void> = [];
+
+  unlock(): void {
+    this.unlocked++;
+  }
 
   speak(text: string): Promise<void> {
     this.spoken.push(text);

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StyleSheet } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import type { RoundEngine } from '../../engine';
 import { SPEAK_TIMEOUT_MS } from '../../engine/runner';
@@ -67,6 +67,7 @@ class BrokenSpeaker implements Speaker {
   speak(): Promise<void> {
     throw new Error('synthesizer unavailable');
   }
+  unlock(): void {}
   stop(): void {}
 }
 
@@ -119,6 +120,19 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
+
+/**
+ * Clears the warm-up gate. The round no longer starts on its own: iOS only
+ * lets a page speak once an utterance has come out of a gesture, so the tap
+ * is load-bearing rather than decorative.
+ */
+async function beginRound() {
+  await screen.findByTestId('warmup-question');
+  await act(async () => {
+    fireEvent.press(screen.getByTestId('warmup-choice-0'));
+  });
+}
+
 /** Run long enough for all 9 + N steps at the default 5s pacing. */
 async function runWholeRound() {
   await act(async () => {
@@ -131,6 +145,7 @@ describe('GameScreen', () => {
     const onFinished = jest.fn();
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     expect(speaker.spoken).toHaveLength(9);
@@ -140,6 +155,7 @@ describe('GameScreen', () => {
   it('opens the mic once per step, including the trailing recall steps', async () => {
     const { deps, listener } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     expect(listener.sessions).toBe(10); // 9 stimuli + N=1 trailing
@@ -149,6 +165,7 @@ describe('GameScreen', () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     const engine: RoundEngine = onFinished.mock.calls[0][0];
@@ -165,6 +182,7 @@ describe('GameScreen', () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(offline);
     render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     const engine: RoundEngine = onFinished.mock.calls[0][0];
@@ -181,6 +199,7 @@ describe('GameScreen', () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(stalled);
     render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     expect(onFinished).toHaveBeenCalledTimes(1);
@@ -192,6 +211,7 @@ describe('GameScreen', () => {
   it('writes a history record for the round', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     const history = await loadHistory();
@@ -202,6 +222,7 @@ describe('GameScreen', () => {
   it('lowers N after a round with no taps', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     // Position 0/9, answers 9/9 → round score 0.5 → N would drop, but 1 is
@@ -223,6 +244,7 @@ describe('GameScreen', () => {
   it('stops the listener on unmount mid-round', async () => {
     const { deps, listener } = makeDefaultDeps(alwaysCorrect);
     const { unmount } = render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
 
     // Land inside phase B of the first step (A=2000ms, B=3000ms at the
     // default 5000ms pacing) — the mic is open and has not yet been
@@ -263,6 +285,7 @@ describe('GameScreen', () => {
       const { findByText } = render(
         <GameScreen onFinished={jest.fn()} deps={deps} />,
       );
+      await beginRound();
       expect(await findByText(/準備に失敗しました/)).toBeTruthy();
       // The label alone is the owner's only on-device diagnostic otherwise.
       expect(logged).toHaveBeenCalled();
@@ -282,6 +305,7 @@ describe('GameScreen paints during the utterance, not after it', () => {
     const { queryByText } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
 
     // Step 0 phase A, with the first utterance still in flight.
     await act(async () => {
@@ -308,6 +332,7 @@ describe('GameScreen paints during the utterance, not after it', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(0);
@@ -335,6 +360,7 @@ describe('GameScreen phase A pacing', () => {
     const { queryByText } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
 
     // Well past the 2000ms phase A, with the question still being spoken.
     await act(async () => {
@@ -359,6 +385,7 @@ describe('GameScreen phase A pacing', () => {
     const listener = new CannedListener('ぶぶぶ');
     const { deps } = makeDeps(alwaysCorrect, speaker, listener);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(10);
@@ -378,6 +405,7 @@ describe('GameScreen phase A pacing', () => {
     const listener = new CannedListener('ぶぶぶ');
     const { deps } = makeDeps(alwaysCorrect, speaker, listener);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS - 1);
@@ -399,6 +427,7 @@ describe('GameScreen question-only mode', () => {
     const { queryByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await runWholeRound();
     expect(queryByTestId('cell-0')).toBeNull();
   });
@@ -408,6 +437,7 @@ describe('GameScreen question-only mode', () => {
     const onFinished = jest.fn();
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await beginRound();
     await runWholeRound();
     expect(speaker.spoken).toHaveLength(9);
     expect(onFinished).toHaveBeenCalledTimes(1);
@@ -418,6 +448,7 @@ describe('GameScreen question-only mode', () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={onFinished} deps={deps} />);
+    await beginRound();
     await runWholeRound();
     const engine: RoundEngine = onFinished.mock.calls[0][0];
     expect(engine.positionScore).toBeNull();
@@ -435,6 +466,7 @@ describe('GameScreen question-only mode', () => {
     };
     const { deps } = makeDefaultDeps(offline);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
     await runWholeRound();
     // Both channels absent: nothing to adapt on, so N must not move.
     expect(await loadN()).toBe(1);
@@ -447,6 +479,7 @@ describe('GameScreen question source', () => {
     await saveSettings({ ...DEFAULT_SETTINGS, questionSource: 'custom' });
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
     await runWholeRound();
     expect(speaker.spoken).toHaveLength(9);
     for (const spoken of speaker.spoken) {
@@ -477,6 +510,7 @@ describe('GameScreen transcript capture', () => {
     // A real listener, so push()/stop() do their actual work.
     const { deps } = makeDeps(recording, new FakeSpeaker(), new FakeListener());
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
 
     // Step 2 is the first scored step at N=2. With a=2000/b=3000 its answer
     // window runs from t=12000 to t=15000.
@@ -502,6 +536,7 @@ describe('GameScreen live transcript', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     // Step 0 phase B (a=2000, b=3000 at the 5s default).
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
@@ -522,6 +557,7 @@ describe('GameScreen live transcript', () => {
     const { queryByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
     });
@@ -542,6 +578,7 @@ describe('GameScreen live transcript', () => {
     const { queryByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
     });
@@ -562,6 +599,7 @@ describe('GameScreen live transcript', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
     });
@@ -599,19 +637,23 @@ describe('GameScreen late final results', () => {
     const { deps } = makeDeps(
       recording,
       new FakeSpeaker(),
-      new LateFinalListener('わんわん'),
+      // A transcript no question in the bank accepts: a local synonym match
+      // would resolve the answer without ever calling the judge.
+      new LateFinalListener('てすとおんせい'),
     );
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
     await runWholeRound();
 
     expect(heard).toHaveLength(9);
-    expect(new Set(heard)).toEqual(new Set(['わんわん']));
+    expect(new Set(heard)).toEqual(new Set(['てすとおんせい']));
   });
 
   it('forwards the recognizer session end so a silent step cannot stall the round', async () => {
     const listener = new LateFinalListener(null); // never delivers by itself
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), listener);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(6_000);
@@ -632,6 +674,7 @@ describe('GameScreen late final results', () => {
     const listener = new LateFinalListener(null);
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), listener);
     render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
@@ -679,6 +722,7 @@ describe('GameScreen live tap colour', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(0);
     });
@@ -702,6 +746,7 @@ describe('GameScreen live tap colour', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(0);
     });
@@ -722,6 +767,7 @@ describe('GameScreen live tap colour', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(0);
     });
@@ -747,6 +793,7 @@ describe('GameScreen live answer colour', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
     });
@@ -762,6 +809,7 @@ describe('GameScreen live answer colour', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     // Step 2 is the first scored step at N=2.
     await act(async () => {
       await jest.advanceTimersByTimeAsync(12_500);
@@ -786,6 +834,7 @@ describe('GameScreen live answer colour', () => {
     const { getByTestId } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(12_500);
     });
@@ -808,6 +857,7 @@ describe('GameScreen recognizer failures', () => {
     const { findByText } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
     });
@@ -828,6 +878,7 @@ describe('GameScreen recognizer failures', () => {
     const { queryByText } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
     });
@@ -847,6 +898,7 @@ describe('GameScreen recognizer failures', () => {
     const { queryByText } = render(
       <GameScreen onFinished={jest.fn()} deps={deps} />,
     );
+    await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
     });
@@ -855,5 +907,108 @@ describe('GameScreen recognizer failures', () => {
     });
 
     expect(queryByText(/認識エラー/)).toBeNull();
+  });
+});
+
+describe('GameScreen warm-up gate', () => {
+  it('says nothing until the owner has tapped', async () => {
+    // iOS drops utterances that did not come from a gesture, so a round that
+    // starts on its own is silent for its first questions.
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen onFinished={jest.fn()} deps={deps} />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(30_000);
+    });
+
+    expect(speaker.spoken).toHaveLength(0);
+  });
+
+  it('shows an arithmetic item to tap while the round loads', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { findByTestId, getAllByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+
+    expect(await findByTestId('warmup-question')).toBeTruthy();
+    expect(getAllByTestId(/^warmup-choice-/)).toHaveLength(3);
+  });
+
+  it('unlocks the synthesizer inside the tap', async () => {
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
+    const { findByTestId, getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await findByTestId('warmup-question');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('warmup-choice-0'));
+    });
+
+    expect(speaker.unlocked).toBe(1);
+  });
+
+  it('runs the whole round once tapped', async () => {
+    const onFinished = jest.fn();
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
+    const { findByTestId, getByTestId } = render(
+      <GameScreen onFinished={onFinished} deps={deps} />,
+    );
+    await findByTestId('warmup-question');
+    await act(async () => {
+      fireEvent.press(getByTestId('warmup-choice-0'));
+    });
+    await runWholeRound();
+
+    expect(speaker.spoken).toHaveLength(9);
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes a wrong tap as readily as a right one — it is a warm-up', async () => {
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
+    const { findByTestId, getByTestId } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    const question = await findByTestId('warmup-question');
+    const answer = Number(
+      (question.props.children as string[]).join('').match(/= ?(\d+)/)?.[1] ??
+        NaN,
+    );
+    // Whichever slot is tapped, the round begins.
+    for (const slot of [0, 1, 2]) {
+      const choice = getByTestId(`warmup-choice-${slot}`);
+      if (Number(choice.props.children) === answer) continue;
+      await act(async () => {
+        fireEvent.press(choice);
+      });
+      break;
+    }
+    await runWholeRound();
+
+    expect(speaker.spoken).toHaveLength(9);
+  });
+
+  it('shows which lag this round is, before it starts', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { findByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    expect(await findByText(/1-back/)).toBeTruthy();
+    expect(await findByText(/1つ前の質問/)).toBeTruthy();
+  });
+
+  it('keeps the lag on screen during the round', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { findByTestId, getByTestId, findByText } = render(
+      <GameScreen onFinished={jest.fn()} deps={deps} />,
+    );
+    await findByTestId('warmup-question');
+    await act(async () => {
+      fireEvent.press(getByTestId('warmup-choice-0'));
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2_500);
+    });
+
+    expect(await findByText(/1つ前の質問/)).toBeTruthy();
   });
 });

@@ -5,6 +5,12 @@ export interface Speaker {
    * so a question is never clipped — see RoundRunner.readyToClose().
    */
   speak(text: string): Promise<void>;
+  /**
+   * Plays an inaudible utterance to satisfy platforms that only allow speech
+   * once it has originated in a user gesture. Synchronous on purpose: awaiting
+   * anything first puts the call outside the gesture, where it is refused.
+   */
+  unlock(): void;
   stop(): void;
 }
 

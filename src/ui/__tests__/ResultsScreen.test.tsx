@@ -173,3 +173,12 @@ describe('ResultsScreen answer review', () => {
     expect(queryByTestId('review-position-2')).toBeNull();
   });
 });
+
+describe('ResultsScreen lag', () => {
+  it('says what the lag meant, not just its name', () => {
+    const { getByText } = render(
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+    );
+    expect(getByText(/2つ前の質問/)).toBeTruthy();
+  });
+});

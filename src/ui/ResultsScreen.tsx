@@ -38,6 +38,7 @@ export function ResultsScreen({ engine, n, onAgain }: Props) {
   return (
     <View style={styles.screen}>
       <Text style={styles.heading}>{n}-back の結果</Text>
+      <Text style={styles.lag}>{n}つ前の質問に答えるラウンド</Text>
       <Text style={styles.row}>位置　{pct(engine.positionScore)}</Text>
       <Text style={styles.row}>回答　{pct(engine.answerScore)}</Text>
       {engine.unresolvedCount > 0 && (
@@ -93,7 +94,8 @@ export function ResultsScreen({ engine, n, onAgain }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: 'center', padding: 32, backgroundColor: '#000' },
-  heading: { color: '#f4f1ea', fontSize: 28, marginBottom: 24 },
+  heading: { color: '#f4f1ea', fontSize: 28, marginBottom: 4 },
+  lag: { color: '#c96f4a', fontSize: 15, marginBottom: 20 },
   row: { color: '#f4f1ea', fontSize: 20, marginBottom: 8 },
   note: { color: '#c96f4a', fontSize: 16, marginBottom: 8 },
   list: { flexGrow: 0, marginTop: 16, marginBottom: 8 },
