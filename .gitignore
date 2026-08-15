@@ -30,9 +30,10 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files — the glob is deliberately wide: a key parked under any
+# .env variant (.env.bak, .env.disabled) must not be committable.
 .env
-.env*.local
+.env*
 
 # typescript
 *.tsbuildinfo
