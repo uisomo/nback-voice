@@ -6,6 +6,7 @@ interface Props {
   engine: RoundEngine;
   n: number;
   onAgain: () => void;
+  onChangeSeries: () => void;
 }
 
 const CORRECT = '#4caf7d';
@@ -34,7 +35,7 @@ function positionMark(row: AnswerReview): { label: string; color: string } {
   return { label: '位置 —', color: NEUTRAL };
 }
 
-export function ResultsScreen({ engine, n, onAgain }: Props) {
+export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
   return (
     <View style={styles.screen}>
       <Text style={styles.heading}>{n}-back の結果</Text>
@@ -85,9 +86,14 @@ export function ResultsScreen({ engine, n, onAgain }: Props) {
         })}
       </ScrollView>
 
-      <Pressable style={styles.button} onPress={onAgain}>
-        <Text style={styles.buttonLabel}>もう一度</Text>
-      </Pressable>
+      <View style={styles.buttons}>
+        <Pressable style={styles.button} onPress={onAgain}>
+          <Text style={styles.buttonLabel}>もう一度</Text>
+        </Pressable>
+        <Pressable style={styles.secondary} onPress={onChangeSeries}>
+          <Text style={styles.buttonLabel}>シリーズを変える</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -105,10 +111,18 @@ const styles = StyleSheet.create({
   heard: { fontSize: 17, flexShrink: 1 },
   verdict: { fontSize: 17 },
   position: { fontSize: 14, marginLeft: 'auto' },
+  buttons: { flexDirection: 'row', gap: 12, marginTop: 24 },
   button: {
-    marginTop: 24,
+    flex: 1,
     padding: 16,
     backgroundColor: '#c96f4a',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  secondary: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#1c1c1e',
     borderRadius: 12,
     alignItems: 'center',
   },

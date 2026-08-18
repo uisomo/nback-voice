@@ -28,16 +28,30 @@ function finishedEngine(resolved: number): RoundEngine {
 }
 
 describe('ResultsScreen', () => {
+  it('offers a way back to the series list', () => {
+    const onChangeSeries = jest.fn();
+    const { getByText } = render(
+      <ResultsScreen
+        engine={finishedEngine(9)}
+        n={2}
+        onAgain={() => {}}
+        onChangeSeries={onChangeSeries}
+      />,
+    );
+    fireEvent.press(getByText('シリーズを変える'));
+    expect(onChangeSeries).toHaveBeenCalled();
+  });
+
   it('shows the N of the round', () => {
     const { getByText } = render(
-      <ResultsScreen engine={finishedEngine(9)} n={3} onAgain={() => {}} />,
+      <ResultsScreen engine={finishedEngine(9)} n={3} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(getByText(/3-back/)).toBeTruthy();
   });
 
   it('shows both channel percentages', () => {
     const { getByText } = render(
-      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(getByText(/位置.*100%/)).toBeTruthy();
     expect(getByText(/回答.*100%/)).toBeTruthy();
@@ -45,21 +59,21 @@ describe('ResultsScreen', () => {
 
   it('shows an em dash for the answer channel when nothing resolved', () => {
     const { getByText } = render(
-      <ResultsScreen engine={finishedEngine(0)} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={finishedEngine(0)} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(getByText(/回答.*—/)).toBeTruthy();
   });
 
   it('reports the 未判定 count when some answers went ungraded', () => {
     const { getByText } = render(
-      <ResultsScreen engine={finishedEngine(4)} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={finishedEngine(4)} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(getByText(/未判定 5 件/)).toBeTruthy();
   });
 
   it('hides the 未判定 line when everything resolved', () => {
     const { queryByText } = render(
-      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(queryByText(/未判定/)).toBeNull();
   });
@@ -67,7 +81,7 @@ describe('ResultsScreen', () => {
   it('fires onAgain when the button is pressed', () => {
     const onAgain = jest.fn();
     const { getByText } = render(
-      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={onAgain} />,
+      <ResultsScreen engine={finishedEngine(9)} n={2} onAgain={onAgain} onChangeSeries={() => {}} />,
     );
     fireEvent.press(getByText('もう一度'));
     expect(onAgain).toHaveBeenCalled();
@@ -118,14 +132,14 @@ function mixedEngine(mode: 'dual' | 'question' = 'dual'): RoundEngine {
 describe('ResultsScreen answer review', () => {
   it('lists every scored step with the question that was recalled', () => {
     const { getAllByTestId } = render(
-      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(getAllByTestId(/^review-row-/)).toHaveLength(9);
   });
 
   it('shows a correct answer in green', () => {
     const { getByTestId } = render(
-      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     const heard = getByTestId('review-heard-2');
     expect(heard.props.children).toContain('こたえ2');
@@ -134,14 +148,14 @@ describe('ResultsScreen answer review', () => {
 
   it('shows a wrong answer in red', () => {
     const { getByTestId } = render(
-      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(colorOf(getByTestId('review-heard-3'))).toBe(WRONG);
   });
 
   it('marks a step nobody was heard on as 聞き取れず, in neutral', () => {
     const { getByTestId } = render(
-      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     const heard = getByTestId('review-heard-4');
     expect(heard.props.children).toBe('（聞き取れず）');
@@ -150,7 +164,7 @@ describe('ResultsScreen answer review', () => {
 
   it('marks an ungraded answer 未判定, in neutral', () => {
     const { getByTestId } = render(
-      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(colorOf(getByTestId('review-heard-5'))).toBe(NEUTRAL);
     expect(getByTestId('review-verdict-5').props.children).toBe('未判定');
@@ -158,7 +172,7 @@ describe('ResultsScreen answer review', () => {
 
   it('colours the position mark per step', () => {
     const { getByTestId } = render(
-      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(colorOf(getByTestId('review-position-2'))).toBe(CORRECT);
     expect(colorOf(getByTestId('review-position-3'))).toBe(WRONG);
@@ -167,7 +181,7 @@ describe('ResultsScreen answer review', () => {
 
   it('shows no position marks in question mode', () => {
     const { queryByTestId, getAllByTestId } = render(
-      <ResultsScreen engine={mixedEngine('question')} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine('question')} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(getAllByTestId(/^review-row-/)).toHaveLength(9);
     expect(queryByTestId('review-position-2')).toBeNull();
@@ -177,7 +191,7 @@ describe('ResultsScreen answer review', () => {
 describe('ResultsScreen lag', () => {
   it('says what the lag meant, not just its name', () => {
     const { getByText } = render(
-      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} />,
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
     );
     expect(getByText(/2つ前の質問/)).toBeTruthy();
   });

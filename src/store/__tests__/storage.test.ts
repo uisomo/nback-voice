@@ -40,17 +40,36 @@ describe('settings', () => {
   });
 });
 
-describe('adaptive N', () => {
-  it('starts at 1', async () => {
-    // The lag is the whole difficulty of the exercise: answering the question
-    // just asked is hard enough to begin with, and the adaptive rule raises N
-    // on its own after a good round.
-    expect(await loadN()).toBe(1);
+describe('adaptive N per series', () => {
+  it('starts at 1 for a series never played', async () => {
+    // The lag is the whole difficulty of the exercise. A finance series is
+    // heavy on its own, so it must not inherit the standard series' lag.
+    expect(await loadN('capital-call')).toBe(1);
   });
 
-  it('round-trips', async () => {
-    await saveN(4);
-    expect(await loadN()).toBe(4);
+  it('round-trips per series', async () => {
+    await saveN('standard', 4);
+    expect(await loadN('standard')).toBe(4);
+  });
+
+  it('keeps series independent', async () => {
+    await saveN('standard', 3);
+    await saveN('persuasion', 2);
+    expect(await loadN('standard')).toBe(3);
+    expect(await loadN('persuasion')).toBe(2);
+    expect(await loadN('fund-cast')).toBe(1);
+  });
+
+  it('seeds the standard series from the legacy single-value key', async () => {
+    await AsyncStorage.setItem('nback.n', JSON.stringify(3));
+    expect(await loadN('standard')).toBe(3);
+    expect(await loadN('capital-call')).toBe(1);
+  });
+
+  it('leaves the legacy key in place after seeding', async () => {
+    await AsyncStorage.setItem('nback.n', JSON.stringify(3));
+    await loadN('standard');
+    expect(await AsyncStorage.getItem('nback.n')).toBe('3');
   });
 });
 
@@ -131,7 +150,7 @@ describe('settings defaults for the new fields', () => {
   it('defaults to dual mode and the built-in bank', async () => {
     const s = await loadSettings();
     expect(s.mode).toBe('dual');
-    expect(s.questionSource).toBe('builtin');
+    expect(s.seriesId).toBe('standard');
   });
 
   it('still fills missing new keys from an older stored shape', async () => {
@@ -142,7 +161,7 @@ describe('settings defaults for the new fields', () => {
     const s = await loadSettings();
     expect(s.stepDurationMs).toBe(4000);
     expect(s.mode).toBe('dual');
-    expect(s.questionSource).toBe('builtin');
+    expect(s.seriesId).toBe('standard');
   });
 });
 
@@ -221,5 +240,61 @@ describe('learned synonyms follow the question', () => {
     ]);
     const learned = await loadLearned();
     expect(learned[created.id] ?? []).toEqual([]);
+  });
+});
+
+describe('settings migration to seriesId', () => {
+  it('defaults to the standard series', async () => {
+    expect((await loadSettings()).seriesId).toBe('standard');
+  });
+
+  it('migrates questionSource "custom" to the custom series', async () => {
+    await AsyncStorage.setItem(
+      'nback.settings',
+      JSON.stringify({ questionSource: 'custom' }),
+    );
+    expect((await loadSettings()).seriesId).toBe('custom');
+  });
+
+  it('migrates "builtin" and "both" to the standard series', async () => {
+    // 'both' has no equivalent: the mixed pool is gone and 自分の問題 is now
+    // its own series. This is deliberately lossy.
+    for (const source of ['builtin', 'both']) {
+      await AsyncStorage.setItem(
+        'nback.settings',
+        JSON.stringify({ questionSource: source }),
+      );
+      expect((await loadSettings()).seriesId).toBe('standard');
+    }
+  });
+
+  it('drops the obsolete key from the returned settings', async () => {
+    await AsyncStorage.setItem(
+      'nback.settings',
+      JSON.stringify({ questionSource: 'custom' }),
+    );
+    expect(await loadSettings()).not.toHaveProperty('questionSource');
+  });
+
+  it('prefers an explicit seriesId over the legacy key', async () => {
+    await AsyncStorage.setItem(
+      'nback.settings',
+      JSON.stringify({ questionSource: 'custom', seriesId: 'persuasion' }),
+    );
+    expect((await loadSettings()).seriesId).toBe('persuasion');
+  });
+});
+
+describe('history carries the series', () => {
+  it('round-trips seriesId', async () => {
+    await appendHistory({
+      date: '2026-08-19',
+      n: 2,
+      positionScore: 1,
+      answerScore: 0.5,
+      unresolved: 0,
+      seriesId: 'persuasion',
+    });
+    expect((await loadHistory())[0].seriesId).toBe('persuasion');
   });
 });

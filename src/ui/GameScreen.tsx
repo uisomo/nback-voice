@@ -4,8 +4,8 @@ import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { RoundEngine, RoundRunner, buildRound } from '../engine';
 import type { PositionOutcome } from '../engine/round';
 import type { Position, RoundMode, RoundPlan } from '../engine/types';
-import { loadBank, mergeLearned } from '../content/bank';
-import { MIN_QUESTIONS, resolvePool } from '../content/pool';
+import { MIN_QUESTIONS } from '../content/pool';
+import { findSeries, listSeries } from '../content/series';
 import { makeWarmup, type Warmup } from '../content/warmup';
 import { ClaudeJudgeClient } from '../judge/claude';
 import { JudgeQueue } from '../judge/queue';
@@ -80,6 +80,8 @@ const WRONG = '#e5534b';
 const NEUTRAL = '#8e8e93';
 
 interface Props {
+  /** Which series this round draws from. */
+  seriesId: string;
   onFinished: (engine: RoundEngine, plan: RoundPlan) => void;
   /** Overridden in tests; defaults to the real Expo and Claude implementations. */
   deps?: GameScreenDeps;
@@ -125,7 +127,7 @@ function LagHeader({ n }: { n: number | null }) {
   );
 }
 
-export function GameScreen({ onFinished, deps }: Props) {
+export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const resolved = useMemo(() => deps ?? realDeps(), [deps]);
   const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState<Position | null>(null);
@@ -136,6 +138,7 @@ export function GameScreen({ onFinished, deps }: Props) {
   /** The answer on screen: what was heard, and how it was judged once known. */
   const [answer, setAnswer] = useState<LiveAnswer | null>(null);
   const [recogError, setRecogError] = useState<string | null>(null);
+  const [seriesLabel, setSeriesLabel] = useState('');
   const [warmup, setWarmup] = useState<Warmup | null>(null);
   const [warmupTapped, setWarmupTapped] = useState<number | null>(null);
   /** The round's N, known before it starts so the owner can be told. */
@@ -192,21 +195,27 @@ export function GameScreen({ onFinished, deps }: Props) {
       }
 
       try {
-        const [settings, storedN, learned, custom] = await Promise.all([
+        const [settings, learned, custom] = await Promise.all([
           loadSettings(),
-          loadN(),
           loadLearned(),
           loadCustom(),
         ]);
         if (cancelled) return;
 
-        const n = settings.adaptive ? storedN : settings.fixedN;
-        const pool = resolvePool(
-          settings.questionSource,
-          loadBank(learned),
-          mergeLearned(custom, learned),
-          settings.maxTier,
+        const series = findSeries(
+          listSeries({ custom, learned, maxTier: settings.maxTier }),
+          seriesId,
         );
+        const storedN = await loadN(series.id);
+        if (cancelled) return;
+
+        const n = settings.adaptive ? storedN : settings.fixedN;
+        const pool = series.questions;
+
+        // Named before the mic opens: the lag alone does not say which set of
+        // questions is about to be asked, and picking the wrong one costs a
+        // whole round.
+        setSeriesLabel(`${series.title} ／ ${pool.length}問`);
 
         // Questions can be deleted after the source was chosen, so re-check
         // here rather than trusting the settings screen's guard alone.
@@ -251,13 +260,14 @@ export function GameScreen({ onFinished, deps }: Props) {
           try {
             await within(queue.drain(), DRAIN_TIMEOUT_MS);
             if (!cancelled) {
-              if (settings.adaptive) await saveN(engine.nextN(n));
+              if (settings.adaptive) await saveN(series.id, engine.nextN(n));
               await appendHistory({
                 date: localDate(),
                 n,
                 positionScore: engine.positionScore,
                 answerScore: engine.answerScore,
                 unresolved: engine.unresolvedCount,
+                seriesId: series.id,
               });
             }
           } catch (error) {
@@ -336,7 +346,7 @@ export function GameScreen({ onFinished, deps }: Props) {
       resolved.listener.stop();
       resolved.speaker.stop();
     };
-  }, [resolved, onFinished]);
+  }, [resolved, onFinished, seriesId]);
 
   /**
    * The warm-up tap. The unlock has to happen here, synchronously: it is the
@@ -364,6 +374,9 @@ export function GameScreen({ onFinished, deps }: Props) {
     return (
       <View style={styles.screen}>
         <LagHeader n={lag} />
+        <Text testID="warmup-series" style={styles.warmupSeries}>
+          {seriesLabel}
+        </Text>
         <Text style={styles.warmupCaption}>ウォームアップ</Text>
         <Text testID="warmup-question" style={styles.warmupQuestion}>
           {warmup.question} = ?
@@ -457,6 +470,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     borderRadius: 12,
     backgroundColor: '#1c1c1e',
+  },
+  warmupSeries: {
+    color: '#f4f1ea',
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 4,
   },
   warmupChoiceLabel: { color: '#f4f1ea', fontSize: 28 },
   warmupHint: { color: '#8e8e93', fontSize: 14, textAlign: 'center' },
