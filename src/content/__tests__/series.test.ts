@@ -195,3 +195,12 @@ describe('the shipped catalogue', () => {
     }
   });
 });
+
+describe('MIN_QUESTIONS', () => {
+  it('is the number of stimuli in a round', () => {
+    // The series picker's guard and GameScreen's re-check both compare
+    // against this, so it must track STIMULI_PER_ROUND rather than being
+    // its own literal.
+    expect(MIN_QUESTIONS).toBe(9);
+  });
+});
