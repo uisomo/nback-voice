@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { MIN_QUESTIONS, type QuestionSource } from '../content/pool';
 import type { RoundMode } from '../engine/types';
 import {
   DEFAULT_SETTINGS,
-  loadCustom,
   loadSettings,
   saveSettings,
   type Settings,
@@ -24,19 +22,12 @@ const MODE_CHOICES: { mode: RoundMode; label: string }[] = [
   { mode: 'dual', label: '位置＋質問' },
   { mode: 'question', label: '質問のみ' },
 ];
-const SOURCE_CHOICES: { source: QuestionSource; label: string }[] = [
-  { source: 'builtin', label: '内蔵' },
-  { source: 'custom', label: '自分の問題' },
-  { source: 'both', label: '両方' },
-];
 
 export function SettingsScreen({ onClose, onEditQuestions }: Props) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [customCount, setCustomCount] = useState(0);
 
   useEffect(() => {
     void loadSettings().then(setSettings);
-    void loadCustom().then((custom) => setCustomCount(custom.length));
   }, []);
 
   // A ref, not the state value, so two rapid taps don't both build their patch
@@ -52,13 +43,6 @@ export function SettingsScreen({ onClose, onEditQuestions }: Props) {
     void saveSettings(next);
   }, []);
 
-  // 'custom' draws from the owner's questions alone, so it is only usable once
-  // there are enough for a full round. 'both' always has the built-ins behind it.
-  const customShortfall = Math.max(0, MIN_QUESTIONS - customCount);
-  const customUsable = customShortfall === 0;
-
-  const isSourceUsable = (source: QuestionSource) =>
-    source === 'custom' ? customUsable : true;
 
   return (
     <View style={styles.screen}>
@@ -77,30 +61,6 @@ export function SettingsScreen({ onClose, onEditQuestions }: Props) {
         ))}
       </View>
 
-      <Text style={styles.label}>問題の出どころ</Text>
-      <View style={styles.row}>
-        {SOURCE_CHOICES.map(({ source, label }) => {
-          const usable = isSourceUsable(source);
-          return (
-            <Pressable
-              key={source}
-              testID={`source-${source}`}
-              onPress={() => usable && update({ questionSource: source })}
-              style={[
-                styles.chip,
-                settings.questionSource === source && styles.chipOn,
-                !usable && styles.chipOff,
-              ]}
-            >
-              <Text style={styles.chipLabel}>
-                {source === 'custom' && !usable
-                  ? `${label} (あと ${customShortfall} 問)`
-                  : label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
 
       <Pressable style={styles.link} onPress={onEditQuestions}>
         <Text style={styles.linkLabel}>自分の問題を編集</Text>
@@ -141,7 +101,7 @@ export function SettingsScreen({ onClose, onEditQuestions }: Props) {
         </View>
       )}
 
-      <Text style={styles.label}>問題の難易度 (内蔵のみ)</Text>
+      <Text style={styles.label}>標準問題のむずかしさ</Text>
       <View style={styles.row}>
         {TIER_CHOICES.map(({ tier, label }) => (
           <Pressable

@@ -234,6 +234,7 @@ describe('GameScreen', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByText } = render(
       <GameScreen
+        seriesId="standard"
         onFinished={jest.fn()}
         deps={{ ...deps, requestPermissions: async () => false }}
       />,
