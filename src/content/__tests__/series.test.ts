@@ -167,3 +167,31 @@ describe('findSeries', () => {
     expect(findSeries(all(), 'no-such-series').id).toBe(STANDARD_SERIES_ID);
   });
 });
+
+describe('the shipped catalogue', () => {
+  it('offers the four authored series across two purpose categories', () => {
+    const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
+    const ids = list.map((s) => s.id);
+    expect(ids).toEqual([
+      'capital-call',
+      'nav-finance',
+      'fund-cast',
+      'persuasion',
+      STANDARD_SERIES_ID,
+      CUSTOM_SERIES_ID,
+    ]);
+  });
+
+  it('credits every authored series to the manuscript it came from', () => {
+    const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
+    for (const series of list) {
+      const synthesized =
+        series.id === STANDARD_SERIES_ID || series.id === CUSTOM_SERIES_ID;
+      if (synthesized) {
+        expect(series.credit).toBeUndefined();
+      } else {
+        expect(series.credit).toMatch(/より$/);
+      }
+    }
+  });
+});
