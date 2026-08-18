@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { QuestionSource } from '../content/pool';
+import { STANDARD_SERIES_ID } from '../content/series';
 import type { Question, RoundMode } from '../engine/types';
 
 export interface Settings {
@@ -8,12 +8,12 @@ export interface Settings {
   adaptive: boolean;
   /** Used only when adaptive is false. */
   fixedN: number;
-  /** Highest question tier to draw from. Built-ins only. */
+  /** Highest question tier to draw from. Standard series only. */
   maxTier: number;
   /** 'dual' scores position and answer; 'question' drops the visual channel. */
   mode: RoundMode;
-  /** Which questions a round draws from. */
-  questionSource: QuestionSource;
+  /** Which series a round draws from. */
+  seriesId: string;
 }
 
 export interface RoundRecord {
@@ -23,6 +23,8 @@ export interface RoundRecord {
   positionScore: number | null;
   answerScore: number | null;
   unresolved: number;
+  /** Absent on rounds recorded before series existed. */
+  seriesId?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -31,11 +33,12 @@ export const DEFAULT_SETTINGS: Settings = {
   fixedN: 1,
   maxTier: 2,
   mode: 'dual',
-  questionSource: 'builtin',
+  seriesId: STANDARD_SERIES_ID,
 };
 
 const KEY_SETTINGS = 'nback.settings';
 const KEY_N = 'nback.n';
+const KEY_N_BY_SERIES = 'nback.n.bySeries';
 const KEY_HISTORY = 'nback.history';
 const KEY_LEARNED = 'nback.learned';
 const KEY_CUSTOM = 'nback.custom';
@@ -51,9 +54,27 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
+/** The pre-series shape, kept only so stored settings can be migrated. */
+interface LegacySettings {
+  questionSource?: string;
+}
+
 export async function loadSettings(): Promise<Settings> {
-  const stored = await readJson<Partial<Settings>>(KEY_SETTINGS, {});
-  return { ...DEFAULT_SETTINGS, ...stored };
+  const stored = await readJson<Partial<Settings> & LegacySettings>(
+    KEY_SETTINGS,
+    {},
+  );
+  const { questionSource, ...rest } = stored;
+  const settings = { ...DEFAULT_SETTINGS, ...rest };
+
+  // 'custom' becomes its own series; 'builtin' and 'both' both land on the
+  // standard one, since the mixed pool has no equivalent under series.
+  if (rest.seriesId === undefined && questionSource !== undefined) {
+    settings.seriesId =
+      questionSource === 'custom' ? 'custom' : STANDARD_SERIES_ID;
+  }
+
+  return settings;
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
@@ -68,12 +89,36 @@ export async function saveSettings(settings: Settings): Promise<void> {
  */
 export const STARTING_N = 1;
 
-export async function loadN(): Promise<number> {
-  return readJson<number>(KEY_N, STARTING_N);
+/**
+ * The per-series lag map, seeding itself once from the pre-series single
+ * value. The legacy key is left in place: the migration is one-way but not
+ * destructive.
+ */
+async function loadNMap(): Promise<Record<string, number>> {
+  const stored = await readJson<Record<string, number> | null>(
+    KEY_N_BY_SERIES,
+    null,
+  );
+  if (stored) return stored;
+
+  const legacy = await readJson<number | null>(KEY_N, null);
+  if (legacy === null) return {};
+
+  const seeded = { [STANDARD_SERIES_ID]: legacy };
+  await AsyncStorage.setItem(KEY_N_BY_SERIES, JSON.stringify(seeded));
+  return seeded;
 }
 
-export async function saveN(n: number): Promise<void> {
-  await AsyncStorage.setItem(KEY_N, JSON.stringify(n));
+export async function loadN(seriesId: string): Promise<number> {
+  return (await loadNMap())[seriesId] ?? STARTING_N;
+}
+
+export async function saveN(seriesId: string, n: number): Promise<void> {
+  // A plain read-modify-write: unlike addLearned, this runs once at round
+  // end, so there is no concurrent writer to serialize against.
+  const map = await loadNMap();
+  map[seriesId] = n;
+  await AsyncStorage.setItem(KEY_N_BY_SERIES, JSON.stringify(map));
 }
 
 export async function loadHistory(): Promise<RoundRecord[]> {
