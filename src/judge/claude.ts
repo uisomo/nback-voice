@@ -40,23 +40,46 @@ export function parseVerdict(text: string): Verdict {
 }
 
 export class ClaudeJudgeClient implements JudgeClient {
-  private readonly client: Anthropic;
+  private client: Anthropic | null = null;
+  private clientKey = '';
 
-  constructor(apiKey: string) {
-    this.client = new Anthropic({
-      apiKey,
-      // The SDK defaults to a 10 minute timeout and 2 retries; a stalled
-      // connection would then hold the results screen for tens of minutes.
-      // An unanswered call is 未判定, which the engine already handles.
-      timeout: JUDGE_TIMEOUT_MS,
-      maxRetries: 1,
-      // React Native's fetch environment is detected as browser-like by the
-      // SDK's guard. This is a private development build, not a web page.
-      dangerouslyAllowBrowser: true,
-    });
+  /**
+   * Takes a provider rather than a key string so the credential can live in
+   * settings instead of the bundle: it is resolved on every judge, so editing
+   * it takes effect on the next round with no rebuild and no restart.
+   */
+  constructor(private readonly getApiKey: () => Promise<string>) {}
+
+  private async resolveClient(): Promise<Anthropic> {
+    const apiKey = (await this.getApiKey()).trim();
+    if (!apiKey) {
+      // Thrown before any network call, so an unset key lands in the same
+      // 未判定 path as a dead network instead of paying a round trip to be
+      // told 401.
+      throw new Error('APIキーが設定されていません');
+    }
+
+    // Rebuilt only when the value actually changes — a round makes up to nine
+    // calls and they should share one client.
+    if (!this.client || this.clientKey !== apiKey) {
+      this.client = new Anthropic({
+        apiKey,
+        // The SDK defaults to a 10 minute timeout and 2 retries; a stalled
+        // connection would then hold the results screen for tens of minutes.
+        // An unanswered call is 未判定, which the engine already handles.
+        timeout: JUDGE_TIMEOUT_MS,
+        maxRetries: 1,
+        // React Native's fetch environment is detected as browser-like by the
+        // SDK's guard. This is a private development build, not a web page.
+        dangerouslyAllowBrowser: true,
+      });
+      this.clientKey = apiKey;
+    }
+    return this.client;
   }
 
   async judge(question: Question, transcript: string): Promise<Verdict> {
+    const client = await this.resolveClient();
     const params: Anthropic.MessageCreateParamsNonStreaming = {
       model: JUDGE_MODEL,
       // Thinking is on by default on this model and max_tokens caps thinking
@@ -79,7 +102,7 @@ export class ClaudeJudgeClient implements JudgeClient {
         },
       ],
     };
-    const response = await this.client.messages.create(params);
+    const response = await client.messages.create(params);
 
     const block = response.content.find((b) => b.type === 'text');
     if (!block || block.type !== 'text') {

@@ -1,17 +1,55 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import type { RoundMode } from '../engine/types';
 import {
   DEFAULT_SETTINGS,
+  loadApiKey,
   loadSettings,
+  saveApiKey,
   saveSettings,
   type Settings,
 } from '../store/storage';
+import { ClaudeJudgeClient } from '../judge/claude';
+import type { JudgeClient } from '../judge/types';
+import type { Question } from '../engine/types';
 
 interface Props {
   onClose: () => void;
   onEditQuestions: () => void;
+  /** Overridden in tests; defaults to the real Claude client. */
+  judgeClient?: JudgeClient;
 }
+
+/** A question the judge can answer without the bank, used only by the check. */
+const PROBE: Question = {
+  id: 'probe',
+  tier: 0,
+  q: '犬の鳴き声は？',
+  accept: ['わん'],
+};
+
+/**
+ * Shows enough of the key to tell two apart, never enough to use. A key is
+ * pasted once and then only ever recognized.
+ */
+function maskApiKey(apiKey: string): string {
+  if (!apiKey) return '未設定';
+  if (apiKey.length <= 12) return '設定済み';
+  return `${apiKey.slice(0, 7)}…${apiKey.slice(-4)}`;
+}
+
+type CheckState =
+  | { name: 'idle' }
+  | { name: 'checking' }
+  | { name: 'ok' }
+  | { name: 'failed'; message: string };
 
 const STEP_CHOICES = [3000, 4000, 5000, 6000, 8000];
 const TIER_CHOICES = [
@@ -23,12 +61,44 @@ const MODE_CHOICES: { mode: RoundMode; label: string }[] = [
   { mode: 'question', label: '質問のみ' },
 ];
 
-export function SettingsScreen({ onClose, onEditQuestions }: Props) {
+export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+
+  const [apiKey, setApiKey] = useState('');
+  const [check, setCheck] = useState<CheckState>({ name: 'idle' });
 
   useEffect(() => {
     void loadSettings().then(setSettings);
+    void loadApiKey().then(setApiKey);
   }, []);
+
+  const judge = useMemo(
+    () => judgeClient ?? new ClaudeJudgeClient(loadApiKey),
+    [judgeClient],
+  );
+
+  const editApiKey = useCallback((next: string) => {
+    setApiKey(next);
+    setCheck({ name: 'idle' });
+    void saveApiKey(next);
+  }, []);
+
+  /**
+   * The only place a bad key is ever stated on screen. In a round it 401s,
+   * the queue turns that into 未判定, and nothing says the app is misconfigured.
+   */
+  const runCheck = useCallback(async () => {
+    setCheck({ name: 'checking' });
+    try {
+      await judge.judge(PROBE, 'わん');
+      setCheck({ name: 'ok' });
+    } catch (error) {
+      setCheck({
+        name: 'failed',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, [judge]);
 
   // A ref, not the state value, so two rapid taps don't both build their patch
   // from the same stale object and lose the first change. The write stays out
@@ -114,6 +184,33 @@ export function SettingsScreen({ onClose, onEditQuestions }: Props) {
         ))}
       </View>
 
+      <Text style={styles.label}>Claude APIキー</Text>
+      <TextInput
+        testID="api-key-input"
+        style={styles.input}
+        placeholder="sk-ant-..."
+        placeholderTextColor="#8e8e93"
+        secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={editApiKey}
+      />
+      <View style={styles.row}>
+        <Text style={styles.keyState}>{maskApiKey(apiKey)}</Text>
+        <Pressable style={styles.chip} onPress={() => void runCheck()}>
+          <Text style={styles.chipLabel}>接続を確認</Text>
+        </Pressable>
+      </View>
+      {check.name === 'checking' && (
+        <Text style={styles.keyState}>確認中…</Text>
+      )}
+      {check.name === 'ok' && (
+        <Text style={styles.keyOk}>確認できました。採点が使えます。</Text>
+      )}
+      {check.name === 'failed' && (
+        <Text style={styles.keyError}>失敗: {check.message}</Text>
+      )}
+
       <Pressable style={styles.button} onPress={onClose}>
         <Text style={styles.chipLabel}>閉じる</Text>
       </Pressable>
@@ -132,5 +229,16 @@ const styles = StyleSheet.create({
   link: { marginBottom: 24 },
   linkLabel: { color: '#c96f4a', fontSize: 16 },
   chipLabel: { color: '#f4f1ea', fontSize: 16 },
+  input: {
+    backgroundColor: '#1c1c1e',
+    color: '#f4f1ea',
+    fontSize: 16,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  keyState: { color: '#8e8e93', fontSize: 14 },
+  keyOk: { color: '#4caf7d', fontSize: 14, marginBottom: 16 },
+  keyError: { color: '#e5534b', fontSize: 14, marginBottom: 16 },
   button: { marginTop: 'auto', padding: 16, backgroundColor: '#1c1c1e', borderRadius: 12, alignItems: 'center' },
 });

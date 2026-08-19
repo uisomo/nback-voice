@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { addCustom, loadSettings } from '../../store/storage';
+import { addCustom, loadApiKey, loadSettings } from '../../store/storage';
+import type { JudgeClient } from '../../judge/types';
 import { SettingsScreen } from '../SettingsScreen';
 
 beforeEach(async () => {
@@ -98,5 +99,64 @@ describe('SettingsScreen after series', () => {
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     expect(await findByText('標準問題のむずかしさ')).toBeTruthy();
+  });
+});
+
+describe('SettingsScreen API key', () => {
+  const ok: JudgeClient = {
+    judge: async () => ({ correct: true, matched: 'わん' }),
+  };
+
+  it('shows 未設定 when no key is stored', async () => {
+    const { findByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    expect(await findByText(/未設定/)).toBeTruthy();
+  });
+
+  it('saves a pasted key and shows it masked, never in full', async () => {
+    const { getByTestId, findByText, queryByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {});
+    fireEvent.changeText(getByTestId('api-key-input'), 'sk-ant-abcdefghijkl9876');
+    await waitFor(async () => {
+      expect(await loadApiKey()).toBe('sk-ant-abcdefghijkl9876');
+    });
+    expect(await findByText(/9876/)).toBeTruthy();
+    expect(queryByText('sk-ant-abcdefghijkl9876')).toBeNull();
+  });
+
+  it('reports success when the key works', async () => {
+    const { getByText, findByText } = render(
+      <SettingsScreen
+        onClose={() => {}}
+        onEditQuestions={() => {}}
+        judgeClient={ok}
+      />,
+    );
+    await waitFor(() => {});
+    fireEvent.press(getByText('接続を確認'));
+    expect(await findByText(/確認できました/)).toBeTruthy();
+  });
+
+  it('surfaces the failure instead of letting it become a silent 未判定', async () => {
+    // A wrong key 401s, which the judge queue turns into 未判定 — invisible.
+    // This button is the only place that failure is ever stated on screen.
+    const broken: JudgeClient = {
+      judge: async () => {
+        throw new Error('401 authentication_error');
+      },
+    };
+    const { getByText, findByText } = render(
+      <SettingsScreen
+        onClose={() => {}}
+        onEditQuestions={() => {}}
+        judgeClient={broken}
+      />,
+    );
+    await waitFor(() => {});
+    fireEvent.press(getByText('接続を確認'));
+    expect(await findByText(/401/)).toBeTruthy();
   });
 });

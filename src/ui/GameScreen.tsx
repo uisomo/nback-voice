@@ -16,6 +16,7 @@ import type { Listener, Speaker } from '../speech/types';
 import {
   addLearned,
   appendHistory,
+  loadApiKey,
   loadCustom,
   loadLearned,
   loadN,
@@ -25,8 +26,6 @@ import {
   saveN,
 } from '../store/storage';
 import { Grid } from './Grid';
-
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 
 /**
  * Hard cap on waiting for background grading at round end. Answers still in
@@ -62,7 +61,7 @@ function realDeps(): GameScreenDeps {
   return {
     speaker: new ExpoSpeaker(),
     listener: new ExpoListener(),
-    judgeClient: new ClaudeJudgeClient(API_KEY),
+    judgeClient: new ClaudeJudgeClient(loadApiKey),
     requestPermissions: ExpoListener.requestPermissions,
   };
 }

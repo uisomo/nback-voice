@@ -43,6 +43,7 @@ const KEY_HISTORY = 'nback.history';
 const KEY_LEARNED = 'nback.learned';
 const KEY_CUSTOM = 'nback.custom';
 const KEY_CUSTOM_SEQ = 'nback.customSeq';
+const KEY_API_KEY = 'nback.apiKey';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
   const raw = await AsyncStorage.getItem(key);
@@ -236,4 +237,21 @@ export function localDate(date: Date = new Date()): string {
 export function phaseDurations(settings: Settings): { a: number; b: number } {
   const a = Math.round(settings.stepDurationMs * 0.4);
   return { a, b: settings.stepDurationMs - a };
+}
+
+/**
+ * The judge's credential. Deliberately outside Settings: loadSettings()
+ * results are dumped wholesale in tests and logs, and a secret must not ride
+ * along. Stored as a raw string rather than JSON so nothing re-quotes it.
+ *
+ * Falls back to the build-time env var, so an existing .env keeps working and
+ * clearing the field returns to it rather than leaving the app with no key.
+ */
+export async function loadApiKey(): Promise<string> {
+  const stored = (await AsyncStorage.getItem(KEY_API_KEY))?.trim();
+  return stored || process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY || '';
+}
+
+export async function saveApiKey(apiKey: string): Promise<void> {
+  await AsyncStorage.setItem(KEY_API_KEY, apiKey.trim());
 }
