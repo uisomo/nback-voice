@@ -14,21 +14,23 @@ echo   音声N-back  ランチャー
 echo ============================================================
 echo.
 echo   [1] ブラウザで遊ぶ        (Chrome / Edge, 実機不要)
-echo   [2] iPhone で遊ぶ          (開発ビルド済みの端末が必要)
-echo   [3] テストを実行           (287 tests)
-echo   [4] 型チェック
-echo   [5] 終了
+echo   [2] iPhone で遊ぶ          (Safari + トンネル / Apple不要)
+echo   [3] iPhone で遊ぶ          (開発ビルド済みの端末が必要)
+echo   [4] テストを実行           (300 tests)
+echo   [5] 型チェック
+echo   [6] 終了
 echo.
 echo ------------------------------------------------------------
 set /p CHOICE=  番号を入力して Enter:
 
 if "%CHOICE%"=="1" goto web
-if "%CHOICE%"=="2" goto device
-if "%CHOICE%"=="3" goto test
-if "%CHOICE%"=="4" goto typecheck
-if "%CHOICE%"=="5" goto end
+if "%CHOICE%"=="2" goto tunnel
+if "%CHOICE%"=="3" goto device
+if "%CHOICE%"=="4" goto test
+if "%CHOICE%"=="5" goto typecheck
+if "%CHOICE%"=="6" goto end
 echo.
-echo   1-5 のいずれかを入力してください。
+echo   1-6 のいずれかを入力してください。
 timeout /t 2 >nul
 goto menu
 
@@ -46,6 +48,27 @@ echo   止めるときは Ctrl+C。
 echo ------------------------------------------------------------
 echo.
 wsl.exe -e bash -lc "cd %PROJECT% && npx expo start --web"
+goto done
+
+:tunnel
+cls
+echo ============================================================
+echo   iPhone で遊ぶ (Safari + トンネル)
+echo ============================================================
+echo.
+echo   web サーバーを別ウィンドウで起動し、HTTPS トンネルを張ります。
+echo   表示される https://xxxx.trycloudflare.com を
+echo   iPhone の Safari で開いてください。
+echo.
+echo   ※ マイクと音声認識は HTTPS でしか使えないため、
+echo      LAN の IP (192.168.x.x) では動きません。
+echo   ※ 初回は設定画面で Claude APIキーを貼り「接続を確認」を押すこと。
+echo.
+echo   止めるときは Ctrl+C (別ウィンドウの web も閉じる)。
+echo ------------------------------------------------------------
+echo.
+start "nback web" wsl.exe -e bash -lc "cd %PROJECT% && npx expo start --web"
+wsl.exe -e bash -lc "cd %PROJECT% && ~/.local/bin/cloudflared tunnel --url http://localhost:8081"
 goto done
 
 :device

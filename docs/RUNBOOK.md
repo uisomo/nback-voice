@@ -41,10 +41,52 @@ Webで確認できないこと (実機固有):
 - Appleのja-JP認識精度、端末内認識の可否
 - マイク許可のフロー
 
-## 実機ビルド (Task 12)
+## iPhoneで使う
 
-### 前提
-- Expoアカウント / Appleアカウント
+2通りある。**A は今日できる。B は Apple の審査待ちを挟む。**
+
+### A. Safari + トンネル (Appleアカウント不要・今日できる)
+
+web版をHTTPSで公開し、iPhoneのSafariで開く。
+
+```bash
+# 1) web を起動 (start-app.bat の [1] と同じ)
+npx expo start --web
+
+# 2) 別ウィンドウで HTTPS トンネル
+cloudflared tunnel --url http://localhost:8081
+```
+
+出てきた `https://xxxx.trycloudflare.com` を **iPhoneのSafari** で開く。
+
+**LANのIP (`http://192.168.x.x:8081`) では動かない。** マイクと音声認識は
+セキュアなオリジンでしか使えないので、HTTPSのトンネルが要る。ここが唯一の
+非自明な点。
+
+根拠と限界(2026-08-20に確認):
+
+- iOS Safari は **14.5以降** `webkitSpeechRecognition` を持つ。
+  `expo-speech-recognition` の web 実装はこれをそのまま参照している。
+- アプリは `continuous: false` で開始する。WebKitで報告されている
+  「話し終えてもマイクが止まらない」不具合は主に `continuous: true` の話で、
+  ここは踏んでいない。停止もアプリ側がタイマーで叩き、`settle()` が
+  最後の一語を待つので、WebKitの発話終端検出に依存していない。
+- **`interimResults` はWebKitで当てにならない。** 問題文の下の
+  「認識中の文字起こし」が更新されないことがあるが、**確定結果は届くので
+  採点は成立する**。壊れるのは表示だけ。
+- web では権限APIは常に granted を返し、実際の許可はSafariが自分で聞く。
+- 読み上げの解錠(ウォームアップのタップ)は元々iOS向けの仕組みで、
+  Safariでもそのまま効く。
+- 認識が使えなければ画面に `認識エラー: …` が出る。黙って失敗はしない。
+- APIキーは設定画面に貼る。**再ビルド不要。**
+
+### B. EAS実機ビルド (Apple Developer Program 必須)
+
+ネイティブの認識・読み上げを使う本番の形。**Apple Developer Program
+(年$99) の本人確認に24〜48時間かかることがあり、そこが律速。**
+
+#### 前提
+- Expoアカウント / Apple Developer Program メンバーシップ
 - **APIキーを設定する。** 設定画面の「Claude APIキー」に貼るのが既定の方法で、
   再ビルドなしに差し替えられる(`.env` の `EXPO_PUBLIC_ANTHROPIC_API_KEY` は
   貼っていないときのフォールバックとして残っている)。
@@ -55,23 +97,24 @@ Webで確認できないこと (実機固有):
 - Node は v20.19.4 以上が望ましい (react-native / metro の要求。
   現在 v20.19.3 で警告が出る)
 
-### 一度だけ
+#### 一度だけ
 ```bash
-npm install --global eas-cli
+npm install --global eas-cli   # 導入済み (eas-cli 22.x)
 eas login
+eas device:create              # iPhoneのUDIDを登録
 eas build --profile development --platform ios
 ```
 出てきたQRをiPhoneで読んでインストール。`eas.json` の `development`
 プロファイルは設定済み。`app.json` の `ios.bundleIdentifier` は
 `com.nbackvoice.app` — 変えるなら初回ビルド前に。
 
-### 毎日使う
+#### 毎日使う
 ```bash
 npx expo start --dev-client
 ```
 JSの変更だけなら再ビルド不要。ネイティブ依存を足したときだけ作り直す。
 
-## 実機スモークテスト
+## 実機スモークテスト (Bの場合)
 
 - [ ] マイクと音声認識の許可ダイアログが初回に出る
 - [ ] 質問が日本語で読み上げられ、聞き取れる
