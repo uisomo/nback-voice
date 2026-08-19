@@ -7,12 +7,14 @@ import {
   clearLearned,
   deleteCustom,
   loadCustom,
+  loadApiKey,
   loadHistory,
   loadLearned,
   loadN,
   loadSettings,
   localDate,
   phaseDurations,
+  saveApiKey,
   saveN,
   saveSettings,
   updateCustom,
@@ -296,5 +298,44 @@ describe('history carries the series', () => {
       seriesId: 'persuasion',
     });
     expect((await loadHistory())[0].seriesId).toBe('persuasion');
+  });
+});
+
+describe('judge API key', () => {
+  it('starts empty when nothing is stored and no env var is set', async () => {
+    expect(await loadApiKey()).toBe('');
+  });
+
+  it('round-trips a stored key', async () => {
+    await saveApiKey('sk-ant-stored');
+    expect(await loadApiKey()).toBe('sk-ant-stored');
+  });
+
+  it('trims surrounding whitespace from a pasted key', async () => {
+    await saveApiKey('  sk-ant-pasted\n');
+    expect(await loadApiKey()).toBe('sk-ant-pasted');
+  });
+
+  it('falls back to the build-time env var when nothing is stored', async () => {
+    process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY = 'sk-ant-from-env';
+    try {
+      expect(await loadApiKey()).toBe('sk-ant-from-env');
+      // A stored key wins: settings are how you change it without a rebuild.
+      await saveApiKey('sk-ant-stored');
+      expect(await loadApiKey()).toBe('sk-ant-stored');
+      // Clearing the field falls back to the build-time value rather than
+      // leaving the app with no key at all.
+      await saveApiKey('');
+      expect(await loadApiKey()).toBe('sk-ant-from-env');
+    } finally {
+      delete process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
+    }
+  });
+
+  it('keeps the key out of the settings object', async () => {
+    // loadSettings() results get dumped wholesale in tests and logs; a secret
+    // must not ride along.
+    await saveApiKey('sk-ant-secret');
+    expect(JSON.stringify(await loadSettings())).not.toContain('sk-ant-secret');
   });
 });

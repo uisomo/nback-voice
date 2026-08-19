@@ -58,8 +58,8 @@ describe('ClaudeJudgeClient request shape', () => {
     mockClientOptions.length = 0;
   });
 
-  it('caps the request so a stalled call cannot hold up the results screen', () => {
-    new ClaudeJudgeClient('sk-test');
+  it('caps the request so a stalled call cannot hold up the results screen', async () => {
+    await new ClaudeJudgeClient(async () => 'sk-test').judge(DOG, 'わんこ');
     expect(mockClientOptions[0]).toMatchObject({
       timeout: JUDGE_TIMEOUT_MS,
       maxRetries: 1,
@@ -68,7 +68,7 @@ describe('ClaudeJudgeClient request shape', () => {
   });
 
   it('leaves room for thinking tokens on top of the JSON verdict', async () => {
-    const client = new ClaudeJudgeClient('sk-test');
+    const client = new ClaudeJudgeClient(async () => 'sk-test');
     await client.judge(DOG, 'わんこ');
     const params = mockCreate.mock.calls[0][0] as unknown as {
       max_tokens: number;
@@ -81,10 +81,50 @@ describe('ClaudeJudgeClient request shape', () => {
   });
 
   it('returns the parsed verdict from the response text block', async () => {
-    const client = new ClaudeJudgeClient('sk-test');
+    const client = new ClaudeJudgeClient(async () => 'sk-test');
     expect(await client.judge(DOG, 'わんこ')).toEqual({
       correct: true,
       matched: 'わん',
     });
+  });
+});
+
+describe('ClaudeJudgeClient key provider', () => {
+  beforeEach(() => {
+    mockCreate.mockClear();
+    mockClientOptions.length = 0;
+  });
+
+  it('resolves the key on every judge, so an edit takes effect without a restart', async () => {
+    const getApiKey = jest.fn(async () => 'sk-one');
+    const client = new ClaudeJudgeClient(getApiKey);
+    await client.judge(DOG, 'わんこ');
+    await client.judge(DOG, 'わんわん');
+    expect(getApiKey).toHaveBeenCalledTimes(2);
+  });
+
+  it('reuses the SDK client while the key is unchanged', async () => {
+    const client = new ClaudeJudgeClient(async () => 'sk-one');
+    await client.judge(DOG, 'わんこ');
+    await client.judge(DOG, 'わんわん');
+    expect(mockClientOptions).toHaveLength(1);
+  });
+
+  it('rebuilds the SDK client when the key changes', async () => {
+    let key = 'sk-one';
+    const client = new ClaudeJudgeClient(async () => key);
+    await client.judge(DOG, 'わんこ');
+    key = 'sk-two';
+    await client.judge(DOG, 'わんわん');
+    expect(mockClientOptions.map((o) => o.apiKey)).toEqual(['sk-one', 'sk-two']);
+  });
+
+  it('throws on an unset key without spending a network call', async () => {
+    // Lands in the same 未判定 path as a dead network, rather than paying a
+    // round-trip to be told 401.
+    const client = new ClaudeJudgeClient(async () => '   ');
+    await expect(client.judge(DOG, 'わんこ')).rejects.toThrow(/APIキー/);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockClientOptions).toHaveLength(0);
   });
 });
