@@ -1312,3 +1312,100 @@ describe('GameScreen typed answer feedback', () => {
     expect(screen.getByTestId('current-question').props.children).toBe('');
   });
 });
+
+/**
+ * A custom series whose every answer is the same 5 characters, so the budget
+ * the clock shows is knowable from outside: base + 5 × 1s.
+ */
+async function fiveCharacterSeries() {
+  for (let i = 0; i < 9; i++) await addCustom(`自作${i}`, 'あいうえお');
+}
+
+describe('GameScreen answer clock', () => {
+  beforeEach(async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'typed' });
+  });
+
+  it('sizes the countdown from the base plus a second per character', async () => {
+    await fiveCharacterSeries();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    // Step 1's window opens at t=7000 (A2000 + B3000 + A2000).
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(7000);
+    });
+    expect(screen.getByTestId('answer-clock')).toHaveTextContent('9.0s');
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByTestId('answer-clock')).toHaveTextContent('8.0s');
+  });
+
+  it('follows the base set in the settings', async () => {
+    await saveSettings({
+      ...DEFAULT_SETTINGS,
+      answerInput: 'typed',
+      budgetBaseMs: 1000,
+    });
+    await fiveCharacterSeries();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(7000);
+    });
+
+    expect(screen.getByTestId('answer-clock')).toHaveTextContent('6.0s');
+  });
+
+  it('stops at zero without closing the window', async () => {
+    await fiveCharacterSeries();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(7000);
+    });
+    expect(jest.getTimerCount()).toBeGreaterThan(0); // the countdown is running
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByTestId('answer-clock')).toHaveTextContent('0.0s');
+    expect(styleOf(screen.getByTestId('answer-clock'))?.color).toBe(WRONG_COLOR);
+    // A target, not a deadline: the window is still open long past zero.
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
+    // And nothing is left re-rendering the whole screen every 200ms.
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('is gone once the round is over', async () => {
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    await beginRound();
+
+    for (let i = 0; i < 24; i++) {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+        fireEvent.press(screen.getByTestId('typed-submit'));
+      });
+    }
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(20_000);
+    });
+    expect(onFinished).toHaveBeenCalled();
+
+    // The last submit ends the round: the countdown must not freeze on screen
+    // at its final value, and the field must not stay typable through the
+    // grading drain.
+    expect(screen.queryByTestId('answer-clock')).toBeNull();
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+  });
+});

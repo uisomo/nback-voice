@@ -315,6 +315,12 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           const { phase, stepIndex, flashPosition } = runner.state;
 
           if (phase === 'done') {
+            // The round is over: nothing is owed, so the countdown must not
+            // freeze on screen and the field must not stay typable through
+            // the grading drain (up to DRAIN_TIMEOUT_MS).
+            setRemainingMs(null);
+            setTypedText('');
+            setQuestion('');
             void finish();
             return;
           }
@@ -349,7 +355,15 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             setRemainingMs(budget);
             const startedAt = Date.now();
             clockRef.current = setInterval(() => {
-              setRemainingMs(budget - (Date.now() - startedAt));
+              const left = budget - (Date.now() - startedAt);
+              setRemainingMs(left);
+              // The target is reached; the window itself stays open until the
+              // answer is sent. Painting 0.0s once and then stopping keeps an
+              // idle step from re-rendering the screen every 200ms forever.
+              if (left <= 0 && clockRef.current) {
+                clearInterval(clockRef.current);
+                clockRef.current = null;
+              }
             }, 200);
           } else {
             setRemainingMs(null);
