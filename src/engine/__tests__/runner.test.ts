@@ -361,7 +361,7 @@ describe('RoundRunner phase B closing', () => {
 });
 
 describe('RoundRunner answer window timing', () => {
-  it('reports how long phase B took when given a clock', () => {
+  it('records on-time when the answer window duration is within budget', () => {
     let now = 0;
     const plan = buildRound(1, BANK, () => 0);
     const engine = new RoundEngine(plan);
@@ -382,12 +382,44 @@ describe('RoundRunner answer window timing', () => {
     now = 5000;
     runner.tick();   // A -> B for step 1, opens at 5000
     now = 6000;
-    runner.tick();
+    runner.tick();   // B closes at 6000, elapsed = 1000ms
 
     const rows = engine.review;
     expect(rows[0].index).toBe(1);
-    // Step 1 is the first scored step at n=1; its window ran 5000 -> 6000.
-    expect(rows[0].onTime).not.toBeNull();
+    // Step 1 is the first scored step at n=1. BANK has accept values like
+    // "答え0", "答え1", ... which are 3-4 code points each, budgeting 7000-8000ms.
+    // At 1000ms elapsed, well within budget, onTime should be true.
+    expect(rows[0].onTime).toBe(true);
+  });
+
+  it('records late when the answer window duration exceeds budget', () => {
+    let now = 0;
+    const plan = buildRound(1, BANK, () => 0);
+    const engine = new RoundEngine(plan);
+    const runner = new RoundRunner({
+      plan,
+      engine,
+      speaker: new FakeSpeaker(),
+      listener: new FakeListener(),
+      onJudge: () => {},
+      clock: () => now,
+    });
+
+    runner.start();
+    now = 1000;
+    runner.tick();   // A -> B, window opens at 1000
+    now = 4500;
+    runner.tick();   // B closes at 4500
+    now = 5000;
+    runner.tick();   // A -> B for step 1, opens at 5000
+    now = 14000;
+    runner.tick();   // B closes at 14000, elapsed = 9000ms
+
+    const rows = engine.review;
+    expect(rows[0].index).toBe(1);
+    // With 9000ms elapsed, exceeding any budget from BANK's accept values
+    // (maximum ~8000ms for "答え19"), onTime should be false.
+    expect(rows[0].onTime).toBe(false);
   });
 
   /** Without a clock the engine must see no elapsed time at all. */
