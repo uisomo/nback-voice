@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { RoundEngine, RoundRunner, buildRound } from '../engine';
 import { answerBudgetMs } from '../engine/budget';
@@ -17,6 +25,7 @@ import { TypedListener } from '../speech/typed';
 import type { Listener, Speaker } from '../speech/types';
 import {
   addLearned,
+  type AnswerInput,
   appendHistory,
   loadApiKey,
   loadCustom,
@@ -144,7 +153,13 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const [warmupTapped, setWarmupTapped] = useState<number | null>(null);
   /** The round's N, known before it starts so the owner can be told. */
   const [lag, setLag] = useState<number | null>(null);
-  /** Non-null only in typed mode; set once settings load, ahead of render. */
+  /**
+   * How this round is answered. null until settings resolve: rendering either
+   * layout before then paints a grid the round may not be using at all.
+   * State, because the render output depends on it.
+   */
+  const [answerInput, setAnswerInput] = useState<AnswerInput | null>(null);
+  /** The same listener, for the imperative push/submit calls. */
   const typedRef = useRef<TypedListener | null>(null);
   const [typedText, setTypedText] = useState('');
   /** null when the field is closed for this step; the countdown otherwise. */
@@ -239,6 +254,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         const engine = new RoundEngine(plan, { budgetBaseMs: settings.budgetBaseMs });
         const typed = settings.answerInput === 'typed' ? new TypedListener() : null;
         typedRef.current = typed;
+        setAnswerInput(settings.answerInput);
         const queue = new JudgeQueue(resolved.judgeClient, {
           onVerdict: (index, correct) => {
             engine.resolveAnswer(index, correct);
@@ -415,6 +431,27 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     [resolved],
   );
 
+  /**
+   * Sending the typed answer. The transcript display is driven by the
+   * recognizer's `result` event in voice mode, and nothing fires that event
+   * here — so the submit puts the answer on screen itself. Without it the
+   * judge's verdict has nothing to colour and the default mode gives no ○/×
+   * feedback at all until the results screen.
+   */
+  const handleTypedSubmit = useCallback(() => {
+    const typed = typedRef.current;
+    if (!typed) return;
+    const text = typed.text;
+    if (text.length > 0) {
+      setAnswer({
+        index: runnerRef.current?.state.stepIndex ?? -1,
+        text,
+        correct: null,
+      });
+    }
+    typed.submit();
+  }, []);
+
   const handleTap = useCallback((position: Position) => {
     runnerRef.current?.onTap(position);
     setSelected(position);
@@ -450,7 +487,14 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   }
 
   return (
-    <View style={styles.screen}>
+    // The keyboard stays up for the whole round (spec §7). On iOS it overlays
+    // the view rather than resizing it, so without this the field, the send
+    // button and the clock all sit behind it — and the transcript the player
+    // is meant to correct cannot be seen at all.
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <LagHeader n={lag} />
       {warmupTapped !== null && !ready && (
         <Text style={styles.warmupCaption}>準備中…</Text>
@@ -469,38 +513,10 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           「{answer.text}」{verdictMark(answer)}
         </Text>
       )}
-      {mode === 'dual' && typedRef.current && (
-        // Typed mode only: the keyboard eats space a fixed 300 grid does not
-        // account for, so size it from what onLayout finds actually left.
-        <View
-          style={styles.gridBox}
-          onLayout={(event) => {
-            const { width, height } = event.nativeEvent.layout;
-            setGridBox(Math.min(width, height));
-          }}
-        >
-          <Grid
-            flashPosition={flash}
-            selected={selected}
-            tapVerdict={tapVerdict}
-            onTap={handleTap}
-            disabled={!ready}
-            size={gridBox}
-          />
-        </View>
-      )}
-      {mode === 'dual' && !typedRef.current && (
-        // Voice mode: unchanged from before this task — no flex wrapper, no
-        // explicit size, so Grid renders at its original intrinsic default.
-        <Grid
-          flashPosition={flash}
-          selected={selected}
-          tapVerdict={tapVerdict}
-          onTap={handleTap}
-          disabled={!ready}
-        />
-      )}
-      {typedRef.current && (
+      {answerInput === 'typed' && (
+        // Above the grid, in spec §7's order: 質問 → 時計 → 入力欄 → グリッド.
+        // Everything the keyboard could hide is the part that has to stay
+        // visible, so the grid is what gives up the space.
         <View style={styles.typedBlock}>
           {remainingMs !== null && (
             <Text
@@ -522,16 +538,47 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
                 setTypedText(text);
                 typedRef.current?.push(text);
               }}
-              onSubmitEditing={() => typedRef.current?.submit()}
+              onSubmitEditing={handleTypedSubmit}
               returnKeyType="send"
             />
-            <Pressable testID="typed-submit" onPress={() => typedRef.current?.submit()}>
+            <Pressable testID="typed-submit" onPress={handleTypedSubmit}>
               <Text style={styles.typedSend}>送る</Text>
             </Pressable>
           </View>
         </View>
       )}
-    </View>
+      {mode === 'dual' && answerInput === 'typed' && (
+        // Typed mode only: the keyboard eats space a fixed 300 grid does not
+        // account for, so size it from what onLayout finds actually left.
+        <View
+          style={styles.gridBox}
+          onLayout={(event) => {
+            const { width, height } = event.nativeEvent.layout;
+            setGridBox(Math.min(width, height));
+          }}
+        >
+          <Grid
+            flashPosition={flash}
+            selected={selected}
+            tapVerdict={tapVerdict}
+            onTap={handleTap}
+            disabled={!ready}
+            size={gridBox}
+          />
+        </View>
+      )}
+      {mode === 'dual' && answerInput === 'voice' && (
+        // Voice mode: unchanged from before this task — no flex wrapper, no
+        // explicit size, so Grid renders at its original intrinsic default.
+        <Grid
+          flashPosition={flash}
+          selected={selected}
+          tapVerdict={tapVerdict}
+          onTap={handleTap}
+          disabled={!ready}
+        />
+      )}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -595,7 +642,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   gridBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  typedBlock: { marginTop: 16, alignItems: 'center' },
+  typedBlock: { marginBottom: 16, alignItems: 'center' },
   clock: {
     color: '#4caf7d',
     fontSize: 20,

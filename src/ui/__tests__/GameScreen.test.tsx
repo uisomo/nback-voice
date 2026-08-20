@@ -1213,3 +1213,58 @@ describe('GameScreen typed mode', () => {
     expect(onFinished).toHaveBeenCalled();
   });
 });
+
+describe('GameScreen typed answer feedback', () => {
+  beforeEach(async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'typed' });
+  });
+
+  /**
+   * The typed listener used to be held in a ref, which reconciliation cannot
+   * see: the first paint of a typed round showed voice mode's fixed 300 grid
+   * and only swapped once some later setState happened to run.
+   */
+  it('paints neither layout until the settings say which one', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+
+    expect(screen.queryByTestId('cell-0')).toBeNull();
+
+    await beginRound();
+    expect(screen.getByTestId('cell-0')).toBeTruthy();
+  });
+
+  /**
+   * Voice mode shows every answer and marks it ○/× as the judge replies; the
+   * recognizer's result event is what puts it there. Nothing fires that event
+   * in typed mode, so the submit has to do it — otherwise the default mode
+   * gives no feedback at all until the results screen.
+   */
+  it('shows the sent answer, and marks it once the judge has spoken', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    // Step 1 is the first window that owes an answer at N=1.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(7000);
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+
+    // What was sent is on screen, tagged to the step that sent it.
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/こたえ/);
+
+    // The verdict lands while it is still up, and marks it.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+    expect(styleOf(screen.getByTestId('live-transcript'))?.color).toBe(
+      CORRECT_COLOR,
+    );
+  });
+
+});
