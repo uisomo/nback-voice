@@ -461,6 +461,15 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
    * feedback at all until the results screen.
    */
   const handleTypedSubmit = useCallback(() => {
+    // Guards both call sites (this button and the field's returnKeyType
+    // "send") against a window that has already closed: stop() reads the
+    // final transcript but deliberately leaves it in place for the UI to
+    // paint, so a stale `typed.text` from the step just answered is still
+    // sitting there through the whole of the next step's phase A. Without
+    // this a tap here would repaint that stale text under the new step's
+    // index and, worse, steal the previous step's own live-transcript slot —
+    // making its genuine ○/× verdict fail to land.
+    if (remainingMs === null) return;
     const typed = typedRef.current;
     if (!typed) return;
     const text = typed.text;
@@ -472,7 +481,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
       });
     }
     typed.submit();
-  }, []);
+  }, [remainingMs]);
 
   const handleTap = useCallback((position: Position) => {
     runnerRef.current?.onTap(position);
@@ -566,7 +575,11 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               onSubmitEditing={handleTypedSubmit}
               returnKeyType="send"
             />
-            <Pressable testID="typed-submit" onPress={handleTypedSubmit}>
+            <Pressable
+              testID="typed-submit"
+              onPress={handleTypedSubmit}
+              disabled={remainingMs === null}
+            >
               <Text style={styles.typedSend}>送る</Text>
             </Pressable>
           </View>

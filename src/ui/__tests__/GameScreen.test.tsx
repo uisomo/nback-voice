@@ -1267,6 +1267,53 @@ describe('GameScreen typed answer feedback', () => {
     );
   });
 
+  /**
+   * TypedListener.stop() deliberately leaves the transcript in `text` for the
+   * UI to read (see typed.ts) — only start() blanks it, and that does not
+   * happen until the *next* answer window actually opens. So right after a
+   * submit, the field the player just answered is still sitting in
+   * `typed.text` throughout the following step's phase A, while 送る stays on
+   * screen. A tap there must be inert: it must not repaint the previous
+   * answer under the new step's index, and it must not steal that answer's
+   * spot so the judge's real verdict fails to land.
+   */
+  it('ignores a 送る tap once the answer window has closed', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    // Step 1's answer window (A2000 + B3000 + A2000).
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(7000);
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+
+    // Step 2's phase A: the window is closed again, but the previous
+    // transcript is still sitting in the listener, untouched by stop(). The
+    // judge already settled step 1's genuine verdict by this point too.
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+    expect(styleOf(screen.getByTestId('live-transcript'))?.color).toBe(
+      CORRECT_COLOR,
+    );
+
+    // A 送る tap here — the window is closed — must be a no-op: it must
+    // neither repaint the field with the stale transcript nor re-tag it to
+    // step 2's index, which would knock out step 1's already-landed ○/×
+    // (the queue's callback only recolours `answer` while its index still
+    // matches the verdict it is delivering).
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+    expect(styleOf(screen.getByTestId('live-transcript'))?.color).toBe(
+      CORRECT_COLOR,
+    );
+  });
+
   it('shows the question being memorised, never the one being answered', async () => {
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
