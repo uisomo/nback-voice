@@ -162,6 +162,11 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   /** The same listener, for the imperative push/submit calls. */
   const typedRef = useRef<TypedListener | null>(null);
   const [typedText, setTypedText] = useState('');
+  /**
+   * The question being memorised right now — never the one being recalled:
+   * showing that one deletes the N-back (spec §7). Empty on trailing steps.
+   */
+  const [question, setQuestion] = useState('');
   /** null when the field is closed for this step; the countdown otherwise. */
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [gridBox, setGridBox] = useState(300);
@@ -329,6 +334,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           );
 
           const step = plan.steps[stepIndex];
+          // Spoken and shown both: the question stays up through its own
+          // answer window, and the trailing steps show nothing at all.
+          setQuestion(step.question?.q ?? '');
           const owesAnswer = step.recallTarget !== null;
 
           if (phase === 'B' && typed && owesAnswer) {
@@ -518,6 +526,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         // Everything the keyboard could hide is the part that has to stay
         // visible, so the grid is what gives up the space.
         <View style={styles.typedBlock}>
+          <Text testID="current-question" style={styles.question}>
+            {question}
+          </Text>
           {remainingMs !== null && (
             <Text
               testID="answer-clock"
@@ -643,6 +654,15 @@ const styles = StyleSheet.create({
   },
   gridBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   typedBlock: { marginBottom: 16, alignItems: 'center' },
+  /* Keeps its height when a trailing step has no question, so the field and
+     the grid below it do not jump. */
+  question: {
+    color: '#f4f1ea',
+    fontSize: 20,
+    textAlign: 'center',
+    minHeight: 28,
+    marginBottom: 8,
+  },
   clock: {
     color: '#4caf7d',
     fontSize: 20,

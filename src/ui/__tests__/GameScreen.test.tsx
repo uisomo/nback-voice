@@ -1267,4 +1267,48 @@ describe('GameScreen typed answer feedback', () => {
     );
   });
 
+  it('shows the question being memorised, never the one being answered', async () => {
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByTestId('current-question')).toHaveTextContent(
+      speaker.spoken[0],
+    );
+
+    // Step 1's answer window: what is owed is step 0's question, but what is
+    // on screen is step 1's — showing the recalled one deletes the N-back.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(7000);
+    });
+    expect(speaker.spoken[1]).not.toBe(speaker.spoken[0]);
+    expect(screen.getByTestId('current-question')).toHaveTextContent(
+      speaker.spoken[1],
+    );
+  });
+
+  it('empties the question block on the trailing steps', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    expect(screen.getByTestId('current-question').props.children).not.toBe('');
+
+    // Walk to the last step: at N=1 it asks nothing and only collects the
+    // answer owed to step 9.
+    for (let i = 0; i < 24; i++) {
+      if (screen.queryByText('10 / 10　1-back　出題中')) break;
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+        fireEvent.press(screen.getByTestId('typed-submit'));
+      });
+    }
+
+    expect(screen.queryByText('10 / 10　1-back　出題中')).toBeTruthy();
+    expect(screen.getByTestId('current-question').props.children).toBe('');
+  });
 });
