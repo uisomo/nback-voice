@@ -31,6 +31,7 @@ export function Grid({
       : tapVerdict === 'wrong'
         ? styles.ringWrong
         : null;
+  // -4 is the 2px margin each cell carries on both sides (styles.cell).
   const cell = Math.floor(size / 3) - 4;
   return (
     <View style={[styles.grid, { width: size, height: size }]}>
