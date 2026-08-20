@@ -158,6 +158,20 @@ describe('GameScreen', () => {
     expect(onFinished).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * Voice mode must render exactly as it did before typed mode existed: no
+   * flex wrapper around the grid, no explicit size prop, so Grid falls back
+   * to its own 300px default (96px cells) regardless of onLayout.
+   */
+  it('renders the grid at its original size, unaffected by the typed layout', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { getByTestId } = render(
+      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+    );
+    await beginRound();
+    expect(styleOf(getByTestId('cell-0'))?.width).toBe(96);
+  });
+
   it('opens the mic once per step, including the trailing recall steps', async () => {
     const { deps, listener } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
@@ -1136,6 +1150,52 @@ describe('GameScreen typed mode', () => {
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+
+    // Step 0's phase B opens next — the mic would open here in voice mode —
+    // but nothing is owed, so the field must stay closed and no countdown
+    // appears, exactly as in phase A.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2000);
+    });
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+    expect(screen.queryByTestId('answer-clock')).toBeNull();
+
+    // Nothing is ever submitted on this step. If it only advanced on
+    // submission it would hang here forever; it must self-close on its
+    // normal timer instead.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3000);
+    });
+    expect(screen.queryByText('2 / 10　1-back　出題中')).toBeTruthy();
+  });
+
+  /**
+   * Pins the central mechanic against regression. readyToClose() gates
+   * advance() on settle() regardless of how advance() was invoked, so a
+   * reinstated `setTimeout(advance, b)` on this branch would leave every
+   * other test in this file green — the only place the timer's absence is
+   * observable is a submit that moves the round with zero timer advance.
+   */
+  it('advances a phase-B answer window on submit with no timer advance', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    // Step 0 (observe-only) self-closes; step 1 is the first real answer
+    // window — A(2000) + B(3000) + A(2000) lands inside it, still open.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(7000);
+    });
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
+
+    // No timer advance at all here — only the submit may move the round.
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+    expect(screen.queryByText('3 / 10　1-back　出題中')).toBeTruthy();
   });
 
   it('leaves voice mode exactly as it was', async () => {

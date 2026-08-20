@@ -468,7 +468,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           「{answer.text}」{verdictMark(answer)}
         </Text>
       )}
-      {mode === 'dual' && (
+      {mode === 'dual' && typedRef.current && (
+        // Typed mode only: the keyboard eats space a fixed 300 grid does not
+        // account for, so size it from what onLayout finds actually left.
         <View
           style={styles.gridBox}
           onLayout={(event) => {
@@ -485,6 +487,17 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             size={gridBox}
           />
         </View>
+      )}
+      {mode === 'dual' && !typedRef.current && (
+        // Voice mode: unchanged from before this task — no flex wrapper, no
+        // explicit size, so Grid renders at its original intrinsic default.
+        <Grid
+          flashPosition={flash}
+          selected={selected}
+          tapVerdict={tapVerdict}
+          onTap={handleTap}
+          disabled={!ready}
+        />
       )}
       {typedRef.current && (
         <View style={styles.typedBlock}>
