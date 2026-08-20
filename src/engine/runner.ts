@@ -25,6 +25,12 @@ export interface RoundRunnerDeps {
   speaker: Speaker;
   listener: Listener;
   onJudge(answer: PendingAnswer): void;
+  /**
+   * Supplied only when the answer window is timed — typed mode. Voice mode
+   * has no clock to be on time against, and passing none is how the engine
+   * learns that without being told which mode is running.
+   */
+  clock?: () => number;
 }
 
 /** Never rejects; resolves when `promise` settles or `ms` elapses. */
@@ -61,6 +67,7 @@ export class RoundRunner {
   private phase: Phase = 'A';
   private tap: Position | null = null;
   private speaking: Promise<void> = Promise.resolve();
+  private windowOpenedAt: number | null = null;
 
   constructor(deps: RoundRunnerDeps) {
     this.deps = deps;
@@ -137,14 +144,20 @@ export class RoundRunner {
       // synthesizer before the mic opens is exactly right (spec §4.1).
       this.deps.speaker.stop();
       this.deps.listener.start();
+      this.windowOpenedAt = this.deps.clock?.() ?? null;
       return;
     }
 
     // Phase B closing: collect, score, dispatch, advance.
     const transcript = this.deps.listener.stop();
+    const openedAt = this.windowOpenedAt;
+    const elapsedMs =
+      openedAt === null ? undefined : (this.deps.clock?.() ?? openedAt) - openedAt;
+    this.windowOpenedAt = null;
     this.deps.engine.submitStep(this.stepIndex, {
       tap: this.tap,
       transcript: transcript.length > 0 ? transcript : null,
+      elapsedMs,
     });
     for (const answer of this.deps.engine.takePending()) {
       this.deps.onJudge(answer);

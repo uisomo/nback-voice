@@ -359,3 +359,55 @@ describe('RoundRunner phase B closing', () => {
     expect(listener.settles).toBe(0);
   });
 });
+
+describe('RoundRunner answer window timing', () => {
+  it('reports how long phase B took when given a clock', () => {
+    let now = 0;
+    const plan = buildRound(1, BANK, () => 0);
+    const engine = new RoundEngine(plan);
+    const runner = new RoundRunner({
+      plan,
+      engine,
+      speaker: new FakeSpeaker(),
+      listener: new FakeListener(),
+      onJudge: () => {},
+      clock: () => now,
+    });
+
+    runner.start();
+    now = 1000;
+    runner.tick();   // A -> B, window opens at 1000
+    now = 4500;
+    runner.tick();   // B closes at 4500
+    now = 5000;
+    runner.tick();   // A -> B for step 1, opens at 5000
+    now = 6000;
+    runner.tick();
+
+    const rows = engine.review;
+    expect(rows[0].index).toBe(1);
+    // Step 1 is the first scored step at n=1; its window ran 5000 -> 6000.
+    expect(rows[0].onTime).not.toBeNull();
+  });
+
+  /** Without a clock the engine must see no elapsed time at all. */
+  it('leaves the window untimed when no clock is given', () => {
+    const plan = buildRound(1, BANK, () => 0);
+    const engine = new RoundEngine(plan);
+    const runner = new RoundRunner({
+      plan,
+      engine,
+      speaker: new FakeSpeaker(),
+      listener: new FakeListener(),
+      onJudge: () => {},
+    });
+
+    runner.start();
+    runner.tick();
+    runner.tick();
+    runner.tick();
+    runner.tick();
+
+    expect(engine.review.every((row) => row.onTime === null)).toBe(true);
+  });
+});
