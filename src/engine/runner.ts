@@ -151,8 +151,11 @@ export class RoundRunner {
     // Phase B closing: collect, score, dispatch, advance.
     const transcript = this.deps.listener.stop();
     const openedAt = this.windowOpenedAt;
+    // openedAt is non-null only when a clock was passed, so clock! is safe —
+    // and if that ever stopped being true, a crash says so. A fallback would
+    // report elapsedMs = 0: "answered instantly, on time", the exact opposite.
     const elapsedMs =
-      openedAt === null ? undefined : (this.deps.clock?.() ?? openedAt) - openedAt;
+      openedAt === null ? undefined : this.deps.clock!() - openedAt;
     this.windowOpenedAt = null;
     this.deps.engine.submitStep(this.stepIndex, {
       tap: this.tap,
