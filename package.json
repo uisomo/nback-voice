@@ -29,7 +29,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "jest"
+    "test": "jest",
+    "check:bundle": "expo export --platform ios --output-dir dist/bundle-check-ios && expo export --platform web --output-dir dist/bundle-check-web"
   },
   "jest": {
     "preset": "jest-expo",

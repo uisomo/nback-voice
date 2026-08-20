@@ -2,13 +2,13 @@
 
 ## PCで試す
 
-実機ビルドの前に、Windows/WSL だけで確認できることが2段階ある。
+実機ビルドの前に、Windows/WSL だけで確認できることが3段階ある。
 
 ### 1. テストスイート (今すぐ動く)
 
 ```bash
 cd /mnt/c/Projects/nback-voice
-npm test          # 21 suites / 300 tests
+npm test          # 22 suites / 304 tests
 npx tsc --noEmit  # 型チェック
 ```
 
@@ -17,7 +17,26 @@ npx tsc --noEmit  # 型チェック
 フェイクなので、発話にかかる実時間が絡む不具合はここでは絶対に出ない。**
 実際そのクラスの重大バグが1件、全テストをすり抜けた。
 
-### 2. ブラウザで動かす
+### 2. バンドルが通るか (今すぐ動く)
+
+```bash
+npm run check:bundle   # ios と web を両方エクスポートする
+```
+
+**テストも型チェックも通るのにiOSのバンドルだけが落ちる**、という壊れ方が
+実在する。`@anthropic-ai/sdk` の `client.mjs` が `node:fs` を import する
+モジュールを引き込んでいて、React Native には Node の組み込みモジュールが
+ない。Metro は到達しないコードも解決するので、アプリが一度も通らないパスで
+バンドルが止まる。
+
+`metro.config.js` が native (ios/android) のときだけ `node:` で始まる import を
+空モジュールに差し替えて、これを塞いでいる。web は素通し — web には独自の
+Node shim があり、普段使っているのはそちらだから。
+
+実機もXcodeも要らない。**依存を足したとき、SDKのバージョンを上げたときは
+必ず1回通すこと。** ブラウザで遊べていても、iOSのバンドルは落ちうる。
+
+### 3. ブラウザで動かす
 
 `expo-speech-recognition` はWeb Speech API、`expo-speech` はWeb Speech
 Synthesis に対応しているので、**Chrome/Edge なら実際に遊べる**。web用の依存
