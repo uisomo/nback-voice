@@ -299,6 +299,25 @@ describe('history carries the series', () => {
     });
     expect((await loadHistory())[0].seriesId).toBe('persuasion');
   });
+
+  it('records the on-time score, and reads rounds saved before it existed', async () => {
+    await AsyncStorage.setItem(
+      'nback.history',
+      JSON.stringify([{ date: '2026-08-01', n: 2, positionScore: 1, answerScore: 1, unresolved: 0 }]),
+    );
+    await appendHistory({
+      date: '2026-08-20',
+      n: 2,
+      positionScore: 1,
+      answerScore: 1,
+      unresolved: 0,
+      seriesId: 'standard',
+      onTimeScore: 0.5,
+    });
+    const history = await loadHistory();
+    expect(history[0].onTimeScore).toBeUndefined();
+    expect(history[history.length - 1].onTimeScore).toBe(0.5);
+  });
 });
 
 describe('judge API key', () => {

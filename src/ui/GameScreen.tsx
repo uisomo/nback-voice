@@ -280,6 +280,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
                 answerScore: engine.answerScore,
                 unresolved: engine.unresolvedCount,
                 seriesId: series.id,
+                onTimeScore: engine.onTimeScore,
               });
             }
           } catch (error) {

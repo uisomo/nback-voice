@@ -36,6 +36,8 @@ export interface RoundRecord {
   unresolved: number;
   /** Absent on rounds recorded before series existed. */
   seriesId?: string;
+  /** Absent on rounds recorded before typed mode, and null in voice mode. */
+  onTimeScore?: number | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
