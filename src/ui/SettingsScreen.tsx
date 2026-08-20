@@ -186,7 +186,9 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           setBudgetText(text);
           const seconds = Number(text);
           if (!Number.isFinite(seconds) || text.trim() === '') return;
-          update({ budgetBaseMs: Math.round(seconds * 1000) });
+          // Clamped at 0: a negative base makes a clock that starts red and
+          // rows that read 時間超過（目安 -1s）.
+          update({ budgetBaseMs: Math.max(0, Math.round(seconds * 1000)) });
         }}
       />
       <Text style={styles.note}>

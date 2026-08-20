@@ -196,6 +196,19 @@ describe('SettingsScreen answer input', () => {
     });
   });
 
+  /**
+   * A negative base is not a shorter budget, it is a broken one: the clock
+   * would start red and every results row would read 時間超過（目安 -1s）.
+   */
+  it('never stores a negative budget base', async () => {
+    const { getByTestId } = render(<SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />);
+    await waitFor(() => getByTestId('budget-base-input'));
+    fireEvent.changeText(getByTestId('budget-base-input'), '-3');
+    await waitFor(async () => {
+      expect((await loadSettings()).budgetBaseMs).toBe(0);
+    });
+  });
+
   /** A blank or nonsense entry must not persist NaN into storage. */
   it('ignores an unparseable budget base', async () => {
     const { getByTestId } = render(<SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />);
