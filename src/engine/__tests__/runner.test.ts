@@ -8,6 +8,7 @@ import {
   SlowFakeSpeaker,
 } from '../../speech/fakes';
 import type { PendingAnswer } from '../round';
+import { TypedListener } from '../../speech/typed';
 import type { Question } from '../types';
 
 const BANK: Question[] = Array.from({ length: 20 }, (_, i) => ({
@@ -441,5 +442,161 @@ describe('RoundRunner answer window timing', () => {
     runner.tick();
 
     expect(engine.review.every((row) => row.onTime === null)).toBe(true);
+  });
+});
+
+/**
+ * Typed mode has no microphone, so the reason for the two-phase split — never
+ * letting the recognizer hear the synthesizer — does not apply. `merged` puts
+ * the question and the answer window in the same phase.
+ */
+describe('RoundRunner merged steps', () => {
+  function mergedSetup(
+    n = 2,
+    speaker: FakeSpeaker | SlowFakeSpeaker = new FakeSpeaker(),
+  ) {
+    const plan = buildRound(n, BANK, Math.random);
+    const engine = new RoundEngine(plan);
+    const listener = new FakeListener();
+    const runner = new RoundRunner({
+      plan,
+      engine,
+      speaker,
+      listener,
+      onJudge: () => {},
+      merged: true,
+    });
+    return { plan, engine, speaker, listener, runner };
+  }
+
+  it('opens the answer window in the same breath as the question', () => {
+    const { runner, listener, speaker, plan } = mergedSetup();
+    runner.start();
+    expect(runner.state).toMatchObject({ stepIndex: 0, phase: 'AB' });
+    expect(speaker.spoken).toEqual([plan.steps[0].question!.q]);
+    expect(listener.sessions).toBe(1);
+  });
+
+  it('keeps the block lit for the whole step, not just its first half', () => {
+    const { runner, plan } = mergedSetup();
+    runner.start();
+    expect(runner.state.flashPosition).toBe(plan.steps[0].position);
+  });
+
+  it('closes the whole step on a single tick', () => {
+    const { runner, listener, plan, speaker } = mergedSetup();
+    runner.start();
+    runner.tick();
+    expect(runner.state).toMatchObject({ stepIndex: 1, phase: 'AB' });
+    expect(listener.sessions).toBe(2);
+    expect(speaker.spoken).toEqual([
+      plan.steps[0].question!.q,
+      plan.steps[1].question!.q,
+    ]);
+  });
+
+  it('finishes after 9 + N ticks rather than twice that', () => {
+    const { runner } = mergedSetup(2);
+    runner.start();
+    for (let i = 0; i < 11; i++) runner.tick();
+    expect(runner.finished).toBe(true);
+  });
+
+  /** Whether a promise has settled, without blocking on it. */
+  async function settled(promise: Promise<void>): Promise<boolean> {
+    let done = false;
+    void promise.then(() => {
+      done = true;
+    });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    return done;
+  }
+
+  /**
+   * The reason phase A used to wait out the utterance has not gone away: a
+   * question clipped mid-way is unanswerable N steps later. Answering fast
+   * must not be able to cut it off.
+   */
+  /** The real listener of this mode: settle() resolves when 送る is pressed. */
+  function typedSetup(speaker: FakeSpeaker | SlowFakeSpeaker) {
+    const plan = buildRound(2, BANK, Math.random);
+    const listener = new TypedListener();
+    const runner = new RoundRunner({
+      plan,
+      engine: new RoundEngine(plan),
+      speaker,
+      listener,
+      onJudge: () => {},
+      merged: true,
+    });
+    return { runner, listener };
+  }
+
+  it('will not close on the answer alone while the question is still being said', async () => {
+    const speaker = new SlowFakeSpeaker();
+    const { runner, listener } = typedSetup(speaker);
+    runner.start();
+
+    listener.push('こたえ');
+    listener.submit(); // 送る
+    expect(await settled(runner.readyToClose())).toBe(false);
+
+    speaker.resolveSpeak();
+    expect(await settled(runner.readyToClose())).toBe(true);
+  });
+
+  it('will not close on the question alone while the answer is still owed', async () => {
+    const { runner, listener } = typedSetup(new FakeSpeaker());
+    runner.start();
+    expect(await settled(runner.readyToClose())).toBe(false);
+    listener.submit();
+    expect(await settled(runner.readyToClose())).toBe(true);
+  });
+
+  it('times the window from the step opening, not from a phase B that never comes', () => {
+    let now = 0;
+    const plan = buildRound(1, BANK, () => 0);
+    const engine = new RoundEngine(plan);
+    const runner = new RoundRunner({
+      plan,
+      engine,
+      speaker: new FakeSpeaker(),
+      listener: new FakeListener(),
+      onJudge: () => {},
+      clock: () => now,
+      merged: true,
+    });
+
+    runner.start();          // step 0 opens at 0
+    now = 3000;
+    runner.tick();           // step 0 closes; step 1 opens at 3000
+    now = 20_000;
+    runner.tick();           // step 1 closes: 17s on a step that owes an answer
+
+    const rows = engine.review;
+    expect(rows[0].index).toBe(1);
+    expect(rows[0].onTime).toBe(false);
+  });
+});
+
+/**
+ * The warm-up tap unlocks the synthesizer and starts the round in the same
+ * breath. A stop() anywhere between the two cancels the unlock utterance,
+ * and iOS goes silent for the whole round.
+ */
+describe('RoundRunner start', () => {
+  it.each([false, true])('never silences the synthesizer on start (merged: %s)', (merged) => {
+    const plan = buildRound(2, BANK, Math.random);
+    const speaker = new FakeSpeaker();
+    const runner = new RoundRunner({
+      plan,
+      engine: new RoundEngine(plan),
+      speaker,
+      listener: new FakeListener(),
+      onJudge: () => {},
+      merged,
+    });
+    runner.start();
+    expect(speaker.stopped).toBe(0);
   });
 });

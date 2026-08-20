@@ -256,10 +256,18 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         setMode(settings.mode);
         const plan = buildRound(n, pool, Math.random, settings.mode);
         planRef.current = plan;
-        const engine = new RoundEngine(plan, { budgetBaseMs: settings.budgetBaseMs });
         const typed = settings.answerInput === 'typed' ? new TypedListener() : null;
         typedRef.current = typed;
         setAnswerInput(settings.answerInput);
+
+        const { a, b } = phaseDurations(settings);
+        // A merged step starts its clock while the question is still being
+        // read, so the budget absorbs the length that reading used to have to
+        // itself. Without this every typed answer would silently go late.
+        const budgetBaseMs = typed
+          ? settings.budgetBaseMs + a
+          : settings.budgetBaseMs;
+        const engine = new RoundEngine(plan, { budgetBaseMs });
         const queue = new JudgeQueue(resolved.judgeClient, {
           onVerdict: (index, correct) => {
             engine.resolveAnswer(index, correct);
@@ -282,10 +290,11 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           listener: typed ?? resolved.listener,
           onJudge: (answer) => queue.enqueue(answer),
           clock: typed ? () => Date.now() : undefined,
+          // Typed mode has no microphone to keep the synthesizer out of, so
+          // the question and the answer window run together (spec §7).
+          merged: typed !== null,
         });
         runnerRef.current = runner;
-
-        const { a, b } = phaseDurations(settings);
 
         // Invoked from schedule(), long after this setup block has returned, so
         // it owns its error handling — and always reaches the results screen.
@@ -326,30 +335,40 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           }
 
           setFlash(flashPosition);
-          if (phase === 'A') {
+          // 'AB' is a step opening too — a merged step has no separate A.
+          if (phase !== 'B') {
             setSelected(null);
             setTapVerdict(null);
           }
           // The mic reopening is the owner's turn again, so the previous
           // answer clears here rather than at the step boundary — it stays up
           // through the next question, which is when its verdict arrives.
+          // Merged steps have no such boundary to clear on: there the submit
+          // itself replaces what is on screen (see handleTypedSubmit).
           if (phase === 'B') setAnswer(null);
-          setLabel(
-            `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
-              (phase === 'A' ? '出題中' : 'どうぞ'),
-          );
 
           const step = plan.steps[stepIndex];
+          const owesAnswer = step.recallTarget !== null;
+          // Merged steps are always the owner's turn, so they say so — except
+          // on the opening steps, which ask for nothing yet.
+          const answering = phase === 'AB' ? owesAnswer : phase === 'B';
+          setLabel(
+            `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
+              (answering ? 'どうぞ' : '出題中'),
+          );
+
           // Spoken and shown both: the question stays up through its own
           // answer window, and the trailing steps show nothing at all.
           setQuestion(step.question?.q ?? '');
-          const owesAnswer = step.recallTarget !== null;
+          // Whether the field is live this phase — from the merged step's
+          // start, or from phase B in the two-phase round.
+          const windowOpen = phase === 'B' || phase === 'AB';
 
-          if (phase === 'B' && typed && owesAnswer) {
+          if (windowOpen && typed && owesAnswer) {
             const target = plan.steps[step.recallTarget!];
             const budget = answerBudgetMs(
               target.question?.accept[0] ?? '',
-              settings.budgetBaseMs,
+              budgetBaseMs,
             );
             setTypedText('');
             setRemainingMs(budget);
@@ -374,7 +393,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             // behalf: the outer timer below still paces the step normally,
             // this just keeps readyToClose() from waiting on input nobody
             // will ever give.
-            if (phase === 'B' && typed) {
+            if (windowOpen && typed) {
               typed.submit();
             }
           }
@@ -396,10 +415,12 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           // Typed answer windows close on submit, not on a timer: that is what
           // makes the round submit-driven. Everything else keeps its timer,
           // including typed steps that owe no answer.
-          if (phase === 'B' && typed && owesAnswer) {
+          if (windowOpen && typed && owesAnswer) {
             advance();
           } else {
-            timerRef.current = setTimeout(advance, phase === 'A' ? a : b);
+            // A merged step is both halves at once, so it is paced by both.
+            const span = phase === 'A' ? a : phase === 'AB' ? a + b : b;
+            timerRef.current = setTimeout(advance, span);
           }
         };
 
@@ -473,13 +494,14 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     const typed = typedRef.current;
     if (!typed) return;
     const text = typed.text;
-    if (text.length > 0) {
-      setAnswer({
-        index: runnerRef.current?.state.stepIndex ?? -1,
-        text,
-        correct: null,
-      });
-    }
+    // Sending nothing is 聞き取れず for this step, so the previous step's
+    // answer — still on screen through a merged step — must come down with
+    // it rather than read as this step's verdict.
+    setAnswer(
+      text.length > 0
+        ? { index: runnerRef.current?.state.stepIndex ?? -1, text, correct: null }
+        : null,
+    );
     typed.submit();
   }, [remainingMs]);
 

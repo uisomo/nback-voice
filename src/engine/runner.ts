@@ -2,7 +2,11 @@ import type { Listener, Speaker } from '../speech/types';
 import type { PendingAnswer, RoundEngine } from './round';
 import type { Position, RoundPlan } from './types';
 
-export type Phase = 'A' | 'B' | 'done';
+/**
+ * 'A' / 'B' are the two-phase step: question with the mic shut, then the mic.
+ * 'AB' is the merged step used when the answer is typed — see `merged`.
+ */
+export type Phase = 'A' | 'B' | 'AB' | 'done';
 
 /**
  * Hard ceiling on one utterance. iOS can interrupt AVSpeechSynthesizer via an
@@ -31,6 +35,14 @@ export interface RoundRunnerDeps {
    * learns that without being told which mode is running.
    */
   clock?: () => number;
+  /**
+   * Run each step as a single phase: the question is spoken *while* the
+   * answer window is open, instead of after it. Only safe when the listener
+   * is not a microphone — a real recognizer would hear the synthesizer. Typed
+   * mode passes true, which is what puts the question and the field on screen
+   * together (spec §7).
+   */
+  merged?: boolean;
 }
 
 /** Never rejects; resolves when `promise` settles or `ms` elapses. */
@@ -60,6 +72,10 @@ function settleWithin(promise: Promise<void>, ms: number): Promise<void> {
  * Only the *closing* of phase A waits for the speech: see readyToClose().
  * The paint happens at once; the mic simply does not open until the question
  * has been said.
+ *
+ * With `merged`, the two phases become one ('AB'): the answer window opens
+ * together with the question rather than after it. The split exists to keep
+ * the synthesizer out of the microphone, and a text field cannot hear.
  */
 export class RoundRunner {
   private readonly deps: RoundRunnerDeps;
@@ -78,7 +94,8 @@ export class RoundRunner {
     return {
       stepIndex: this.stepIndex,
       phase: this.phase,
-      flashPosition: this.phase === 'A' ? (step?.position ?? null) : null,
+      // Lit for the whole of a merged step: there is no phase B to darken.
+      flashPosition: this.phase === 'B' ? null : (step?.position ?? null),
     };
   }
 
@@ -98,9 +115,8 @@ export class RoundRunner {
 
   start(): void {
     this.stepIndex = 0;
-    this.phase = 'A';
     this.tap = null;
-    this.enterPhaseA();
+    this.enterStep();
   }
 
   onTap(position: Position): void {
@@ -126,7 +142,13 @@ export class RoundRunner {
    */
   readyToClose(): Promise<void> {
     if (this.phase === 'done') return Promise.resolve();
-    return this.phase === 'A' ? this.speaking : this.deps.listener.settle();
+    if (this.phase === 'A') return this.speaking;
+    if (this.phase === 'B') return this.deps.listener.settle();
+    // A merged step drives both at once, so it waits out both: answering
+    // early must not cut the question short any more than it does in phase A.
+    return Promise.all([this.speaking, this.deps.listener.settle()]).then(
+      () => undefined,
+    );
   }
 
   /**
@@ -143,12 +165,12 @@ export class RoundRunner {
       // it); this only bites when the watchdog fired, and then silencing the
       // synthesizer before the mic opens is exactly right (spec §4.1).
       this.deps.speaker.stop();
-      this.deps.listener.start();
-      this.windowOpenedAt = this.deps.clock?.() ?? null;
+      this.openWindow();
       return;
     }
 
-    // Phase B closing: collect, score, dispatch, advance.
+    // Phase B — or the whole of a merged step — closing: collect, score,
+    // dispatch, advance.
     const transcript = this.deps.listener.stop();
     const openedAt = this.windowOpenedAt;
     // openedAt is non-null only when a clock was passed, so clock! is safe —
@@ -174,19 +196,28 @@ export class RoundRunner {
       return;
     }
 
-    this.phase = 'A';
-    this.enterPhaseA();
+    // What the A -> B transition does for a two-phase step, done here
+    // instead: only bites when the speak watchdog fired, and never on
+    // start(), where it would cancel the gesture's unlock utterance.
+    if (this.deps.merged) this.deps.speaker.stop();
+    this.enterStep();
   }
 
-  private enterPhaseA(): void {
+  /**
+   * Opens the step: speak, and — when merged — open the answer window in the
+   * same breath rather than a phase later.
+   */
+  private enterStep(): void {
+    this.phase = this.deps.merged ? 'AB' : 'A';
     const question = this.deps.plan.steps[this.stepIndex]?.question;
-    if (!question) {
-      this.speaking = Promise.resolve();
-      return;
-    }
-    this.speaking = settleWithin(
-      this.deps.speaker.speak(question.q),
-      SPEAK_TIMEOUT_MS,
-    );
+    this.speaking = question
+      ? settleWithin(this.deps.speaker.speak(question.q), SPEAK_TIMEOUT_MS)
+      : Promise.resolve();
+    if (this.deps.merged) this.openWindow();
+  }
+
+  private openWindow(): void {
+    this.deps.listener.start();
+    this.windowOpenedAt = this.deps.clock?.() ?? null;
   }
 }

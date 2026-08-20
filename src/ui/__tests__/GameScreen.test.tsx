@@ -1151,9 +1151,9 @@ describe('GameScreen typed mode', () => {
     await beginRound();
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
 
-    // Step 0's phase B opens next — the mic would open here in voice mode —
-    // but nothing is owed, so the field must stay closed and no countdown
-    // appears, exactly as in phase A.
+    // A merged step opens its window at once — but nothing is owed on step 0,
+    // so the field must stay closed for the whole of it and no countdown
+    // appears.
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2000);
     });
@@ -1162,11 +1162,11 @@ describe('GameScreen typed mode', () => {
 
     // Nothing is ever submitted on this step. If it only advanced on
     // submission it would hang here forever; it must self-close on its
-    // normal timer instead.
+    // normal timer instead — a merged step's own length, A + B.
     await act(async () => {
       await jest.advanceTimersByTimeAsync(3000);
     });
-    expect(screen.queryByText('2 / 10　1-back　出題中')).toBeTruthy();
+    expect(screen.queryByText('2 / 10　1-back　どうぞ')).toBeTruthy();
   });
 
   /**
@@ -1176,16 +1176,17 @@ describe('GameScreen typed mode', () => {
    * other test in this file green — the only place the timer's absence is
    * observable is a submit that moves the round with zero timer advance.
    */
-  it('advances a phase-B answer window on submit with no timer advance', async () => {
+  it('advances an answer window on submit with no timer advance', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    // Step 0 (observe-only) self-closes; step 1 is the first real answer
-    // window — A(2000) + B(3000) + A(2000) lands inside it, still open.
+    // Step 0 (observe-only) self-closes after its own 5000; step 1 is the
+    // first real answer window, and 7000 lands inside it, still open.
     await act(async () => {
       await jest.advanceTimersByTimeAsync(7000);
     });
+    expect(screen.queryByText('2 / 10　1-back　どうぞ')).toBeTruthy();
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
 
     // No timer advance at all here — only the submit may move the round.
@@ -1194,8 +1195,7 @@ describe('GameScreen typed mode', () => {
       fireEvent.press(screen.getByTestId('typed-submit'));
     });
 
-    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
-    expect(screen.queryByText('3 / 10　1-back　出題中')).toBeTruthy();
+    expect(screen.queryByText('3 / 10　1-back　どうぞ')).toBeTruthy();
   });
 
   it('leaves voice mode exactly as it was', async () => {
@@ -1245,9 +1245,10 @@ describe('GameScreen typed answer feedback', () => {
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    // Step 1 is the first window that owes an answer at N=1.
+    // Step 1 is the first window that owes an answer at N=1; step 0 is a
+    // merged step of its own, so it takes A + B to go by.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(7000);
+      await jest.advanceTimersByTimeAsync(5000);
     });
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
@@ -1270,48 +1271,114 @@ describe('GameScreen typed answer feedback', () => {
   /**
    * TypedListener.stop() deliberately leaves the transcript in `text` for the
    * UI to read (see typed.ts) — only start() blanks it, and that does not
-   * happen until the *next* answer window actually opens. So right after a
-   * submit, the field the player just answered is still sitting in
-   * `typed.text` throughout the following step's phase A, while 送る stays on
-   * screen. A tap there must be inert: it must not repaint the previous
-   * answer under the new step's index, and it must not steal that answer's
-   * spot so the judge's real verdict fails to land.
+   * happen until the next answer window opens. Once the round is over no
+   * window ever opens again, so the answer the player last sent is still
+   * sitting in `typed.text` while 送る stays on screen through the grading
+   * drain. A tap there must be inert: it must not repaint that answer under a
+   * new index, which would knock out the ○/× the judge has already landed.
    */
   it('ignores a 送る tap once the answer window has closed', async () => {
+    const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    await beginRound();
+
+    for (let i = 0; i < 24; i++) {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5000);
+      });
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+        fireEvent.press(screen.getByTestId('typed-submit'));
+      });
+    }
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(20_000);
+    });
+    expect(onFinished).toHaveBeenCalled();
+
+    // The last answer is still up, marked, and the window is shut.
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+    expect(styleOf(screen.getByTestId('live-transcript'))?.color).toBe(
+      CORRECT_COLOR,
+    );
+  });
+
+  /**
+   * The whole point of the merged step: the question being memorised and the
+   * field it is answered in are on screen, live, at the same moment. Showing
+   * one and then the other is what this replaced.
+   */
+  it('opens the field at the same moment as the question', async () => {
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    // Step 1's answer window (A2000 + B3000 + A2000).
+    // Step 1 is the first step that owes an answer at N=1. Its window opens
+    // with the step, so no timer advance beyond step 0's own length is needed.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(7000);
+      await jest.advanceTimersByTimeAsync(5000);
+    });
+
+    expect(screen.getByTestId('current-question')).toHaveTextContent(
+      speaker.spoken[1],
+    );
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
+    expect(screen.getByTestId('answer-clock')).toBeTruthy();
+  });
+
+  /**
+   * The verdict for the answer just sent arrives after the step has closed.
+   * With no phase A to hold it, it has to stay up through the following step
+   * — otherwise the default mode gives no ○/× feedback at all mid-round.
+   */
+  it('keeps the previous verdict on screen through the next step', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5000);
     });
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
       fireEvent.press(screen.getByTestId('typed-submit'));
     });
 
-    // Step 2's phase A: the window is closed again, but the previous
-    // transcript is still sitting in the listener, untouched by stop(). The
-    // judge already settled step 1's genuine verdict by this point too.
-    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+    // Step 2 is open and typable, and step 1's ○ is still readable beside it.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
     expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
-    expect(styleOf(screen.getByTestId('live-transcript'))?.color).toBe(
-      CORRECT_COLOR,
-    );
+  });
 
-    // A 送る tap here — the window is closed — must be a no-op: it must
-    // neither repaint the field with the stale transcript nor re-tag it to
-    // step 2's index, which would knock out step 1's already-landed ○/×
-    // (the queue's callback only recolours `answer` while its index still
-    // matches the verdict it is delivering).
+  /** Sending nothing is 聞き取れず, not the previous step's verdict again. */
+  it('takes the previous verdict down when nothing is sent', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5000);
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+
     await act(async () => {
       fireEvent.press(screen.getByTestId('typed-submit'));
     });
-    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
-    expect(styleOf(screen.getByTestId('live-transcript'))?.color).toBe(
-      CORRECT_COLOR,
-    );
+    expect(screen.queryByTestId('live-transcript')).toBeNull();
   });
 
   it('shows the question being memorised, never the one being answered', async () => {
@@ -1328,7 +1395,7 @@ describe('GameScreen typed answer feedback', () => {
     // Step 1's answer window: what is owed is step 0's question, but what is
     // on screen is step 1's — showing the recalled one deletes the N-back.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(7000);
+      await jest.advanceTimersByTimeAsync(5000);
     });
     expect(speaker.spoken[1]).not.toBe(speaker.spoken[0]);
     expect(screen.getByTestId('current-question')).toHaveTextContent(
@@ -1345,7 +1412,7 @@ describe('GameScreen typed answer feedback', () => {
     // Walk to the last step: at N=1 it asks nothing and only collects the
     // answer owed to step 9.
     for (let i = 0; i < 24; i++) {
-      if (screen.queryByText('10 / 10　1-back　出題中')) break;
+      if (screen.queryByText('10 / 10　1-back　どうぞ')) break;
       await act(async () => {
         await jest.advanceTimersByTimeAsync(3000);
       });
@@ -1355,14 +1422,16 @@ describe('GameScreen typed answer feedback', () => {
       });
     }
 
-    expect(screen.queryByText('10 / 10　1-back　出題中')).toBeTruthy();
+    expect(screen.queryByText('10 / 10　1-back　どうぞ')).toBeTruthy();
     expect(screen.getByTestId('current-question').props.children).toBe('');
   });
 });
 
 /**
  * A custom series whose every answer is the same 5 characters, so the budget
- * the clock shows is knowable from outside: base + 5 × 1s.
+ * the clock shows is knowable from outside: base + phase A + 5 × 1s. The
+ * phase-A share is in there because a merged step starts its clock while the
+ * question is still being read — see GameScreen's budgetBaseMs.
  */
 async function fiveCharacterSeries() {
   for (let i = 0; i < 9; i++) await addCustom(`自作${i}`, 'あいうえお');
@@ -1379,16 +1448,17 @@ describe('GameScreen answer clock', () => {
     render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    // Step 1's window opens at t=7000 (A2000 + B3000 + A2000).
+    // Step 1's window opens with the step itself, once step 0's own 5000 is
+    // out: base 4000 + phase A 2000 + 5 characters.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(7000);
+      await jest.advanceTimersByTimeAsync(5000);
     });
-    expect(screen.getByTestId('answer-clock')).toHaveTextContent('9.0s');
+    expect(screen.getByTestId('answer-clock')).toHaveTextContent('11.0s');
 
     await act(async () => {
       await jest.advanceTimersByTimeAsync(1000);
     });
-    expect(screen.getByTestId('answer-clock')).toHaveTextContent('8.0s');
+    expect(screen.getByTestId('answer-clock')).toHaveTextContent('10.0s');
   });
 
   it('follows the base set in the settings', async () => {
@@ -1402,10 +1472,11 @@ describe('GameScreen answer clock', () => {
     render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(7000);
+      await jest.advanceTimersByTimeAsync(5000);
     });
 
-    expect(screen.getByTestId('answer-clock')).toHaveTextContent('6.0s');
+    // base 1000 + phase A 2000 + 5 characters.
+    expect(screen.getByTestId('answer-clock')).toHaveTextContent('8.0s');
   });
 
   it('stops at zero without closing the window', async () => {
@@ -1414,7 +1485,7 @@ describe('GameScreen answer clock', () => {
     render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(7000);
+      await jest.advanceTimersByTimeAsync(5000);
     });
     expect(jest.getTimerCount()).toBeGreaterThan(0); // the countdown is running
 
