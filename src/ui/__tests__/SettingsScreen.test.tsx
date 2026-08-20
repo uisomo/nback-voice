@@ -204,4 +204,18 @@ describe('SettingsScreen answer input', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect((await loadSettings()).budgetBaseMs).toBe(4000);
   });
+
+  /**
+   * Regression: the field used defaultValue, which only seeds an
+   * uncontrolled TextInput at mount. Settings starts as DEFAULT_SETTINGS and
+   * is replaced by the real stored value asynchronously, so a pre-existing
+   * non-default budget must still show up once it loads, not "4" forever.
+   */
+  it('shows a previously stored budget once it loads, not the default', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, budgetBaseMs: 6000 });
+    const { getByTestId } = render(<SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />);
+    await waitFor(() => {
+      expect(getByTestId('budget-base-input').props.value).toBe('6');
+    });
+  });
 });

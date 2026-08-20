@@ -66,14 +66,35 @@ const INPUT_CHOICES: { input: AnswerInput; label: string }[] = [
   { input: 'voice', label: '音声' },
 ];
 
+/**
+ * The one place ms<->s conversion happens for the budget field, in either
+ * direction. Called both to seed the field before settings load (from
+ * DEFAULT_SETTINGS) and to resync it once the real stored value arrives —
+ * a single formula, not two independent ones that could drift apart.
+ */
+function msToSeconds(ms: number): string {
+  return String(ms / 1000);
+}
+
 export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
 
   const [apiKey, setApiKey] = useState('');
   const [check, setCheck] = useState<CheckState>({ name: 'idle' });
 
+  // Seeded from DEFAULT_SETTINGS so the field shows something before load
+  // resolves, then resynced once — see the effect below. Kept separate from
+  // `settings` so a blank/unparseable keystroke can be shown without ever
+  // being parsed into (or fought back from) budgetBaseMs.
+  const [budgetText, setBudgetText] = useState(() =>
+    msToSeconds(DEFAULT_SETTINGS.budgetBaseMs),
+  );
+
   useEffect(() => {
-    void loadSettings().then(setSettings);
+    void loadSettings().then((loaded) => {
+      setSettings(loaded);
+      setBudgetText(msToSeconds(loaded.budgetBaseMs));
+    });
     void loadApiKey().then(setApiKey);
   }, []);
 
@@ -158,8 +179,11 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
         testID="budget-base-input"
         style={styles.input}
         keyboardType="number-pad"
-        defaultValue={String(settings.budgetBaseMs / 1000)}
+        value={budgetText}
         onChangeText={(text) => {
+          // Always reflects what was typed, even blank or unparseable —
+          // never snapped back mid-edit. Only a parseable value propagates.
+          setBudgetText(text);
           const seconds = Number(text);
           if (!Number.isFinite(seconds) || text.trim() === '') return;
           update({ budgetBaseMs: Math.round(seconds * 1000) });
