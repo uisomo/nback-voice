@@ -1,6 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { addCustom, loadApiKey, loadSettings } from '../../store/storage';
+import {
+  addCustom,
+  DEFAULT_SETTINGS,
+  loadApiKey,
+  loadSettings,
+  saveSettings,
+} from '../../store/storage';
 import type { JudgeClient } from '../../judge/types';
 import { SettingsScreen } from '../SettingsScreen';
 
@@ -158,5 +164,44 @@ describe('SettingsScreen API key', () => {
     await waitFor(() => {});
     fireEvent.press(getByText('接続を確認'));
     expect(await findByText(/401/)).toBeTruthy();
+  });
+});
+
+describe('SettingsScreen answer input', () => {
+  it('switches to voice and saves it', async () => {
+    const { getByTestId } = render(<SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />);
+    await waitFor(() => getByTestId('answer-input-voice'));
+    fireEvent.press(getByTestId('answer-input-voice'));
+    await waitFor(async () => {
+      expect((await loadSettings()).answerInput).toBe('voice');
+    });
+  });
+
+  it('switches back to typed', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'voice' });
+    const { getByTestId } = render(<SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />);
+    await waitFor(() => getByTestId('answer-input-typed'));
+    fireEvent.press(getByTestId('answer-input-typed'));
+    await waitFor(async () => {
+      expect((await loadSettings()).answerInput).toBe('typed');
+    });
+  });
+
+  it('edits the time budget base', async () => {
+    const { getByTestId } = render(<SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />);
+    await waitFor(() => getByTestId('budget-base-input'));
+    fireEvent.changeText(getByTestId('budget-base-input'), '6');
+    await waitFor(async () => {
+      expect((await loadSettings()).budgetBaseMs).toBe(6000);
+    });
+  });
+
+  /** A blank or nonsense entry must not persist NaN into storage. */
+  it('ignores an unparseable budget base', async () => {
+    const { getByTestId } = render(<SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />);
+    await waitFor(() => getByTestId('budget-base-input'));
+    fireEvent.changeText(getByTestId('budget-base-input'), 'あ');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect((await loadSettings()).budgetBaseMs).toBe(4000);
   });
 });

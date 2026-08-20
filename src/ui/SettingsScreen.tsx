@@ -14,6 +14,7 @@ import {
   loadSettings,
   saveApiKey,
   saveSettings,
+  type AnswerInput,
   type Settings,
 } from '../store/storage';
 import { ClaudeJudgeClient } from '../judge/claude';
@@ -59,6 +60,10 @@ const TIER_CHOICES = [
 const MODE_CHOICES: { mode: RoundMode; label: string }[] = [
   { mode: 'dual', label: '位置＋質問' },
   { mode: 'question', label: '質問のみ' },
+];
+const INPUT_CHOICES: { input: AnswerInput; label: string }[] = [
+  { input: 'typed', label: '入力' },
+  { input: 'voice', label: '音声' },
 ];
 
 export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props) {
@@ -131,6 +136,38 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
         ))}
       </View>
 
+      <Text style={styles.label}>回答のしかた</Text>
+      <View style={styles.row}>
+        {INPUT_CHOICES.map(({ input, label }) => (
+          <Pressable
+            key={input}
+            testID={`answer-input-${input}`}
+            onPress={() => update({ answerInput: input })}
+            style={[styles.chip, settings.answerInput === input && styles.chipOn]}
+          >
+            <Text style={styles.chipLabel}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={styles.note}>
+        入力にすると、キーボードのマイクで喋った文字を、送る前に直せる。
+      </Text>
+
+      <Text style={styles.label}>考える時間の基準 (秒)</Text>
+      <TextInput
+        testID="budget-base-input"
+        style={styles.input}
+        keyboardType="number-pad"
+        defaultValue={String(settings.budgetBaseMs / 1000)}
+        onChangeText={(text) => {
+          const seconds = Number(text);
+          if (!Number.isFinite(seconds) || text.trim() === '') return;
+          update({ budgetBaseMs: Math.round(seconds * 1000) });
+        }}
+      />
+      <Text style={styles.note}>
+        答え1文字につき1秒が、この基準に足される。時計が0になっても先へは進まない。
+      </Text>
 
       <Pressable style={styles.link} onPress={onEditQuestions}>
         <Text style={styles.linkLabel}>自分の問題を編集</Text>
@@ -229,6 +266,7 @@ const styles = StyleSheet.create({
   link: { marginBottom: 24 },
   linkLabel: { color: '#c96f4a', fontSize: 16 },
   chipLabel: { color: '#f4f1ea', fontSize: 16 },
+  note: { color: '#8e8e93', fontSize: 14, marginBottom: 24 },
   input: {
     backgroundColor: '#1c1c1e',
     color: '#f4f1ea',
