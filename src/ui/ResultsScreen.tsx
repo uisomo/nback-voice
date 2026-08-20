@@ -81,6 +81,20 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
                   </Text>
                 )}
               </View>
+              {/*
+                accept[0] only. The rest of the list is recognizer tolerance
+                plus what the judge learned at runtime — those exist so your
+                phrasing passes, and they grow as you play. They are not the
+                answer.
+              */}
+              {item.question.accept[0] !== undefined && (
+                <Text
+                  testID={`review-answer-${item.index}`}
+                  style={styles.answerLabel}
+                >
+                  答え: <Text style={styles.answerValue}>{item.question.accept[0]}</Text>
+                </Text>
+              )}
             </View>
           );
         })}
@@ -111,6 +125,8 @@ const styles = StyleSheet.create({
   heard: { fontSize: 17, flexShrink: 1 },
   verdict: { fontSize: 17 },
   position: { fontSize: 14, marginLeft: 'auto' },
+  answerLabel: { color: '#8e8e93', fontSize: 14, marginTop: 3 },
+  answerValue: { color: '#f4f1ea' },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 24 },
   button: {
     flex: 1,

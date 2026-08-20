@@ -196,3 +196,83 @@ describe('ResultsScreen lag', () => {
     expect(getByText(/2つ前の質問/)).toBeTruthy();
   });
 });
+
+/** All the text a node renders, however deeply its Texts are nested. */
+function textOf(node: unknown): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join('');
+  if (node && typeof node === 'object' && 'props' in node) {
+    return textOf((node as { props: { children?: unknown } }).props.children);
+  }
+  return '';
+}
+
+/** A bank whose answers carry synonyms, as the real one does. */
+const SYNONYM_BANK: Question[] = Array.from({ length: 20 }, (_, i) => ({
+  id: `s${i}`,
+  tier: 1,
+  q: `質問${i}`,
+  accept: [`本命${i}`, `別名${i}`, `略称${i}`],
+}));
+
+function engineWith(bank: Question[]): RoundEngine {
+  const plan = buildRound(2, bank, Math.random);
+  const engine = new RoundEngine(plan);
+  for (const step of plan.steps) {
+    engine.submitStep(step.index, {
+      tap: step.recallTarget === null ? null : plan.steps[step.recallTarget].position,
+      transcript: step.recallTarget === null ? null : 'こたえ',
+    });
+  }
+  engine.takePending();
+  return engine;
+}
+
+describe('ResultsScreen correct answer', () => {
+  it('shows the answer on every row — the round is over, nothing is a spoiler', () => {
+    const engine = mixedEngine();
+    const { getByTestId } = render(
+      <ResultsScreen engine={engine} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    expect(engine.review).toHaveLength(9);
+    for (const row of engine.review) {
+      expect(textOf(getByTestId(`review-answer-${row.index}`))).toContain(
+        row.question.accept[0],
+      );
+    }
+  });
+
+  it('shows it on the rows that most need it — 聞き取れず and 未判定', () => {
+    const engine = mixedEngine();
+    const byIndex = new Map(engine.review.map((row) => [row.index, row]));
+    const { getByTestId } = render(
+      <ResultsScreen engine={engine} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    // Step 4 was never heard; step 5 was heard but never graded.
+    expect(byIndex.get(4)?.transcript).toBeNull();
+    expect(byIndex.get(5)?.correct).toBeNull();
+    for (const index of [4, 5]) {
+      expect(textOf(getByTestId(`review-answer-${index}`))).toContain(
+        byIndex.get(index)!.question.accept[0],
+      );
+    }
+  });
+
+  /**
+   * The tail of `accept` is recognizer tolerance plus whatever the judge
+   * learned at runtime. Those exist so your phrasing passes — they are not
+   * the answer, and the list grows as you play.
+   */
+  it('shows the canonical answer only, never the synonyms', () => {
+    const engine = engineWith(SYNONYM_BANK);
+    const { getByTestId } = render(
+      <ResultsScreen engine={engine} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    for (const row of engine.review) {
+      const shown = textOf(getByTestId(`review-answer-${row.index}`));
+      expect(shown).toContain(row.question.accept[0]);
+      expect(shown).not.toContain(row.question.accept[1]);
+      expect(shown).not.toContain(row.question.accept[2]);
+    }
+  });
+});

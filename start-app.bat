@@ -16,7 +16,7 @@ echo.
 echo   [1] ブラウザで遊ぶ        (Chrome / Edge, 実機不要)
 echo   [2] iPhone で遊ぶ          (Safari + トンネル / Apple不要)
 echo   [3] iPhone で遊ぶ          (開発ビルド済みの端末が必要)
-echo   [4] テストを実行           (304 tests)
+echo   [4] テストを実行           (307 tests)
 echo   [5] 型チェック
 echo   [6] 終了
 echo.

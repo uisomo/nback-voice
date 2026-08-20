@@ -8,7 +8,7 @@
 
 ```bash
 cd /mnt/c/Projects/nback-voice
-npm test          # 22 suites / 304 tests
+npm test          # 22 suites / 307 tests
 npx tsc --noEmit  # 型チェック
 ```
 
