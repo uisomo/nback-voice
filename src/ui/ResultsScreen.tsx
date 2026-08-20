@@ -42,6 +42,9 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
       <Text style={styles.lag}>{n}つ前の質問に答えるラウンド</Text>
       <Text style={styles.row}>位置　{pct(engine.positionScore)}</Text>
       <Text style={styles.row}>回答　{pct(engine.answerScore)}</Text>
+      {engine.onTimeScore !== null && (
+        <Text style={styles.row}>時間内　{pct(engine.onTimeScore)}</Text>
+      )}
       {engine.unresolvedCount > 0 && (
         <Text style={styles.note}>未判定 {engine.unresolvedCount} 件</Text>
       )}
@@ -95,6 +98,11 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
                   答え: <Text style={styles.answerValue}>{item.question.accept[0]}</Text>
                 </Text>
               )}
+              {item.onTime === false && (
+                <Text testID={`review-late-${item.index}`} style={styles.late}>
+                  時間超過（目安 {(item.budgetMs / 1000).toFixed(0)}s）
+                </Text>
+              )}
             </View>
           );
         })}
@@ -127,6 +135,7 @@ const styles = StyleSheet.create({
   position: { fontSize: 14, marginLeft: 'auto' },
   answerLabel: { color: '#8e8e93', fontSize: 14, marginTop: 3 },
   answerValue: { color: '#f4f1ea' },
+  late: { color: '#e5534b', fontSize: 13, marginTop: 2 },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 24 },
   button: {
     flex: 1,
