@@ -1,6 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STANDARD_SERIES_ID } from '../content/series';
+import { DEFAULT_BUDGET_BASE_MS } from '../engine/budget';
 import type { Question, RoundMode } from '../engine/types';
+
+/**
+ * How the answer is given. Independent of RoundMode, which says what gets
+ * scored: all four combinations are meaningful.
+ */
+export type AnswerInput = 'voice' | 'typed';
 
 export interface Settings {
   /** Total step length in ms; split 40% phase A / 60% phase B. */
@@ -14,6 +21,10 @@ export interface Settings {
   mode: RoundMode;
   /** Which series a round draws from. */
   seriesId: string;
+  /** How answers are entered. Typed is the default; voice is opted into. */
+  answerInput: AnswerInput;
+  /** Base of the answer time budget, before the per-character part. */
+  budgetBaseMs: number;
 }
 
 export interface RoundRecord {
@@ -34,6 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
   maxTier: 2,
   mode: 'dual',
   seriesId: STANDARD_SERIES_ID,
+  answerInput: 'typed',
+  budgetBaseMs: DEFAULT_BUDGET_BASE_MS,
 };
 
 const KEY_SETTINGS = 'nback.settings';

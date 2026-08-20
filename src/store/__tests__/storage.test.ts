@@ -339,3 +339,33 @@ describe('judge API key', () => {
     expect(JSON.stringify(await loadSettings())).not.toContain('sk-ant-secret');
   });
 });
+
+describe('answer input settings', () => {
+  it('defaults to typed — voice is the mode you opt into', () => {
+    expect(DEFAULT_SETTINGS.answerInput).toBe('typed');
+    expect(DEFAULT_SETTINGS.budgetBaseMs).toBe(4000);
+  });
+
+  it('fills both in for settings stored before they existed', async () => {
+    await AsyncStorage.setItem(
+      'nback.settings',
+      JSON.stringify({ stepDurationMs: 7000, mode: 'question' }),
+    );
+    const settings = await loadSettings();
+    expect(settings.stepDurationMs).toBe(7000);
+    expect(settings.mode).toBe('question');
+    expect(settings.answerInput).toBe('typed');
+    expect(settings.budgetBaseMs).toBe(4000);
+  });
+
+  it('round-trips a stored choice', async () => {
+    await saveSettings({
+      ...DEFAULT_SETTINGS,
+      answerInput: 'voice',
+      budgetBaseMs: 6000,
+    });
+    const settings = await loadSettings();
+    expect(settings.answerInput).toBe('voice');
+    expect(settings.budgetBaseMs).toBe(6000);
+  });
+});
