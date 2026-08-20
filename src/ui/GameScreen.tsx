@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { RoundEngine, RoundRunner, buildRound } from '../engine';
+import { answerBudgetMs } from '../engine/budget';
 import type { PositionOutcome } from '../engine/round';
 import type { Position, RoundMode, RoundPlan } from '../engine/types';
 import { MIN_QUESTIONS } from '../content/pool';
@@ -12,6 +13,7 @@ import { JudgeQueue } from '../judge/queue';
 import type { JudgeClient } from '../judge/types';
 import { ExpoListener } from '../speech/listener';
 import { ExpoSpeaker } from '../speech/speaker';
+import { TypedListener } from '../speech/typed';
 import type { Listener, Speaker } from '../speech/types';
 import {
   addLearned,
@@ -142,12 +144,20 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const [warmupTapped, setWarmupTapped] = useState<number | null>(null);
   /** The round's N, known before it starts so the owner can be told. */
   const [lag, setLag] = useState<number | null>(null);
+  /** Non-null only in typed mode; set once settings load, ahead of render. */
+  const typedRef = useRef<TypedListener | null>(null);
+  const [typedText, setTypedText] = useState('');
+  /** null when the field is closed for this step; the countdown otherwise. */
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [gridBox, setGridBox] = useState(300);
 
   const runnerRef = useRef<RoundRunner | null>(null);
   const planRef = useRef<RoundPlan | null>(null);
   /** Starts the prepared round; set once setup finishes, called by the tap. */
   const beginRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Drives the on-screen countdown during a timed typed answer window. */
+  const clockRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript;
@@ -226,7 +236,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         setMode(settings.mode);
         const plan = buildRound(n, pool, Math.random, settings.mode);
         planRef.current = plan;
-        const engine = new RoundEngine(plan);
+        const engine = new RoundEngine(plan, { budgetBaseMs: settings.budgetBaseMs });
+        const typed = settings.answerInput === 'typed' ? new TypedListener() : null;
+        typedRef.current = typed;
         const queue = new JudgeQueue(resolved.judgeClient, {
           onVerdict: (index, correct) => {
             engine.resolveAnswer(index, correct);
@@ -246,8 +258,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           plan,
           engine,
           speaker: resolved.speaker,
-          listener: resolved.listener,
+          listener: typed ?? resolved.listener,
           onJudge: (answer) => queue.enqueue(answer),
+          clock: typed ? () => Date.now() : undefined,
         });
         runnerRef.current = runner;
 
@@ -298,21 +311,57 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               (phase === 'A' ? '出題中' : 'どうぞ'),
           );
 
-          timerRef.current = setTimeout(
-            () => {
-              // Phase A closes at max(a, utterance) — readyToClose() resolves
-              // at once unless the question is still being spoken. The paint
-              // above already happened, so this only delays the mic opening.
-              void runner.readyToClose().then(() => {
-                if (cancelled) return;
-                // tick() transitions synchronously, so the repaint lands with
-                // the transition rather than chaining off another promise.
-                runner.tick();
-                schedule();
-              });
-            },
-            phase === 'A' ? a : b,
-          );
+          const step = plan.steps[stepIndex];
+          const owesAnswer = step.recallTarget !== null;
+
+          if (phase === 'B' && typed && owesAnswer) {
+            const target = plan.steps[step.recallTarget!];
+            const budget = answerBudgetMs(
+              target.question?.accept[0] ?? '',
+              settings.budgetBaseMs,
+            );
+            setTypedText('');
+            setRemainingMs(budget);
+            const startedAt = Date.now();
+            clockRef.current = setInterval(() => {
+              setRemainingMs(budget - (Date.now() - startedAt));
+            }, 200);
+          } else {
+            setRemainingMs(null);
+            // RoundRunner always opens the TypedListener on phase B and
+            // readyToClose() always waits on settle(), even on a step that
+            // owes no answer — the runner does not know about steps. Nothing
+            // is shown to submit here, so the UI submits on the step's
+            // behalf: the outer timer below still paces the step normally,
+            // this just keeps readyToClose() from waiting on input nobody
+            // will ever give.
+            if (phase === 'B' && typed) {
+              typed.submit();
+            }
+          }
+
+          const advance = () => {
+            void runner.readyToClose().then(() => {
+              if (cancelled) return;
+              if (clockRef.current) {
+                clearInterval(clockRef.current);
+                clockRef.current = null;
+              }
+              // tick() transitions synchronously, so the repaint lands with
+              // the transition rather than chaining off another promise.
+              runner.tick();
+              schedule();
+            });
+          };
+
+          // Typed answer windows close on submit, not on a timer: that is what
+          // makes the round submit-driven. Everything else keeps its timer,
+          // including typed steps that owe no answer.
+          if (phase === 'B' && typed && owesAnswer) {
+            advance();
+          } else {
+            timerRef.current = setTimeout(advance, phase === 'A' ? a : b);
+          }
         };
 
         // Prepared but not started: the round waits for the warm-up tap,
@@ -342,7 +391,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     return () => {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (clockRef.current) clearInterval(clockRef.current);
       resolved.listener.stop();
+      typedRef.current?.stop();
       resolved.speaker.stop();
     };
   }, [resolved, onFinished, seriesId]);
@@ -418,13 +469,53 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         </Text>
       )}
       {mode === 'dual' && (
-        <Grid
-          flashPosition={flash}
-          selected={selected}
-          tapVerdict={tapVerdict}
-          onTap={handleTap}
-          disabled={!ready}
-        />
+        <View
+          style={styles.gridBox}
+          onLayout={(event) => {
+            const { width, height } = event.nativeEvent.layout;
+            setGridBox(Math.min(width, height));
+          }}
+        >
+          <Grid
+            flashPosition={flash}
+            selected={selected}
+            tapVerdict={tapVerdict}
+            onTap={handleTap}
+            disabled={!ready}
+            size={gridBox}
+          />
+        </View>
+      )}
+      {typedRef.current && (
+        <View style={styles.typedBlock}>
+          {remainingMs !== null && (
+            <Text
+              testID="answer-clock"
+              style={[styles.clock, remainingMs <= 0 && styles.clockOut]}
+            >
+              {Math.max(0, remainingMs / 1000).toFixed(1)}s
+            </Text>
+          )}
+          <View style={styles.typedRow}>
+            <TextInput
+              testID="typed-answer-input"
+              style={styles.typedInput}
+              value={typedText}
+              editable={remainingMs !== null}
+              autoCorrect={false}
+              placeholder={remainingMs === null ? 'まだ答えません' : '答えを入力'}
+              onChangeText={(text) => {
+                setTypedText(text);
+                typedRef.current?.push(text);
+              }}
+              onSubmitEditing={() => typedRef.current?.submit()}
+              returnKeyType="send"
+            />
+            <Pressable testID="typed-submit" onPress={() => typedRef.current?.submit()}>
+              <Text style={styles.typedSend}>送る</Text>
+            </Pressable>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -488,5 +579,34 @@ const styles = StyleSheet.create({
     fontSize: 22,
     textAlign: 'center',
     marginBottom: 24,
+  },
+  gridBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  typedBlock: { marginTop: 16, alignItems: 'center' },
+  clock: {
+    color: '#4caf7d',
+    fontSize: 20,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  clockOut: { color: '#e5534b' },
+  typedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  typedInput: {
+    backgroundColor: '#1c1c1e',
+    color: '#f4f1ea',
+    fontSize: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 200,
+  },
+  typedSend: {
+    color: '#c96f4a',
+    fontSize: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
 });

@@ -114,6 +114,12 @@ beforeEach(async () => {
   await AsyncStorage.clear();
   (useSpeechRecognitionEvent as unknown as jest.Mock).mockClear();
   jest.useFakeTimers();
+  // Every pre-existing test here describes voice behaviour (CannedListener,
+  // FakeListener, taps and timers alone advancing the round). DEFAULT_SETTINGS
+  // defaults to typed, so voice has to be opted into explicitly, exactly as
+  // real settings would require — the 'GameScreen typed mode' describe below
+  // opts back into typed for its own tests.
+  await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'voice' });
 });
 
 afterEach(() => {
@@ -423,7 +429,7 @@ describe('GameScreen phase A pacing', () => {
 
 describe('GameScreen question-only mode', () => {
   it('renders no grid', async () => {
-    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { queryByTestId } = render(
       <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
@@ -434,7 +440,7 @@ describe('GameScreen question-only mode', () => {
   });
 
   it('still speaks 9 questions and finishes', async () => {
-    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const onFinished = jest.fn();
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
@@ -445,7 +451,7 @@ describe('GameScreen question-only mode', () => {
   });
 
   it('scores on the answer channel alone and adapts N', async () => {
-    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
@@ -459,7 +465,7 @@ describe('GameScreen question-only mode', () => {
   });
 
   it('holds N when the judge is unreachable in question mode', async () => {
-    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const offline: JudgeClient = {
       judge: async () => {
         throw new Error('network down');
@@ -530,7 +536,7 @@ describe('GameScreen series', () => {
   it('saves the raised lag under the series that earned it', async () => {
     // question mode, like the other adaptive-N cases: the answer channel
     // alone scores 1.0, so N rises without the round needing grid taps.
-    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question' });
+    await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(
       <GameScreen seriesId="persuasion" onFinished={jest.fn()} deps={deps} />,
@@ -1065,5 +1071,85 @@ describe('GameScreen warm-up gate', () => {
     });
 
     expect(await findByText(/1つ前の質問/)).toBeTruthy();
+  });
+});
+
+describe('GameScreen typed mode', () => {
+  beforeEach(async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'typed' });
+  });
+
+  it('shows a field and never opens the mic', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const listener = new FakeListener();
+    render(
+      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={{ ...deps, listener }} />,
+    );
+    await beginRound();
+    expect(screen.getByTestId('typed-answer-input')).toBeTruthy();
+    expect(listener.sessions).toBe(0);
+  });
+
+  /**
+   * The clock is a target, not a deadline. With nothing submitted, no amount
+   * of elapsed time may carry the round forward — this is the whole of
+   * "submit-driven", asserted at the only place it can be observed.
+   */
+  it('never finishes on its own, however long it waits', async () => {
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    await beginRound();
+    await runWholeRound();
+    expect(onFinished).not.toHaveBeenCalled();
+  });
+
+  it('finishes once every answer is submitted', async () => {
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    await beginRound();
+
+    // 9 scored steps plus the observe-only ones; each pass advances phase A
+    // on its timer, then submits if an answer is being asked for.
+    for (let i = 0; i < 24; i++) {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      const submit = screen.queryByTestId('typed-submit');
+      if (!submit) continue;
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+        fireEvent.press(submit);
+      });
+    }
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(20_000);
+    });
+    expect(onFinished).toHaveBeenCalled();
+  });
+
+  /** Nothing is owed on the first N steps, so nothing should be asked for. */
+  it('does not ask for an answer on steps with nothing to recall', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+  });
+
+  it('leaves voice mode exactly as it was', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'voice' });
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const listener = new CannedListener('こたえ');
+    render(
+      <GameScreen seriesId="standard" onFinished={onFinished} deps={{ ...deps, listener }} />,
+    );
+    await beginRound();
+    await runWholeRound();
+    expect(screen.queryByTestId('typed-answer-input')).toBeNull();
+    expect(listener.sessions).toBeGreaterThan(0);
+    expect(onFinished).toHaveBeenCalled();
   });
 });
