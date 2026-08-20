@@ -8,7 +8,11 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nbackvoice.app"
+      "bundleIdentifier": "com.nbackvoice.app",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "回答の聞き取りに音声認識を使用します。",
+        "NSMicrophoneUsageDescription": "N-backの音声回答にマイクを使用します。"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +21,10 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +37,12 @@
           "speechRecognitionPermission": "回答の聞き取りに音声認識を使用します。"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b0500006-f918-434c-b67e-7704bf6542c6"
+      }
+    },
+    "owner": "take60umis-team"
   }
 }
