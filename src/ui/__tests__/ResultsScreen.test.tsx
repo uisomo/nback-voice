@@ -276,3 +276,53 @@ describe('ResultsScreen correct answer', () => {
     }
   });
 });
+
+describe('ResultsScreen on-time reporting', () => {
+  function timedEngine(elapsedMs: number): RoundEngine {
+    const plan = buildRound(2, BANK, Math.random);
+    const engine = new RoundEngine(plan, { budgetBaseMs: 4000 });
+    for (const step of plan.steps) {
+      if (step.recallTarget === null) {
+        engine.submitStep(step.index, { tap: null, transcript: null });
+        continue;
+      }
+      engine.submitStep(step.index, {
+        tap: plan.steps[step.recallTarget].position,
+        transcript: 'こたえ',
+        elapsedMs,
+      });
+    }
+    engine.takePending();
+    return engine;
+  }
+
+  it('shows the 時間内 percentage', () => {
+    const { getByText } = render(
+      <ResultsScreen engine={timedEngine(1000)} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    expect(getByText(/時間内.*100%/)).toBeTruthy();
+  });
+
+  it('marks the rows that ran over', () => {
+    const { getAllByTestId } = render(
+      <ResultsScreen engine={timedEngine(99999)} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    expect(getAllByTestId(/^review-late-/)).toHaveLength(9);
+  });
+
+  it('marks nothing late when everything was in time', () => {
+    const { queryByTestId } = render(
+      <ResultsScreen engine={timedEngine(1000)} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    expect(queryByTestId('review-late-2')).toBeNull();
+  });
+
+  /** Voice mode has no clock, so the line must not appear at all. */
+  it('says nothing about time in voice mode', () => {
+    const { queryByText, queryByTestId } = render(
+      <ResultsScreen engine={mixedEngine()} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    expect(queryByText(/時間内/)).toBeNull();
+    expect(queryByTestId('review-late-2')).toBeNull();
+  });
+});

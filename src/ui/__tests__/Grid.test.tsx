@@ -107,3 +107,33 @@ describe('Grid tap verdict', () => {
     expect(borderOf(getByTestId('cell-2'))).toBeUndefined();
   });
 });
+
+describe('Grid sizing', () => {
+  /** The flattened width of one cell, whatever the style shape. */
+  function cellWidth(node: { props: { style?: StyleProp<ViewStyle> } }): unknown {
+    return StyleSheet.flatten(node.props.style)?.width;
+  }
+
+  it('keeps its 96px cells when no size is given', () => {
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={null} onTap={() => {}} />,
+    );
+    expect(cellWidth(getByTestId('cell-0'))).toBe(96);
+  });
+
+  it('shrinks its cells to the size it is handed', () => {
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={null} onTap={() => {}} size={200} />,
+    );
+    // 200 / 3 = 66, less the 2px margin on each side.
+    expect(cellWidth(getByTestId('cell-0'))).toBe(62);
+  });
+
+  it('stays square, so the grid never stretches', () => {
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={null} onTap={() => {}} size={197} />,
+    );
+    const style = StyleSheet.flatten(getByTestId('cell-4').props.style);
+    expect(style?.width).toBe(style?.height);
+  });
+});

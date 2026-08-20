@@ -299,6 +299,25 @@ describe('history carries the series', () => {
     });
     expect((await loadHistory())[0].seriesId).toBe('persuasion');
   });
+
+  it('records the on-time score, and reads rounds saved before it existed', async () => {
+    await AsyncStorage.setItem(
+      'nback.history',
+      JSON.stringify([{ date: '2026-08-01', n: 2, positionScore: 1, answerScore: 1, unresolved: 0 }]),
+    );
+    await appendHistory({
+      date: '2026-08-20',
+      n: 2,
+      positionScore: 1,
+      answerScore: 1,
+      unresolved: 0,
+      seriesId: 'standard',
+      onTimeScore: 0.5,
+    });
+    const history = await loadHistory();
+    expect(history[0].onTimeScore).toBeUndefined();
+    expect(history[history.length - 1].onTimeScore).toBe(0.5);
+  });
 });
 
 describe('judge API key', () => {
@@ -337,5 +356,35 @@ describe('judge API key', () => {
     // must not ride along.
     await saveApiKey('sk-ant-secret');
     expect(JSON.stringify(await loadSettings())).not.toContain('sk-ant-secret');
+  });
+});
+
+describe('answer input settings', () => {
+  it('defaults to typed — voice is the mode you opt into', () => {
+    expect(DEFAULT_SETTINGS.answerInput).toBe('typed');
+    expect(DEFAULT_SETTINGS.budgetBaseMs).toBe(4000);
+  });
+
+  it('fills both in for settings stored before they existed', async () => {
+    await AsyncStorage.setItem(
+      'nback.settings',
+      JSON.stringify({ stepDurationMs: 7000, mode: 'question' }),
+    );
+    const settings = await loadSettings();
+    expect(settings.stepDurationMs).toBe(7000);
+    expect(settings.mode).toBe('question');
+    expect(settings.answerInput).toBe('typed');
+    expect(settings.budgetBaseMs).toBe(4000);
+  });
+
+  it('round-trips a stored choice', async () => {
+    await saveSettings({
+      ...DEFAULT_SETTINGS,
+      answerInput: 'voice',
+      budgetBaseMs: 6000,
+    });
+    const settings = await loadSettings();
+    expect(settings.answerInput).toBe('voice');
+    expect(settings.budgetBaseMs).toBe(6000);
   });
 });

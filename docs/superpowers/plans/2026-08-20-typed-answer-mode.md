@@ -1014,64 +1014,95 @@ git commit -m "feat(ui): グリッドを与えられた大きさに合わせる"
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `src/ui/__tests__/GameScreen.test.tsx`, following the file's existing deps-injection helper:
+Append to `src/ui/__tests__/GameScreen.test.tsx`. The file already provides
+`makeDefaultDeps(judgeClient)`, `alwaysCorrect`, `beginRound()` and
+`runWholeRound()`, and uses `screen` from @testing-library/react-native with
+fake timers — use those; do not invent new harness helpers.
 
-```ts
+```tsx
 describe('GameScreen typed mode', () => {
   beforeEach(async () => {
     await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'typed' });
   });
 
-  it('shows a field instead of opening the mic', async () => {
+  it('shows a field and never opens the mic', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
     const listener = new FakeListener();
-    const { getByTestId, queryByTestId } = renderGame({ listener });
-    await startRound(getByTestId);
-    expect(getByTestId('typed-answer-input')).toBeTruthy();
+    render(
+      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={{ ...deps, listener }} />,
+    );
+    await beginRound();
+    expect(screen.getByTestId('typed-answer-input')).toBeTruthy();
     expect(listener.sessions).toBe(0);
   });
 
-  /** The clock is a target. Running it out must not advance anything. */
-  it('does not advance when the clock runs out', async () => {
-    const { getByTestId } = renderGame({});
-    await startRound(getByTestId);
-    const before = getByTestId('step-label').props.children;
-    act(() => {
-      jest.advanceTimersByTime(60_000);
-    });
-    expect(getByTestId('step-label').props.children).toEqual(before);
+  /**
+   * The clock is a target, not a deadline. With nothing submitted, no amount
+   * of elapsed time may carry the round forward — this is the whole of
+   * "submit-driven", asserted at the only place it can be observed.
+   */
+  it('never finishes on its own, however long it waits', async () => {
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    await beginRound();
+    await runWholeRound();
+    expect(onFinished).not.toHaveBeenCalled();
   });
 
-  it('advances when the answer is submitted', async () => {
-    const { getByTestId } = renderGame({});
-    await startRound(getByTestId);
-    const before = getByTestId('step-label').props.children;
-    fireEvent.changeText(getByTestId('typed-answer-input'), 'こたえ');
-    fireEvent.press(getByTestId('typed-submit'));
-    await waitFor(() => {
-      expect(getByTestId('step-label').props.children).not.toEqual(before);
+  it('finishes once every answer is submitted', async () => {
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    await beginRound();
+
+    // 9 scored steps plus the observe-only ones; each pass advances phase A
+    // on its timer, then submits if an answer is being asked for.
+    for (let i = 0; i < 24; i++) {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      const submit = screen.queryByTestId('typed-submit');
+      if (!submit) continue;
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+        fireEvent.press(submit);
+      });
+    }
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(20_000);
     });
+    expect(onFinished).toHaveBeenCalled();
   });
 
   /** Nothing is owed on the first N steps, so nothing should be asked for. */
-  it('disables the field on steps with nothing to recall', async () => {
-    const { getByTestId } = renderGame({});
-    await startRound(getByTestId);
-    expect(getByTestId('typed-answer-input').props.editable).toBe(false);
+  it('does not ask for an answer on steps with nothing to recall', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
   });
 
-  it('leaves voice mode alone', async () => {
+  it('leaves voice mode exactly as it was', async () => {
     await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'voice' });
-    const listener = new FakeListener();
-    const { getByTestId, queryByTestId } = renderGame({ listener });
-    await startRound(getByTestId);
-    act(() => {
-      jest.advanceTimersByTime(10_000);
-    });
-    expect(queryByTestId('typed-answer-input')).toBeNull();
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const listener = new CannedListener('こたえ');
+    render(
+      <GameScreen seriesId="standard" onFinished={onFinished} deps={{ ...deps, listener }} />,
+    );
+    await beginRound();
+    await runWholeRound();
+    expect(screen.queryByTestId('typed-answer-input')).toBeNull();
     expect(listener.sessions).toBeGreaterThan(0);
+    expect(onFinished).toHaveBeenCalled();
   });
 });
 ```
+
+If the iteration count in the third test proves wrong once the code exists,
+adjust the count — not the assertion.
 
 - [ ] **Step 2: Run test to verify it fails**
 

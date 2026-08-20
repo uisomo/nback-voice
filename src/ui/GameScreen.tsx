@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { RoundEngine, RoundRunner, buildRound } from '../engine';
+import { answerBudgetMs } from '../engine/budget';
 import type { PositionOutcome } from '../engine/round';
 import type { Position, RoundMode, RoundPlan } from '../engine/types';
 import { MIN_QUESTIONS } from '../content/pool';
@@ -12,9 +21,11 @@ import { JudgeQueue } from '../judge/queue';
 import type { JudgeClient } from '../judge/types';
 import { ExpoListener } from '../speech/listener';
 import { ExpoSpeaker } from '../speech/speaker';
+import { TypedListener } from '../speech/typed';
 import type { Listener, Speaker } from '../speech/types';
 import {
   addLearned,
+  type AnswerInput,
   appendHistory,
   loadApiKey,
   loadCustom,
@@ -142,12 +153,31 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const [warmupTapped, setWarmupTapped] = useState<number | null>(null);
   /** The round's N, known before it starts so the owner can be told. */
   const [lag, setLag] = useState<number | null>(null);
+  /**
+   * How this round is answered. null until settings resolve: rendering either
+   * layout before then paints a grid the round may not be using at all.
+   * State, because the render output depends on it.
+   */
+  const [answerInput, setAnswerInput] = useState<AnswerInput | null>(null);
+  /** The same listener, for the imperative push/submit calls. */
+  const typedRef = useRef<TypedListener | null>(null);
+  const [typedText, setTypedText] = useState('');
+  /**
+   * The question being memorised right now — never the one being recalled:
+   * showing that one deletes the N-back (spec §7). Empty on trailing steps.
+   */
+  const [question, setQuestion] = useState('');
+  /** null when the field is closed for this step; the countdown otherwise. */
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [gridBox, setGridBox] = useState(300);
 
   const runnerRef = useRef<RoundRunner | null>(null);
   const planRef = useRef<RoundPlan | null>(null);
   /** Starts the prepared round; set once setup finishes, called by the tap. */
   const beginRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Drives the on-screen countdown during a timed typed answer window. */
+  const clockRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript;
@@ -226,7 +256,10 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         setMode(settings.mode);
         const plan = buildRound(n, pool, Math.random, settings.mode);
         planRef.current = plan;
-        const engine = new RoundEngine(plan);
+        const engine = new RoundEngine(plan, { budgetBaseMs: settings.budgetBaseMs });
+        const typed = settings.answerInput === 'typed' ? new TypedListener() : null;
+        typedRef.current = typed;
+        setAnswerInput(settings.answerInput);
         const queue = new JudgeQueue(resolved.judgeClient, {
           onVerdict: (index, correct) => {
             engine.resolveAnswer(index, correct);
@@ -246,8 +279,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           plan,
           engine,
           speaker: resolved.speaker,
-          listener: resolved.listener,
+          listener: typed ?? resolved.listener,
           onJudge: (answer) => queue.enqueue(answer),
+          clock: typed ? () => Date.now() : undefined,
         });
         runnerRef.current = runner;
 
@@ -267,6 +301,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
                 answerScore: engine.answerScore,
                 unresolved: engine.unresolvedCount,
                 seriesId: series.id,
+                onTimeScore: engine.onTimeScore,
               });
             }
           } catch (error) {
@@ -280,6 +315,12 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           const { phase, stepIndex, flashPosition } = runner.state;
 
           if (phase === 'done') {
+            // The round is over: nothing is owed, so the countdown must not
+            // freeze on screen and the field must not stay typable through
+            // the grading drain (up to DRAIN_TIMEOUT_MS).
+            setRemainingMs(null);
+            setTypedText('');
+            setQuestion('');
             void finish();
             return;
           }
@@ -298,21 +339,68 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               (phase === 'A' ? '出題中' : 'どうぞ'),
           );
 
-          timerRef.current = setTimeout(
-            () => {
-              // Phase A closes at max(a, utterance) — readyToClose() resolves
-              // at once unless the question is still being spoken. The paint
-              // above already happened, so this only delays the mic opening.
-              void runner.readyToClose().then(() => {
-                if (cancelled) return;
-                // tick() transitions synchronously, so the repaint lands with
-                // the transition rather than chaining off another promise.
-                runner.tick();
-                schedule();
-              });
-            },
-            phase === 'A' ? a : b,
-          );
+          const step = plan.steps[stepIndex];
+          // Spoken and shown both: the question stays up through its own
+          // answer window, and the trailing steps show nothing at all.
+          setQuestion(step.question?.q ?? '');
+          const owesAnswer = step.recallTarget !== null;
+
+          if (phase === 'B' && typed && owesAnswer) {
+            const target = plan.steps[step.recallTarget!];
+            const budget = answerBudgetMs(
+              target.question?.accept[0] ?? '',
+              settings.budgetBaseMs,
+            );
+            setTypedText('');
+            setRemainingMs(budget);
+            const startedAt = Date.now();
+            clockRef.current = setInterval(() => {
+              const left = budget - (Date.now() - startedAt);
+              setRemainingMs(left);
+              // The target is reached; the window itself stays open until the
+              // answer is sent. Painting 0.0s once and then stopping keeps an
+              // idle step from re-rendering the screen every 200ms forever.
+              if (left <= 0 && clockRef.current) {
+                clearInterval(clockRef.current);
+                clockRef.current = null;
+              }
+            }, 200);
+          } else {
+            setRemainingMs(null);
+            // RoundRunner always opens the TypedListener on phase B and
+            // readyToClose() always waits on settle(), even on a step that
+            // owes no answer — the runner does not know about steps. Nothing
+            // is shown to submit here, so the UI submits on the step's
+            // behalf: the outer timer below still paces the step normally,
+            // this just keeps readyToClose() from waiting on input nobody
+            // will ever give.
+            if (phase === 'B' && typed) {
+              typed.submit();
+            }
+          }
+
+          const advance = () => {
+            void runner.readyToClose().then(() => {
+              if (cancelled) return;
+              if (clockRef.current) {
+                clearInterval(clockRef.current);
+                clockRef.current = null;
+              }
+              // tick() transitions synchronously, so the repaint lands with
+              // the transition rather than chaining off another promise.
+              runner.tick();
+              schedule();
+            });
+          };
+
+          // Typed answer windows close on submit, not on a timer: that is what
+          // makes the round submit-driven. Everything else keeps its timer,
+          // including typed steps that owe no answer.
+          if (phase === 'B' && typed && owesAnswer) {
+            advance();
+          } else {
+            timerRef.current = setTimeout(advance, phase === 'A' ? a : b);
+          }
         };
 
         // Prepared but not started: the round waits for the warm-up tap,
@@ -342,7 +430,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     return () => {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (clockRef.current) clearInterval(clockRef.current);
       resolved.listener.stop();
+      typedRef.current?.stop();
       resolved.speaker.stop();
     };
   }, [resolved, onFinished, seriesId]);
@@ -362,6 +452,36 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     },
     [resolved],
   );
+
+  /**
+   * Sending the typed answer. The transcript display is driven by the
+   * recognizer's `result` event in voice mode, and nothing fires that event
+   * here — so the submit puts the answer on screen itself. Without it the
+   * judge's verdict has nothing to colour and the default mode gives no ○/×
+   * feedback at all until the results screen.
+   */
+  const handleTypedSubmit = useCallback(() => {
+    // Guards both call sites (this button and the field's returnKeyType
+    // "send") against a window that has already closed: stop() reads the
+    // final transcript but deliberately leaves it in place for the UI to
+    // paint, so a stale `typed.text` from the step just answered is still
+    // sitting there through the whole of the next step's phase A. Without
+    // this a tap here would repaint that stale text under the new step's
+    // index and, worse, steal the previous step's own live-transcript slot —
+    // making its genuine ○/× verdict fail to land.
+    if (remainingMs === null) return;
+    const typed = typedRef.current;
+    if (!typed) return;
+    const text = typed.text;
+    if (text.length > 0) {
+      setAnswer({
+        index: runnerRef.current?.state.stepIndex ?? -1,
+        text,
+        correct: null,
+      });
+    }
+    typed.submit();
+  }, [remainingMs]);
 
   const handleTap = useCallback((position: Position) => {
     runnerRef.current?.onTap(position);
@@ -398,7 +518,14 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   }
 
   return (
-    <View style={styles.screen}>
+    // The keyboard stays up for the whole round (spec §7). On iOS it overlays
+    // the view rather than resizing it, so without this the field, the send
+    // button and the clock all sit behind it — and the transcript the player
+    // is meant to correct cannot be seen at all.
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <LagHeader n={lag} />
       {warmupTapped !== null && !ready && (
         <Text style={styles.warmupCaption}>準備中…</Text>
@@ -417,7 +544,70 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           「{answer.text}」{verdictMark(answer)}
         </Text>
       )}
-      {mode === 'dual' && (
+      {answerInput === 'typed' && (
+        // Above the grid, in spec §7's order: 質問 → 時計 → 入力欄 → グリッド.
+        // Everything the keyboard could hide is the part that has to stay
+        // visible, so the grid is what gives up the space.
+        <View style={styles.typedBlock}>
+          <Text testID="current-question" style={styles.question}>
+            {question}
+          </Text>
+          {remainingMs !== null && (
+            <Text
+              testID="answer-clock"
+              style={[styles.clock, remainingMs <= 0 && styles.clockOut]}
+            >
+              {Math.max(0, remainingMs / 1000).toFixed(1)}s
+            </Text>
+          )}
+          <View style={styles.typedRow}>
+            <TextInput
+              testID="typed-answer-input"
+              style={styles.typedInput}
+              value={typedText}
+              editable={remainingMs !== null}
+              autoCorrect={false}
+              placeholder={remainingMs === null ? 'まだ答えません' : '答えを入力'}
+              onChangeText={(text) => {
+                setTypedText(text);
+                typedRef.current?.push(text);
+              }}
+              onSubmitEditing={handleTypedSubmit}
+              returnKeyType="send"
+            />
+            <Pressable
+              testID="typed-submit"
+              onPress={handleTypedSubmit}
+              disabled={remainingMs === null}
+            >
+              <Text style={styles.typedSend}>送る</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+      {mode === 'dual' && answerInput === 'typed' && (
+        // Typed mode only: the keyboard eats space a fixed 300 grid does not
+        // account for, so size it from what onLayout finds actually left.
+        <View
+          style={styles.gridBox}
+          onLayout={(event) => {
+            const { width, height } = event.nativeEvent.layout;
+            setGridBox(Math.min(width, height));
+          }}
+        >
+          <Grid
+            flashPosition={flash}
+            selected={selected}
+            tapVerdict={tapVerdict}
+            onTap={handleTap}
+            disabled={!ready}
+            size={gridBox}
+          />
+        </View>
+      )}
+      {mode === 'dual' && answerInput === 'voice' && (
+        // Voice mode: unchanged from before this task — no flex wrapper, no
+        // explicit size, so Grid renders at its original intrinsic default.
         <Grid
           flashPosition={flash}
           selected={selected}
@@ -426,7 +616,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           disabled={!ready}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -488,5 +678,43 @@ const styles = StyleSheet.create({
     fontSize: 22,
     textAlign: 'center',
     marginBottom: 24,
+  },
+  gridBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  typedBlock: { marginBottom: 16, alignItems: 'center' },
+  /* Keeps its height when a trailing step has no question, so the field and
+     the grid below it do not jump. */
+  question: {
+    color: '#f4f1ea',
+    fontSize: 20,
+    textAlign: 'center',
+    minHeight: 28,
+    marginBottom: 8,
+  },
+  clock: {
+    color: '#4caf7d',
+    fontSize: 20,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  clockOut: { color: '#e5534b' },
+  typedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  typedInput: {
+    backgroundColor: '#1c1c1e',
+    color: '#f4f1ea',
+    fontSize: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 200,
+  },
+  typedSend: {
+    color: '#c96f4a',
+    fontSize: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
 });

@@ -9,6 +9,12 @@ interface Props {
   tapVerdict?: PositionOutcome | null;
   onTap: (position: Position) => void;
   disabled?: boolean;
+  /**
+   * The square the grid must fit inside. Defaults to the original 300. With a
+   * keyboard up there is far less height than width, so the caller passes
+   * min(width, height) and the cells follow.
+   */
+  size?: number;
 }
 
 export function Grid({
@@ -17,6 +23,7 @@ export function Grid({
   tapVerdict,
   onTap,
   disabled,
+  size = 300,
 }: Props) {
   const ring =
     tapVerdict === 'correct'
@@ -24,8 +31,10 @@ export function Grid({
       : tapVerdict === 'wrong'
         ? styles.ringWrong
         : null;
+  // -4 is the 2px margin each cell carries on both sides (styles.cell).
+  const cell = Math.floor(size / 3) - 4;
   return (
-    <View style={styles.grid}>
+    <View style={[styles.grid, { width: size, height: size }]}>
       {Array.from({ length: 9 }, (_, i) => (
         <Pressable
           key={i}
@@ -39,6 +48,7 @@ export function Grid({
           onPress={() => onTap(i)}
           style={[
             styles.cell,
+            { width: cell, height: cell },
             flashPosition === i && styles.flash,
             selected === i && styles.selected,
             selected === i && ring,
@@ -51,15 +61,11 @@ export function Grid({
 
 const styles = StyleSheet.create({
   grid: {
-    width: 300,
-    height: 300,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignSelf: 'center',
   },
   cell: {
-    width: 96,
-    height: 96,
     margin: 2,
     backgroundColor: '#1c1c1e',
     borderRadius: 8,
