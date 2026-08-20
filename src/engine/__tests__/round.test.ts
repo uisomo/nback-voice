@@ -1,6 +1,7 @@
 import { RoundEngine } from '../round';
 import { buildRound } from '../sequence';
 import type { Question, Rng, RoundPlan } from '../types';
+import { DEFAULT_BUDGET_BASE_MS } from '../budget';
 
 const BANK: Question[] = Array.from({ length: 20 }, (_, i) => ({
   id: `q${i}`,
@@ -337,5 +338,91 @@ describe('RoundEngine answer review', () => {
       engine.submitStep(step.index, { tap: 4, transcript: 'こたえ' });
     }
     for (const row of engine.review) expect(row.position).toBeNull();
+  });
+});
+
+describe('RoundEngine timing', () => {
+  /** A plan whose every answer is 4 characters, so the budget is 8000ms. */
+  const TIMED_BANK: Question[] = Array.from({ length: 12 }, (_, i) => ({
+    id: `t${i}`,
+    tier: 1,
+    q: `質問${i}`,
+    accept: ['よんもじ'],
+  }));
+
+  function timedEngine(elapsed: (index: number) => number | undefined) {
+    const plan = buildRound(1, TIMED_BANK, () => 0);
+    const engine = new RoundEngine(plan, { budgetBaseMs: 4000 });
+    for (const step of plan.steps) {
+      if (step.recallTarget === null) {
+        engine.submitStep(step.index, { tap: null, transcript: null });
+        continue;
+      }
+      engine.submitStep(step.index, {
+        tap: plan.steps[step.recallTarget].position,
+        transcript: 'よんもじ',
+        elapsedMs: elapsed(step.index),
+      });
+    }
+    return engine;
+  }
+
+  it('derives the budget from the recalled answer, not the shown question', () => {
+    const engine = timedEngine(() => 1000);
+    for (const row of engine.review) expect(row.budgetMs).toBe(8000);
+  });
+
+  it('marks an answer inside its budget as on time', () => {
+    const engine = timedEngine(() => 7999);
+    expect(engine.review.every((row) => row.onTime === true)).toBe(true);
+    expect(engine.onTimeScore).toBe(1);
+  });
+
+  it('counts the boundary as on time', () => {
+    const engine = timedEngine(() => 8000);
+    expect(engine.review.every((row) => row.onTime === true)).toBe(true);
+  });
+
+  it('marks an answer past its budget as late, without failing it', () => {
+    const engine = timedEngine(() => 8001);
+    expect(engine.review.every((row) => row.onTime === false)).toBe(true);
+    expect(engine.onTimeScore).toBe(0);
+    // Late is late, not wrong: the answer channel is untouched.
+    for (const row of engine.review) engine.resolveAnswer(row.index, true);
+    expect(engine.answerScore).toBe(1);
+  });
+
+  /** No elapsed time means no clock, which means nothing to say — not zero. */
+  it('reports null when no step was timed', () => {
+    const engine = timedEngine(() => undefined);
+    expect(engine.review.every((row) => row.onTime === null)).toBe(true);
+    expect(engine.onTimeScore).toBeNull();
+  });
+
+  it('scores on time out of every scored step, like position does', () => {
+    // n=1, so the 9 scored steps carry step.index 1..9 (index 0 is the
+    // unscored lead-in). The first 5 of those — index 1..5 — land on time,
+    // the remaining 4 are late.
+    const engine = timedEngine((index) => (index <= 5 ? 1000 : 99999));
+    expect(engine.onTimeScore).toBeCloseTo(5 / 9);
+  });
+
+  it('defaults the base to 4 seconds when none is given', () => {
+    const plan = buildRound(1, TIMED_BANK, () => 0);
+    const engine = new RoundEngine(plan);
+    engine.submitStep(0, { tap: null, transcript: null });
+    engine.submitStep(1, { tap: null, transcript: 'よんもじ', elapsedMs: 1 });
+    expect(engine.review[0].budgetMs).toBe(DEFAULT_BUDGET_BASE_MS + 4000);
+  });
+
+  /** The promise of §6: time is reported, never adaptive input. */
+  it('does not let lateness move roundScore or N', () => {
+    const onTime = timedEngine(() => 1000);
+    const late = timedEngine(() => 99999);
+    for (const row of onTime.review) onTime.resolveAnswer(row.index, true);
+    for (const row of late.review) late.resolveAnswer(row.index, true);
+
+    expect(late.roundScore).toBe(onTime.roundScore);
+    expect(late.nextN(2)).toBe(onTime.nextN(2));
   });
 });

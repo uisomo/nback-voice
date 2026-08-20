@@ -1,10 +1,17 @@
 import { nextN as adaptiveNextN } from './adaptive';
+import { DEFAULT_BUDGET_BASE_MS, answerBudgetMs } from './budget';
 import { STIMULI_PER_ROUND } from './sequence';
 import type { Position, Question, RoundPlan } from './types';
 
 export interface StepSubmission {
   tap: Position | null;
   transcript: string | null;
+  /**
+   * How long the answer window took, when it was timed. Absent in voice mode:
+   * there is no clock there, so there is nothing to be on time for. Absence,
+   * not a flag, is how the engine avoids knowing about input modes.
+   */
+  elapsedMs?: number;
 }
 
 export interface PendingAnswer {
@@ -23,11 +30,19 @@ interface AnswerRecord {
   /** null = 未判定 (never counted wrong). */
   correct: boolean | null;
   position: PositionOutcome | null;
+  /** Derived from the recalled answer's length; see answerBudgetMs. */
+  budgetMs: number;
+  /** null = untimed. Late is recorded, never punished. */
+  onTime: boolean | null;
 }
 
 /** One scored step, as the owner reviews it after the round. */
 export interface AnswerReview extends AnswerRecord {
   index: number;
+}
+
+export interface RoundEngineOptions {
+  budgetBaseMs?: number;
 }
 
 /**
@@ -40,9 +55,11 @@ export class RoundEngine {
   private readonly submitted = new Set<number>();
   private readonly answers = new Map<number, AnswerRecord>();
   private pendingBuffer: PendingAnswer[] = [];
+  private readonly budgetBaseMs: number;
 
-  constructor(plan: RoundPlan) {
+  constructor(plan: RoundPlan, options: RoundEngineOptions = {}) {
     this.plan = plan;
+    this.budgetBaseMs = options.budgetBaseMs ?? DEFAULT_BUDGET_BASE_MS;
   }
 
   submitStep(index: number, input: StepSubmission): void {
@@ -62,11 +79,15 @@ export class RoundEngine {
     // Recorded for every scored step, heard or not, so the round can be
     // reviewed afterwards. A step nobody was heard on is 聞き取れず, which is
     // not 未判定: it never reaches the judge, so it is never awaiting a verdict.
+    const budgetMs = answerBudgetMs(target.question.accept[0] ?? '', this.budgetBaseMs);
+
     this.answers.set(index, {
       question: target.question,
       transcript,
       correct: null,
       position: this.positionOutcome(input.tap, target.position),
+      budgetMs,
+      onTime: input.elapsedMs === undefined ? null : input.elapsedMs <= budgetMs,
     });
 
     if (transcript) {
@@ -110,6 +131,17 @@ export class RoundEngine {
       (a) => a.position === 'correct',
     ).length;
     return correct / STIMULI_PER_ROUND;
+  }
+
+  /**
+   * null when nothing was timed — the channel is absent, not zero, exactly as
+   * positionScore is null in question mode. Reported only: roundScore and
+   * nextN never see it, so speed is a goal without being a difficulty knob.
+   */
+  get onTimeScore(): number | null {
+    const timed = [...this.answers.values()].filter((a) => a.onTime !== null);
+    if (timed.length === 0) return null;
+    return timed.filter((a) => a.onTime).length / STIMULI_PER_ROUND;
   }
 
   /** null when no answer has been resolved — the channel is simply absent. */
