@@ -30,7 +30,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
-    "check:bundle": "expo export --platform ios --output-dir dist/bundle-check-ios && expo export --platform web --output-dir dist/bundle-check-web"
+    "check:bundle": "expo export --platform ios --output-dir dist/bundle-check-ios && expo export --platform web --output-dir dist/bundle-check-web",
+    "review-questions": "tsc scripts/review-questions.ts src/content/review.ts src/engine/types.ts --outDir .review-build --module commonjs --target es2020 --esModuleInterop --resolveJsonModule --skipLibCheck --strict false --ignoreConfig && node -e \"require('fs').copyFileSync('src/content/series.json','.review-build/src/content/series.json')\" && node .review-build/scripts/review-questions.js"
   },
   "jest": {
     "preset": "jest-expo",

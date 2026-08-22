@@ -38,6 +38,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# scripts/review-questions.ts compiled here by `npm run review-questions`,
+# to avoid needing tsx as a devDependency (see wsl-npm-rename-race memory)
+.review-build/
+
 # generated native folders
 /ios
 /android

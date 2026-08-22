@@ -275,6 +275,44 @@ describe('ResultsScreen correct answer', () => {
       expect(shown).not.toContain(row.question.accept[2]);
     }
   });
+
+  it('also shows the English form when accept[] has one', () => {
+    const bank: Question[] = Array.from({ length: 20 }, (_, i) => ({
+      id: `e${i}`,
+      tier: 1,
+      q: `質問${i}`,
+      accept: [`エヌエーブイ${i}`, `NAV${i}`, `純資産価値${i}`],
+    }));
+    const engine = engineWith(bank);
+    const { getByTestId } = render(
+      <ResultsScreen engine={engine} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    for (const row of engine.review) {
+      const shown = textOf(getByTestId(`review-answer-${row.index}`));
+      expect(shown).toContain(row.question.accept[0]);
+      expect(shown).toContain(row.question.accept[1]);
+      expect(shown).not.toContain(row.question.accept[2]);
+    }
+  });
+
+  it('shows only the canonical form when accept[0] is already English', () => {
+    const bank: Question[] = Array.from({ length: 20 }, (_, i) => ({
+      id: `n${i}`,
+      tier: 1,
+      q: `質問${i}`,
+      accept: [`NAV${i}`, `エヌエーブイ${i}`, `純資産価値${i}`],
+    }));
+    const engine = engineWith(bank);
+    const { getByTestId } = render(
+      <ResultsScreen engine={engine} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    for (const row of engine.review) {
+      const shown = textOf(getByTestId(`review-answer-${row.index}`));
+      expect(shown).toContain(row.question.accept[0]);
+      expect(shown).not.toContain(row.question.accept[1]);
+      expect(shown).not.toContain(row.question.accept[2]);
+    }
+  });
 });
 
 describe('ResultsScreen on-time reporting', () => {

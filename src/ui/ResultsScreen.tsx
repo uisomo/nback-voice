@@ -35,6 +35,20 @@ function positionMark(row: AnswerReview): { label: string; color: string } {
   return { label: '位置 —', color: NEUTRAL };
 }
 
+const ASCII_TERM = /^[A-Za-z0-9]+$/;
+
+/**
+ * accept[0] is the canonical answer; the rest is recognizer tolerance plus
+ * whatever the judge learned at runtime, not the answer. The one exception:
+ * an English form (e.g. NAV) elsewhere in the list is worth surfacing next
+ * to accept[0] so both spellings show, not just whichever came first.
+ */
+function englishForm(accept: string[]): string | null {
+  const [canonical, ...rest] = accept;
+  if (canonical !== undefined && ASCII_TERM.test(canonical)) return null;
+  return rest.find((term) => ASCII_TERM.test(term)) ?? null;
+}
+
 export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
   return (
     <View style={styles.screen}>
@@ -84,18 +98,17 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
                   </Text>
                 )}
               </View>
-              {/*
-                accept[0] only. The rest of the list is recognizer tolerance
-                plus what the judge learned at runtime — those exist so your
-                phrasing passes, and they grow as you play. They are not the
-                answer.
-              */}
               {item.question.accept[0] !== undefined && (
                 <Text
                   testID={`review-answer-${item.index}`}
                   style={styles.answerLabel}
                 >
-                  答え: <Text style={styles.answerValue}>{item.question.accept[0]}</Text>
+                  答え:{' '}
+                  <Text style={styles.answerValue}>
+                    {item.question.accept[0]}
+                    {englishForm(item.question.accept) !== null &&
+                      `（${englishForm(item.question.accept)}）`}
+                  </Text>
                 </Text>
               )}
               {item.onTime === false && (
