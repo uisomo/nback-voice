@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import {
   addCustom,
   DEFAULT_SETTINGS,
@@ -61,6 +61,32 @@ describe('SettingsScreen', () => {
     await waitFor(() => {});
     fireEvent.press(getByText('閉じる'));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The web build sets `body { overflow: hidden }` (the react-native-web reset
+ * Expo ships), so the page itself never scrolls — a screen taller than the
+ * viewport is simply clipped, and a plain View clips it silently. Every other
+ * screen already puts its long part in a ScrollView; this one did not, which
+ * put both the lower settings and the only way out below the fold.
+ */
+describe('SettingsScreen on a short screen', () => {
+  it('puts the settings in a scroll view', async () => {
+    const { getByTestId } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {});
+    expect(getByTestId('settings-scroll')).toBeTruthy();
+  });
+
+  it('keeps 閉じる outside the scroll view, so the way out never scrolls away', async () => {
+    const { getByTestId, getByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {});
+    expect(getByText('閉じる')).toBeTruthy();
+    expect(within(getByTestId('settings-scroll')).queryByText('閉じる')).toBeNull();
   });
 });
 
