@@ -34,4 +34,10 @@ describe('localMatch', () => {
     const q: Question = { ...DOG, accept: ['ワン'] };
     expect(localMatch(q, 'わん')).toBe(true);
   });
+
+  it('matches Latin acronyms regardless of case', () => {
+    const q: Question = { ...DOG, accept: ['LTV'] };
+    expect(localMatch(q, 'ltv')).toBe(true);
+    expect(localMatch(q, 'Ltv')).toBe(true);
+  });
 });

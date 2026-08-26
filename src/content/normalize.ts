@@ -14,7 +14,7 @@ function katakanaToHiragana(s: string): string {
  * and punctuation, strip polite/hedging suffixes.
  */
 export function normalizeTranscript(raw: string): string {
-  let s = katakanaToHiragana(raw).replace(PUNCTUATION, '');
+  let s = katakanaToHiragana(raw.toLowerCase()).replace(PUNCTUATION, '');
 
   for (const suffix of SUFFIXES) {
     // Never strip down to nothing — the suffix may BE the answer.

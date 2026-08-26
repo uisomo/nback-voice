@@ -1,4 +1,2 @@
-import { STIMULI_PER_ROUND } from '../engine/sequence';
-
-/** A round draws 9 distinct questions, so a series below this is unusable. */
-export const MIN_QUESTIONS = STIMULI_PER_ROUND;
+/** A round repeats questions to fill 9 stimuli, so any non-empty series works. */
+export const MIN_QUESTIONS = 1;

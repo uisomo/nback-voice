@@ -26,6 +26,11 @@ describe('normalizeTranscript', () => {
     expect(normalizeTranscript('東京都')).toBe('東京都');
   });
 
+  it('folds Latin letter case', () => {
+    expect(normalizeTranscript('LTV')).toBe(normalizeTranscript('ltv'));
+    expect(normalizeTranscript('Ltv')).toBe(normalizeTranscript('ltv'));
+  });
+
   it('handles an empty string', () => {
     expect(normalizeTranscript('')).toBe('');
   });

@@ -74,9 +74,6 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
           <View key={group.id} style={styles.group}>
             <Text style={styles.category}>{group.label}</Text>
             {group.rows.map((row) => {
-              // A series below nine cannot fill a round. Show it anyway with
-              // the shortfall named, rather than hiding it and leaving the
-              // owner to guess why their questions never appear.
               const shortfall = MIN_QUESTIONS - row.count;
               const usable = shortfall <= 0;
               return (

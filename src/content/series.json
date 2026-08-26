@@ -633,7 +633,8 @@
         "q": "実際に返還された現金額÷払い込み資本額で表される現金化指標の略称は？",
         "accept": [
           "DPI",
-          "Distributions to Paid-In"
+          "Distributions to Paid-In",
+          "ディーピーアイ"
         ]
       },
       {
@@ -642,7 +643,8 @@
         "q": "同じキャッシュフローを公開市場の指数で運用した場合と比較する評価手法の略称は？",
         "accept": [
           "PME",
-          "Public Market Equivalent"
+          "Public Market Equivalent",
+          "ピーエムイー"
         ]
       },
       {
@@ -660,7 +662,8 @@
         "q": "ファンドが保有する全資産の公正価値から負債を差し引いた残高を表す指標の略称は？",
         "accept": [
           "NAV",
-          "純資産価値"
+          "純資産価値",
+          "ナブ"
         ]
       },
       {
@@ -705,7 +708,8 @@
         "q": "機関投資家のLP団体で、業界標準の報告テンプレートやDDQを策定する組織の略称は？",
         "accept": [
           "ILPA",
-          "I.L.P.A."
+          "I.L.P.A.",
+          "アイエルピーエー"
         ]
       },
       {
@@ -714,7 +718,8 @@
         "q": "複数のファンドに分散投資する母体ファンドを指す略称は？",
         "accept": [
           "FoF",
-          "Fund of Funds"
+          "Fund of Funds",
+          "ファンドオブファンズ"
         ]
       },
       {
@@ -723,7 +728,8 @@
         "q": "残余NAV÷払い込み資本額で表される、未実現価値の水準を示す指標の略称は？",
         "accept": [
           "RVPI",
-          "R.V.P.I."
+          "R.V.P.I.",
+          "アールブイピーアイ"
         ]
       },
       {
@@ -749,7 +755,8 @@
         "q": "資産価値に対する借入金の比率を表す指標の略称は何か？",
         "accept": [
           "LTV",
-          "Loan to Value"
+          "Loan to Value",
+          "エルティーブイ"
         ]
       },
       {
@@ -758,7 +765,8 @@
         "q": "上場企業の財務諸表が準拠する米国の会計基準の略称は何か？",
         "accept": [
           "GAAP",
-          "米国会計基準"
+          "米国会計基準",
+          "ギャープ"
         ]
       },
       {
@@ -803,7 +811,8 @@
         "q": "EUの代替投資ファンドマネジャーに登録・開示・レポーティングを義務づける規制の略称は何か？",
         "accept": [
           "AIFMD",
-          "EU代替投資規制"
+          "EU代替投資規制",
+          "エーアイエフエムディー"
         ]
       },
       {
@@ -848,7 +857,8 @@
         "q": "ファンドの設立根拠となり、GPとLPの権利・義務・借入権限などを定める法的文書は何か。",
         "accept": [
           "LPA",
-          "組合契約書"
+          "組合契約書",
+          "エルピーエー"
         ]
       },
       {
@@ -875,7 +885,8 @@
         "q": "機関投資家であるLPの業界団体で、DD標準や報告テンプレートを策定する組織の略称は何か。",
         "accept": [
           "ILPA",
-          "Institutional Limited Partners Association"
+          "Institutional Limited Partners Association",
+          "アイエルピーエー"
         ]
       },
       {
@@ -912,7 +923,8 @@
         "accept": [
           "MFN",
           "Most Favored Nation",
-          "最恵国待遇条項"
+          "最恵国待遇条項",
+          "エムエフエヌ"
         ]
       },
       {
@@ -1012,7 +1024,8 @@
         "q": "日付を明示的に指定してキャッシュフローからIRRを計算できるExcel関数は何か？",
         "accept": [
           "XIRR",
-          "XIRR関数"
+          "XIRR関数",
+          "エックスアイアールアール"
         ]
       },
       {
@@ -1021,7 +1034,8 @@
         "q": "払込資本に対する累積分配の倍率を表す指標の略称は何か？",
         "accept": [
           "DPI",
-          "Distributions to Paid-In"
+          "Distributions to Paid-In",
+          "ディーピーアイ"
         ]
       },
       {
@@ -1050,7 +1064,8 @@
         "q": "実現＋未実現価値の払込資本対比倍率を表す指標の略称は何か？",
         "accept": [
           "TVPI",
-          "TVPI指標"
+          "TVPI指標",
+          "ティーブイピーアイ"
         ]
       },
       {
@@ -1068,7 +1083,8 @@
         "q": "各キャッシュフローを公開市場ベンチマークで複利計算し比較する指標の略称は何か？",
         "accept": [
           "KS-PME",
-          "PME"
+          "PME",
+          "ケーエスピーエムイー"
         ]
       },
       {
@@ -1125,7 +1141,8 @@
         "accept": [
           "KS-PME",
           "PME",
-          "KS-PME法"
+          "KS-PME法",
+          "ケーエスピーエムイー"
         ]
       },
       {
@@ -1224,7 +1241,8 @@
         "q": "FASBが定める公正価値測定の基準で、番号820を指すものは何か？",
         "accept": [
           "ASC 820",
-          "ASC820"
+          "ASC820",
+          "エーエスシーはちにーまる"
         ]
       },
       {
@@ -1233,7 +1251,8 @@
         "q": "IASBが定める公正価値測定の国際基準で、2013年発効・140以上の国が採用しているものは？",
         "accept": [
           "IFRS 13",
-          "IFRS13"
+          "IFRS13",
+          "アイエフアールエスじゅうさん"
         ]
       },
       {
@@ -1278,7 +1297,8 @@
         "q": "ファンドの運営を担う無限責任社員を指す略語は何か？",
         "accept": [
           "GP",
-          "General Partner"
+          "General Partner",
+          "ジーピー"
         ]
       },
       {
@@ -1287,7 +1307,8 @@
         "q": "米国一般に公正妥当と認められた会計原則を指す略語は何か？",
         "accept": [
           "GAAP",
-          "US GAAP"
+          "US GAAP",
+          "ギャープ"
         ]
       },
       {
@@ -1323,7 +1344,8 @@
         "q": "ファンドに資本を提供する出資者を指す略語は何か？",
         "accept": [
           "LP",
-          "Limited Partner"
+          "Limited Partner",
+          "エルピー"
         ]
       },
       {
@@ -1341,7 +1363,8 @@
         "q": "将来キャッシュフロー割引法を指す略語は何か？",
         "accept": [
           "DCF",
-          "Discounted Cash Flow"
+          "Discounted Cash Flow",
+          "ディーシーエフ"
         ]
       },
       {
@@ -1385,7 +1408,8 @@
         "q": "GPが貸し手に定期提出する、各LPのコミットメント残高・適格性・アドバンス・レートを記載した証明書を何と呼ぶか？",
         "accept": [
           "BBC",
-          "Borrowing Base Certificate"
+          "Borrowing Base Certificate",
+          "ビービーシー"
         ]
       },
       {
@@ -1394,7 +1418,8 @@
         "q": "米国の年金・退職給付を規律し、ファンド資産が「プラン・アセット」に該当するかの判定に関わる連邦法は何か？",
         "accept": [
           "ERISA",
-          "従業員退職所得保障法"
+          "従業員退職所得保障法",
+          "エリサ"
         ]
       },
       {
@@ -1430,7 +1455,8 @@
         "q": "複数のファンドに分散投資し、複数のLPからコミットメントを集めて下位ファンドに再投資する構造のファンドを何と呼ぶか？",
         "accept": [
           "FoF",
-          "Fund of Funds"
+          "Fund of Funds",
+          "ファンドオブファンズ"
         ]
       },
       {
@@ -1466,7 +1492,8 @@
         "q": "米国財務省で制裁対象リストを管理する機関の略称は何か？",
         "accept": [
           "OFAC",
-          "Office of Foreign Assets Control"
+          "Office of Foreign Assets Control",
+          "オーファック"
         ]
       }
     ]
@@ -1483,7 +1510,8 @@
         "q": "NAVファシリティで、ポートフォリオとレンダーの間に立つ持株会社を何と呼ぶか。",
         "accept": [
           "Holdco",
-          "持株会社"
+          "持株会社",
+          "ホールドコー"
         ]
       },
       {
@@ -1492,7 +1520,8 @@
         "q": "NAVファシリティの開示（LTV・借入残高・利率・目的）についてガイダンスを出した機関LPの業界団体は何か。",
         "accept": [
           "ILPA",
-          "機関LP団体"
+          "機関LP団体",
+          "アイエルピーエー"
         ]
       },
       {
@@ -1510,7 +1539,8 @@
         "q": "買収対象企業のキャッシュフローを担保にした借入を使う買収手法を何と呼ぶか。",
         "accept": [
           "LBO",
-          "Leveraged Buyout"
+          "Leveraged Buyout",
+          "エルビーオー"
         ]
       },
       {
@@ -1520,7 +1550,8 @@
         "accept": [
           "S&P Capital IQ",
           "CapIQ",
-          "Capital IQ"
+          "Capital IQ",
+          "キャピタルアイキュー"
         ]
       },
       {
@@ -1538,7 +1569,8 @@
         "q": "利息を現金でなく元本に加算する形式のローンを何と呼ぶか。",
         "accept": [
           "PIK",
-          "Payment-in-Kind"
+          "Payment-in-Kind",
+          "ピック"
         ]
       },
       {
@@ -1582,7 +1614,8 @@
         "q": "SPV・ホールドコ段の負債もLPAの借入制限条項に含めるべきと2024年にガイダンスを出した機関投資家LPの業界団体は？",
         "accept": [
           "ILPA",
-          "Institutional Limited Partners Association"
+          "Institutional Limited Partners Association",
+          "アイエルピーエー"
         ]
       },
       {
@@ -1656,7 +1689,8 @@
         "q": "各プレーヤーのシェアの二乗和で市場集中度を測る指数を何と呼ぶか？",
         "accept": [
           "HHI",
-          "Herfindahl-Hirschman Index"
+          "Herfindahl-Hirschman Index",
+          "エイチエイチアイ"
         ]
       },
       {
@@ -1684,7 +1718,8 @@
         "q": "複数のプライベート・ファンドに分散投資する上位ファンドの略称は?",
         "accept": [
           "FoF",
-          "Fund of Funds"
+          "Fund of Funds",
+          "ファンドオブファンズ"
         ]
       },
       {
@@ -1702,7 +1737,8 @@
         "q": "会社IDによる名寄せで使われる、国際的な法的主体識別子の略称は?",
         "accept": [
           "LEI",
-          "Legal Entity Identifier"
+          "Legal Entity Identifier",
+          "エルイーアイ"
         ]
       },
       {
@@ -1711,7 +1747,8 @@
         "q": "機関投資家LPの権利保護と業界標準化を推進する団体の略称は?",
         "accept": [
           "ILPA",
-          "Institutional Limited Partners Association"
+          "Institutional Limited Partners Association",
+          "アイエルピーエー"
         ]
       },
       {
@@ -1720,7 +1757,8 @@
         "q": "投資家が出した資金に対する累計リターンを示し、実現分と未実現分の合計を表す指標の略称は?",
         "accept": [
           "TVPI",
-          "Total Value to Paid-In"
+          "Total Value to Paid-In",
+          "ティーブイピーアイ"
         ]
       },
       {
@@ -1729,7 +1767,8 @@
         "q": "中央銀行が国債等を買い入れて市場に資金を供給する金融緩和手段を指す略称は?",
         "accept": [
           "QE",
-          "Quantitative Easing"
+          "Quantitative Easing",
+          "キューイー"
         ]
       },
       {
@@ -1738,7 +1777,8 @@
         "q": "株式の新規公開を指す略称で、エグジット・チャネルの一つとして本文に登場するものは?",
         "accept": [
           "IPO",
-          "Initial Public Offering"
+          "Initial Public Offering",
+          "アイピーオー"
         ]
       }
     ]
@@ -1773,7 +1813,8 @@
         "q": "私募ファンドの分配・残存価値を公開市場指数のリターンで調整し比較する指標の略称は？",
         "accept": [
           "KS-PME",
-          "PME"
+          "PME",
+          "ケーエスピーエムイー"
         ]
       },
       {
@@ -1782,7 +1823,8 @@
         "q": "過去ファンドにおける減損・再構築の開示を求める設問を含む、ILPA提供の文書は何か？",
         "accept": [
           "DDQ2.0",
-          "DDQ 2.0"
+          "DDQ 2.0",
+          "ディーディーキュートゥーテンゼロ"
         ]
       },
       {
@@ -1827,7 +1869,8 @@
         "q": "米国の投資顧問業者登録書類で、規律・エンフォースメント関連の開示欄があるPartは何か？",
         "accept": [
           "Part 1",
-          "Form ADV Part 1"
+          "Form ADV Part 1",
+          "パートワン"
         ]
       },
       {
@@ -1836,7 +1879,8 @@
         "q": "SECのForm ADVが公開されているポータルの略称は？",
         "accept": [
           "IAPD",
-          "SEC IAPD"
+          "SEC IAPD",
+          "アイエーピーディー"
         ]
       },
       {
@@ -1901,7 +1945,8 @@
         "accept": [
           "MFN",
           "Most Favored Nation",
-          "最恵国待遇"
+          "最恵国待遇",
+          "エムエフエヌ"
         ]
       },
       {
@@ -1919,7 +1964,8 @@
         "q": "主要LPで構成され、GPの利益相反事案の審査などを行う委員会を何と呼ぶか？",
         "accept": [
           "LPAC",
-          "Limited Partner Advisory Committee"
+          "Limited Partner Advisory Committee",
+          "エルパック"
         ]
       },
       {
@@ -1937,7 +1983,8 @@
         "q": "PEファンドの報告NAVの四半期自己相関が公開市場リターンより有意に高いことを示した、Barber and Yasudaが2017年に発表した論文の掲載誌は何か？",
         "accept": [
           "Journal of Financial Economics",
-          "JFE"
+          "JFE",
+          "ジェイエフイー"
         ]
       },
       {
@@ -2046,7 +2093,8 @@
         "q": "最も新しく入金された資金が先に出金されたと仮定するキャッシュ・トレース手法は？",
         "accept": [
           "LIFO",
-          "後入先出"
+          "後入先出",
+          "ライフォ"
         ]
       },
       {
@@ -2055,7 +2103,8 @@
         "q": "最初に入金された資金が最初に出金されたと仮定するキャッシュ・トレース手法は？",
         "accept": [
           "FIFO",
-          "先入先出"
+          "先入先出",
+          "ファイフォ"
         ]
       },
       {
@@ -2099,7 +2148,8 @@
         "q": "Break-Even Discount（損益分岐ディスカウント）を求める式は、1からHold Value等の合計を何で割った値を引くか？",
         "accept": [
           "NAV",
-          "NAVで割った値"
+          "NAVで割った値",
+          "ナブ"
         ]
       },
       {
@@ -2137,7 +2187,8 @@
         "q": "実現＋未実現価値の払込資本に対する倍率を示す指標は何か？",
         "accept": [
           "TVPI",
-          "Total Value to Paid-In"
+          "Total Value to Paid-In",
+          "ティーブイピーアイ"
         ]
       },
       {
@@ -2146,7 +2197,8 @@
         "q": "未実現価値の払込資本に対する倍率を示す指標は何か？",
         "accept": [
           "RVPI",
-          "Residual Value to Paid-In"
+          "Residual Value to Paid-In",
+          "アールブイピーアイ"
         ]
       },
       {
@@ -2182,7 +2234,8 @@
         "q": "無限責任組合員を指す略語は何か？",
         "accept": [
           "GP",
-          "General Partner"
+          "General Partner",
+          "ジーピー"
         ]
       },
       {
@@ -2191,7 +2244,8 @@
         "q": "有限責任組合員を指す略語は何か？",
         "accept": [
           "LP",
-          "Limited Partner"
+          "Limited Partner",
+          "エルピー"
         ]
       },
       {
@@ -2200,7 +2254,8 @@
         "q": "新規株式公開を意味する略語は何か？",
         "accept": [
           "IPO",
-          "Initial Public Offering"
+          "Initial Public Offering",
+          "アイピーオー"
         ]
       },
       {
@@ -2209,7 +2264,8 @@
         "q": "借入を主体とした企業買収手法を指す略語は何か？",
         "accept": [
           "LBO",
-          "Leveraged Buyout"
+          "Leveraged Buyout",
+          "エルビーオー"
         ]
       },
       {
@@ -2218,7 +2274,8 @@
         "q": "利払い・税引き・減価償却前利益を指す略語は何か？",
         "accept": [
           "EBITDA",
-          "Earnings Before Interest Taxes Depreciation Amortization"
+          "Earnings Before Interest Taxes Depreciation Amortization",
+          "イービットディーエー"
         ]
       },
       {
@@ -2227,7 +2284,8 @@
         "q": "最高投資責任者を指す略語は何か？",
         "accept": [
           "CIO",
-          "Chief Investment Officer"
+          "Chief Investment Officer",
+          "シーアイオー"
         ]
       }
     ]
@@ -2300,7 +2358,8 @@
         "accept": [
           "MLE",
           "Maximum Likelihood Estimation",
-          "最尤推定法"
+          "最尤推定法",
+          "エムエルイー"
         ]
       },
       {
@@ -2345,7 +2404,8 @@
         "q": "プライベート・ファンドのキャッシュフローを使い、同額を公開市場に投じていたらという仮想ポートフォリオと比較する手法の総称は？",
         "accept": [
           "PME",
-          "Public Market Equivalent"
+          "Public Market Equivalent",
+          "ピーエムイー"
         ]
       },
       {
@@ -2354,7 +2414,8 @@
         "q": "Long と Nickels が1996年に提唱した、コールと分配のたびに同額の公開インデックスを売買する最も単純なPME実装は？",
         "accept": [
           "LN-PME",
-          "Long-Nickels PME"
+          "Long-Nickels PME",
+          "エルエヌピーエムイー"
         ]
       },
       {
@@ -2399,7 +2460,8 @@
         "q": "Kaplan と Schoar が2005年にJournal of Financeで発表した、比率が1.0超なら公開市場を上回ったと判定するPME手法は？",
         "accept": [
           "KS-PME",
-          "Kaplan-Schoar PME"
+          "Kaplan-Schoar PME",
+          "ケーエスピーエムイー"
         ]
       },
       {
@@ -2408,7 +2470,8 @@
         "q": "Rouvinezが提唱した、係数λを導入して仮想ポートフォリオを空売り状態にしない修正版PME手法は？",
         "accept": [
           "PME+",
-          "PME plus"
+          "PME plus",
+          "ピーエムイープラス"
         ]
       },
       {
@@ -2497,7 +2560,8 @@
         "q": "主要LPで構成され、GPの利益相反案件を承認・助言するファンドの諮問委員会を何と呼ぶか？",
         "accept": [
           "LPAC",
-          "LP Advisory Committee"
+          "LP Advisory Committee",
+          "エルパック"
         ]
       },
       {
@@ -2506,7 +2570,8 @@
         "q": "GPとLPの権利・義務関係を定める根本文書を何と呼ぶか？",
         "accept": [
           "LPA",
-          "Limited Partnership Agreement"
+          "Limited Partnership Agreement",
+          "エルピーエー"
         ]
       },
       {
@@ -2560,7 +2625,8 @@
         "q": "金融安定理事会の略称は？",
         "accept": [
           "FSB",
-          "Financial Stability Board"
+          "Financial Stability Board",
+          "エフエスビー"
         ]
       },
       {
@@ -2569,7 +2635,8 @@
         "q": "銀行以外で金融仲介機能を担う主体の総称を何と呼ぶか？",
         "accept": [
           "NBFI",
-          "Non-Bank Financial Institution"
+          "Non-Bank Financial Institution",
+          "エヌビーエフアイ"
         ]
       },
       {
@@ -2587,7 +2654,8 @@
         "q": "特定の資産保有や借入を目的に設立される法人を何と呼ぶか？",
         "accept": [
           "SPV",
-          "Special Purpose Vehicle"
+          "Special Purpose Vehicle",
+          "エスピーブイ"
         ]
       },
       {
@@ -2614,7 +2682,8 @@
         "q": "米国財務省傘下で金融システムのリスク研究を行う機関の略称は？",
         "accept": [
           "OFR",
-          "Office of Financial Research"
+          "Office of Financial Research",
+          "オーエフアール"
         ]
       },
       {
@@ -2623,7 +2692,8 @@
         "q": "複数のファンドに投資するファンドの略称は？",
         "accept": [
           "FoF",
-          "Fund of Funds"
+          "Fund of Funds",
+          "ファンドオブファンズ"
         ]
       },
       {
@@ -2667,7 +2737,8 @@
         "q": "保険会社が信頼水準99.5%で1年間生き残るために必要な資本量を定めた、ソルベンシーIIの定量的要件を何と呼ぶか？",
         "accept": [
           "SCR",
-          "Solvency Capital Requirement"
+          "Solvency Capital Requirement",
+          "エスシーアール"
         ]
       },
       {
@@ -2676,7 +2747,8 @@
         "q": "2019年のソルベンシーII改訂で導入された、適格株式に22%という低い賦課率を適用する第三カテゴリーを何と呼ぶか？",
         "accept": [
           "LTE",
-          "Long-Term Equity"
+          "Long-Term Equity",
+          "エルティーイー"
         ]
       },
       {
@@ -2695,7 +2767,8 @@
         "accept": [
           "MCR",
           "Minimum Capital Requirement",
-          "最低資本要件"
+          "最低資本要件",
+          "エムシーアール"
         ]
       },
       {
@@ -2760,7 +2833,8 @@
         "q": "EU保険会社に開示が義務付けられている、ソルベンシー・財務状況を報告する公開書類を何と呼ぶか?",
         "accept": [
           "SFCR",
-          "Solvency and Financial Condition Report"
+          "Solvency and Financial Condition Report",
+          "エスエフシーアール"
         ]
       },
       {
@@ -2778,7 +2852,8 @@
         "q": "EU銀行の規制・監督基準を定め、2年に一度EUワイドストレステストを実施する機関の略称は?",
         "accept": [
           "EBA",
-          "European Banking Authority"
+          "European Banking Authority",
+          "イービーエー"
         ]
       }
     ]
@@ -2795,7 +2870,8 @@
         "q": "出資済み資本に対する未実現残存価値と分配済みの合計を示す指標の略称は？",
         "accept": [
           "TVPI",
-          "Total Value to Paid-In"
+          "Total Value to Paid-In",
+          "ティーブイピーアイ"
         ]
       },
       {
@@ -2804,7 +2880,8 @@
         "q": "出資済み資本に対する実際に分配された現金の比率を示す指標の略称は?",
         "accept": [
           "DPI",
-          "Distributed to Paid-In"
+          "Distributed to Paid-In",
+          "ディーピーアイ"
         ]
       },
       {
@@ -2822,7 +2899,8 @@
         "q": "資産・負債を出口価格で測定するよう要求する、現在ASC 820に統合された公正価値測定基準は?",
         "accept": [
           "FAS 157",
-          "FAS157"
+          "FAS157",
+          "エフエーエスひゃくごじゅうなな"
         ]
       },
       {

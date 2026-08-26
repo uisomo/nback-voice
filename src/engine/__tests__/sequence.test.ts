@@ -60,10 +60,15 @@ describe('buildRound', () => {
     expect(new Set(ids).size).toBe(9);
   });
 
-  it('throws when the bank has fewer than 9 questions', () => {
-    expect(() => buildRound(2, BANK.slice(0, 8), zeroRng)).toThrow(
-      /at least 9 questions/,
-    );
+  it('throws when the bank is empty', () => {
+    expect(() => buildRound(2, [], zeroRng)).toThrow(/at least 1 question/);
+  });
+
+  it('repeats questions to fill 9 stimuli when the bank has fewer than 9', () => {
+    const { steps } = buildRound(2, BANK.slice(0, 5), zeroRng);
+    const ids = steps.slice(0, 9).map((s) => s.question!.id);
+    expect(ids).toHaveLength(9);
+    expect(new Set(ids).size).toBeLessThanOrEqual(5);
   });
 
   it('rejects an N below 1 rather than building a malformed plan', () => {

@@ -38,15 +38,15 @@ describe('SeriesScreen', () => {
     expect(onSelect).toHaveBeenCalledWith('persuasion');
   });
 
-  it('refuses a series with fewer than nine questions and names the shortfall', async () => {
+  it('allows a series with fewer than nine questions, since a round repeats to fill nine', async () => {
     await addCustom('一問だけ', 'あ');
     const onSelect = jest.fn();
     render(<SeriesScreen onSelect={onSelect} onOpenSettings={jest.fn()} />);
     await waitFor(() => {
-      expect(screen.getByText(/あと 8 問/)).toBeTruthy();
+      expect(screen.getByTestId('series-count-custom')).toHaveTextContent('1問');
     });
     fireEvent.press(screen.getByTestId('series-custom'));
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith('custom');
   });
 
   it('shows the stored lag for each series independently', async () => {

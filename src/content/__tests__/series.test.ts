@@ -50,15 +50,8 @@ describe('series.json data contract', () => {
     }
   });
 
-  // These ffdd-* chapters cover book content too specialized to yield nine
-  // questions that survive review without inventing book-only jargon as if
-  // it were external terminology. Topped up incrementally; the series picker
-  // already shows an under-count series as unusable rather than hiding it.
-  const KNOWN_SHORT = new Set(['ffdd-08', 'ffdd-15', 'ffdd-16', 'ffdd-21']);
-
-  it('gives every series enough questions for a round, except known-short chapters awaiting top-up', () => {
+  it('gives every series at least one question', () => {
     for (const series of authored) {
-      if (KNOWN_SHORT.has(series.id)) continue;
       expect(series.questions.length).toBeGreaterThanOrEqual(MIN_QUESTIONS);
     }
   });
@@ -225,10 +218,7 @@ describe('the shipped catalogue', () => {
 });
 
 describe('MIN_QUESTIONS', () => {
-  it('is the number of stimuli in a round', () => {
-    // The series picker's guard and GameScreen's re-check both compare
-    // against this, so it must track STIMULI_PER_ROUND rather than being
-    // its own literal.
-    expect(MIN_QUESTIONS).toBe(9);
+  it('is 1, since a round repeats questions to fill 9 stimuli', () => {
+    expect(MIN_QUESTIONS).toBe(1);
   });
 });

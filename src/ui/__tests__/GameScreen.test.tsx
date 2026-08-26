@@ -520,11 +520,16 @@ describe('GameScreen series', () => {
     }
   });
 
-  it('shows 問題が足りません when the series is too small', async () => {
+  it('repeats the sole question to fill a round when the series has just one', async () => {
     await addCustom('一問だけ', 'あ');
-    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
-    expect(await screen.findByText(/問題が足りません/)).toBeTruthy();
+    await beginRound();
+    await runWholeRound();
+    expect(speaker.spoken).toHaveLength(9);
+    for (const spoken of speaker.spoken) {
+      expect(spoken).toBe('一問だけ');
+    }
   });
 
   it('falls back to the standard series for an unknown id', async () => {
