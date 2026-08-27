@@ -1,0 +1,154 @@
+import Anthropic from '@anthropic-ai/sdk';
+
+export interface AuthoredQuestion {
+  id: string;
+  tier: number;
+  q: string;
+  accept: string[];
+}
+
+export interface AuthoredSeries {
+  id: string;
+  category: string;
+  title: string;
+  credit?: string;
+  questions: AuthoredQuestion[];
+}
+
+export interface TranslatedSeries {
+  id: string;
+  category: string;
+  title: string;
+  credit?: string;
+  questions: AuthoredQuestion[];
+}
+
+export const CATEGORIES_EN: Record<string, string> = {
+  finance: 'Building financial vocabulary',
+  delivery: 'Changing how you explain it',
+  basics: 'Anyone can answer',
+};
+
+export function parseTranslatedSeries(
+  text: string,
+  expected: AuthoredSeries,
+): TranslatedSeries {
+  let data: unknown;
+  try {
+    data = JSON.parse(text.trim());
+  } catch {
+    throw new Error(`could not parse translation for ${expected.id}: ${text.slice(0, 200)}`);
+  }
+  const v = data as Partial<TranslatedSeries>;
+  if (typeof v.title !== 'string' || !Array.isArray(v.questions)) {
+    throw new Error(`malformed translation for ${expected.id}: ${text.slice(0, 200)}`);
+  }
+
+  const expectedIds = new Set(expected.questions.map((q) => q.id));
+  const seenIds = new Set<string>();
+  for (const q of v.questions) {
+    const question = q as Partial<AuthoredQuestion>;
+    if (
+      typeof question.id !== 'string' ||
+      typeof question.tier !== 'number' ||
+      typeof question.q !== 'string' ||
+      !Array.isArray(question.accept)
+    ) {
+      throw new Error(`malformed question in translation for ${expected.id}: ${JSON.stringify(q).slice(0, 200)}`);
+    }
+    if (!expectedIds.has(question.id)) {
+      throw new Error(`translation for ${expected.id} has unexpected question id "${question.id}"`);
+    }
+    seenIds.add(question.id);
+  }
+  const missing = [...expectedIds].filter((id) => !seenIds.has(id));
+  if (missing.length > 0) {
+    throw new Error(`translation for ${expected.id} is missing question ids: ${missing.join(', ')}`);
+  }
+
+  return {
+    id: expected.id,
+    category: expected.category,
+    title: v.title,
+    credit: v.credit,
+    questions: v.questions as AuthoredQuestion[],
+  };
+}
+
+const TRANSLATE_MODEL = 'claude-opus-5';
+
+const TRANSLATE_SCHEMA = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    category: { type: 'string' },
+    title: { type: 'string' },
+    credit: { type: 'string' },
+    questions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          tier: { type: 'number' },
+          q: { type: 'string' },
+          accept: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['id', 'tier', 'q', 'accept'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['id', 'category', 'title', 'questions'],
+  additionalProperties: false,
+};
+
+const TRANSLATE_SYSTEM = [
+  'You are translating a Japanese fund-finance quiz series into English.',
+  'Use natural, idiomatic fund-finance English terminology — not literal',
+  'machine translation. Each question must read as something a native',
+  'English-speaking practitioner would actually be asked.',
+  'For each question, translate "q" and "accept". "accept" must keep the',
+  'same variety the Japanese original has: abbreviation, full name, and',
+  'common alternate phrasing, e.g. ["MFN", "Most Favored Nation",',
+  '"Most Favored Nation clause"]. Do not collapse it to a single term.',
+  'Translate "title". If "credit" is present, translate it to the form',
+  '"Based on *<romanized title>*" — do not invent or look up a real',
+  'English edition title.',
+  'Keep every question\'s "id" and "tier" unchanged from the input.',
+  'Return exactly the same set of question ids as the input, no more, no',
+  'fewer.',
+].join('\n');
+
+export async function translateSeries(
+  series: AuthoredSeries,
+  getApiKey: () => Promise<string>,
+): Promise<TranslatedSeries> {
+  const apiKey = (await getApiKey()).trim();
+  if (!apiKey) {
+    throw new Error('APIキーが設定されていません');
+  }
+
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const response = await client.messages.create({
+    model: TRANSLATE_MODEL,
+    max_tokens: 8192,
+    output_config: {
+      effort: 'medium',
+      format: { type: 'json_schema', schema: TRANSLATE_SCHEMA },
+    },
+    system: TRANSLATE_SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: JSON.stringify(series),
+      },
+    ],
+  });
+
+  const block = response.content.find((b) => b.type === 'text');
+  if (!block || block.type !== 'text') {
+    throw new Error(`translation response for ${series.id} contained no text block`);
+  }
+  return parseTranslatedSeries(block.text, series);
+}
