@@ -167,10 +167,21 @@ describe('RoundEngine round score', () => {
     expect(engine.roundScore).toBe(1);
   });
 
-  it('feeds the round score into the adaptive rule', () => {
+  it('does not raise N while answers are still 未判定, even with perfect position', () => {
+    // submitAllCorrectTaps sends a transcript for every step but never
+    // resolves it: the answer channel is incomplete, not proven perfect, so
+    // a flawless position score alone must not carry the round to a raise.
     const p = plan(2);
     const engine = new RoundEngine(p);
     submitAllCorrectTaps(engine, p);
+    expect(engine.nextN(2)).toBe(2);
+  });
+
+  it('raises N once both channels resolve perfect', () => {
+    const p = plan(2);
+    const engine = new RoundEngine(p);
+    submitAllCorrectTaps(engine, p);
+    for (const a of engine.takePending()) engine.resolveAnswer(a.index, true);
     expect(engine.nextN(2)).toBe(3);
   });
 });

@@ -172,6 +172,13 @@ export class RoundEngine {
   nextN(currentN: number): number {
     const score = this.roundScore;
     if (score === null) return currentN;
-    return adaptiveNextN(score, currentN);
+    return adaptiveNextN(score, currentN, {
+      positionScore: this.positionScore,
+      // A perfect answerScore over only the answers judged so far still
+      // leaves the round incomplete while one is stuck at 未判定 — not
+      // proven wrong, but not proven right either, so it must not carry a
+      // level-up on the rest of the round's behalf.
+      answerScore: this.unresolvedCount > 0 ? 0 : this.answerScore,
+    });
   }
 }
