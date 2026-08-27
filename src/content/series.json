@@ -66,6 +66,7 @@
         "accept": [
           "最恵国待遇",
           "MFN",
+          "Most Favored Nation",
           "エムエフエヌ"
         ]
       },
@@ -137,6 +138,7 @@
         "q": "ファンドの基本ルールを定める契約は？",
         "accept": [
           "LPA",
+          "Limited Partnership Agreement",
           "エルピーエー",
           "リミテッドパートナーシップ契約",
           "組合契約"
@@ -148,6 +150,7 @@
         "q": "キャピタルコールを発動する側は？",
         "accept": [
           "GP",
+          "General Partner",
           "ジーピー",
           "ゼネラルパートナー",
           "無限責任組合員"
@@ -177,6 +180,7 @@
         "q": "資産の時価から負債を引いた純資産価値は？",
         "accept": [
           "NAV",
+          "Net Asset Value",
           "エヌエーブイ",
           "純資産価値"
         ]
@@ -187,6 +191,7 @@
         "q": "資産価値に対する貸付残高の比率は？",
         "accept": [
           "LTV",
+          "Loan to Value",
           "エルティーブイ",
           "ローントゥバリュー"
         ]
@@ -308,6 +313,7 @@
         "q": "出資するが運用に関与しない投資家は？",
         "accept": [
           "LP",
+          "Limited Partner",
           "エルピー",
           "リミテッドパートナー",
           "有限責任組合員"
@@ -319,6 +325,7 @@
         "q": "税務や規制の事情で作る別のビークルは？",
         "accept": [
           "AIV",
+          "Alternative Investment Vehicle",
           "エーアイブイ",
           "代替投資ビークル"
         ]
@@ -360,6 +367,7 @@
         "q": "ファンドに投資するファンドは？",
         "accept": [
           "FoF",
+          "Fund of Funds",
           "ファンドオブファンズ",
           "エフオーエフ"
         ]
@@ -370,6 +378,7 @@
         "q": "国家が運用する巨大な投資ファンドは？",
         "accept": [
           "SWF",
+          "Sovereign Wealth Fund",
           "政府系ファンド",
           "エスダブリューエフ",
           "ソブリンウェルスファンド"
@@ -391,6 +400,7 @@
         "q": "資産と負債の期間を合わせる管理は？",
         "accept": [
           "ALM",
+          "Asset Liability Management",
           "エーエルエム",
           "資産負債管理"
         ]
@@ -401,6 +411,7 @@
         "q": "米国の年金を規律する法律は？",
         "accept": [
           "ERISA",
+          "Employee Retirement Income Security Act",
           "エリサ",
           "エリサ法"
         ]
@@ -420,6 +431,7 @@
         "q": "運用資産の総額を何という？",
         "accept": [
           "AUM",
+          "Assets Under Management",
           "エーユーエム",
           "運用資産総額"
         ]
@@ -662,6 +674,7 @@
         "q": "ファンドが保有する全資産の公正価値から負債を差し引いた残高を表す指標の略称は？",
         "accept": [
           "NAV",
+          "Net Asset Value",
           "純資産価値",
           "ナブ"
         ]
@@ -672,7 +685,8 @@
         "q": "レバレッジド・バイアウトの企業価値評価で用いられる、企業利益の何倍の値段かを示す指標は？",
         "accept": [
           "EBITDA倍率",
-          "EBITDAマルチプル"
+          "EBITDAマルチプル",
+          "Earnings Before Interest Taxes Depreciation and Amortization倍率"
         ]
       },
       {
@@ -690,6 +704,7 @@
         "q": "ファンドへの出資者を指す、リミテッド・パートナーの略称は？",
         "accept": [
           "LP",
+          "Limited Partner",
           "リミテッドパートナー"
         ]
       },
@@ -699,6 +714,7 @@
         "q": "ファンドの運用者を指す、ゼネラル・パートナーの略称は？",
         "accept": [
           "GP",
+          "General Partner",
           "ゼネラルパートナー"
         ]
       },
@@ -708,6 +724,7 @@
         "q": "機関投資家のLP団体で、業界標準の報告テンプレートやDDQを策定する組織の略称は？",
         "accept": [
           "ILPA",
+          "Institutional Limited Partners Association",
           "I.L.P.A.",
           "アイエルピーエー"
         ]
@@ -728,6 +745,7 @@
         "q": "残余NAV÷払い込み資本額で表される、未実現価値の水準を示す指標の略称は？",
         "accept": [
           "RVPI",
+          "Residual Value to Paid-In",
           "R.V.P.I.",
           "アールブイピーアイ"
         ]
@@ -765,6 +783,7 @@
         "q": "上場企業の財務諸表が準拠する米国の会計基準の略称は何か？",
         "accept": [
           "GAAP",
+          "Generally Accepted Accounting Principles",
           "米国会計基準",
           "ギャープ"
         ]
@@ -811,6 +830,7 @@
         "q": "EUの代替投資ファンドマネジャーに登録・開示・レポーティングを義務づける規制の略称は何か？",
         "accept": [
           "AIFMD",
+          "Alternative Investment Fund Managers Directive",
           "EU代替投資規制",
           "エーアイエフエムディー"
         ]
@@ -857,6 +877,7 @@
         "q": "ファンドの設立根拠となり、GPとLPの権利・義務・借入権限などを定める法的文書は何か。",
         "accept": [
           "LPA",
+          "Limited Partnership Agreement",
           "組合契約書",
           "エルピーエー"
         ]
@@ -957,7 +978,7 @@
       {
         "id": "ffdd-03_06",
         "tier": 0,
-        "q": "LPA が借入について沈黙し、弁護士が「おそらく許可される」と述べただけの状況。青信号にする前に取得すべきものは？",
+        "q": "GP がファンドに借入をさせたいが、LPA は借入について何も定めておらず、弁護士も「おそらく許可されるだろう」としか言えない。GP が実際に借入を実行する前に、LP から取得しておくべきものは？",
         "accept": [
           "LPA修正",
           "同意書",
@@ -1064,6 +1085,7 @@
         "q": "実現＋未実現価値の払込資本対比倍率を表す指標の略称は何か？",
         "accept": [
           "TVPI",
+          "Total Value to Paid-In",
           "TVPI指標",
           "ティーブイピーアイ"
         ]
@@ -1083,6 +1105,7 @@
         "q": "各キャッシュフローを公開市場ベンチマークで複利計算し比較する指標の略称は何か？",
         "accept": [
           "KS-PME",
+          "Kaplan-Schoar Public Market Equivalent",
           "PME",
           "ケーエスピーエムイー"
         ]
@@ -1140,6 +1163,7 @@
         "q": "Kaplan-Schoarが2005年に提案した、公開市場指数に対するファンドのアウトパフォームを1倍基準で示す手法の略称は？",
         "accept": [
           "KS-PME",
+          "Kaplan-Schoar Public Market Equivalent",
           "PME",
           "KS-PME法",
           "ケーエスピーエムイー"
@@ -1187,7 +1211,8 @@
         "q": "公的年金や大学基金が米国情報公開法に基づき開示したデータが機関投資家に選ばれたファンドに偏ることで生じるバイアスを何と呼ぶか？",
         "accept": [
           "FOIAバイアス",
-          "FOIA bias"
+          "FOIA bias",
+          "Freedom of Information Actバイアス"
         ]
       },
       {
@@ -1288,6 +1313,7 @@
         "q": "プライベートキャピタル評価に関する国際業界基準で、欧州VC・PE協会が事務局を務める団体が定期改定する実務指針の略称は何か？",
         "accept": [
           "IPEV",
+          "International Private Equity and Venture Capital Valuation Guidelines",
           "IPEVガイドライン"
         ]
       },
@@ -1307,6 +1333,7 @@
         "q": "米国一般に公正妥当と認められた会計原則を指す略語は何か？",
         "accept": [
           "GAAP",
+          "Generally Accepted Accounting Principles",
           "US GAAP",
           "ギャープ"
         ]
@@ -1317,6 +1344,7 @@
         "q": "米国財務会計基準審議会を指す略語は何か？",
         "accept": [
           "FASB",
+          "Financial Accounting Standards Board",
           "ファスビー"
         ]
       },
@@ -1326,6 +1354,7 @@
         "q": "国際会計基準審議会を指す略語は何か？",
         "accept": [
           "IASB",
+          "International Accounting Standards Board",
           "アイアスビー"
         ]
       },
@@ -1354,6 +1383,7 @@
         "q": "税引前・利払前・減価償却前利益を指す略語は何か？",
         "accept": [
           "EBITDA",
+          "Earnings Before Interest Taxes Depreciation and Amortization",
           "イービットダ"
         ]
       },
@@ -1418,6 +1448,7 @@
         "q": "米国の年金・退職給付を規律し、ファンド資産が「プラン・アセット」に該当するかの判定に関わる連邦法は何か？",
         "accept": [
           "ERISA",
+          "Employee Retirement Income Security Act",
           "従業員退職所得保障法",
           "エリサ"
         ]
@@ -1520,6 +1551,7 @@
         "q": "NAVファシリティの開示（LTV・借入残高・利率・目的）についてガイダンスを出した機関LPの業界団体は何か。",
         "accept": [
           "ILPA",
+          "Institutional Limited Partners Association",
           "機関LP団体",
           "アイエルピーエー"
         ]
@@ -1596,6 +1628,7 @@
         "q": "借入残高を担保価値で割った指標を何と呼ぶか？",
         "accept": [
           "LTV",
+          "Loan to Value",
           "ローン・トゥー・バリュー比率"
         ]
       },
@@ -1813,6 +1846,7 @@
         "q": "私募ファンドの分配・残存価値を公開市場指数のリターンで調整し比較する指標の略称は？",
         "accept": [
           "KS-PME",
+          "Kaplan-Schoar Public Market Equivalent",
           "PME",
           "ケーエスピーエムイー"
         ]
@@ -1823,6 +1857,7 @@
         "q": "過去ファンドにおける減損・再構築の開示を求める設問を含む、ILPA提供の文書は何か？",
         "accept": [
           "DDQ2.0",
+          "Due Diligence Questionnaire 2.0",
           "DDQ 2.0",
           "ディーディーキュートゥーテンゼロ"
         ]
@@ -1879,6 +1914,7 @@
         "q": "SECのForm ADVが公開されているポータルの略称は？",
         "accept": [
           "IAPD",
+          "Investment Adviser Public Disclosure",
           "SEC IAPD",
           "アイエーピーディー"
         ]
@@ -2093,6 +2129,7 @@
         "q": "最も新しく入金された資金が先に出金されたと仮定するキャッシュ・トレース手法は？",
         "accept": [
           "LIFO",
+          "Last In First Out",
           "後入先出",
           "ライフォ"
         ]
@@ -2103,6 +2140,7 @@
         "q": "最初に入金された資金が最初に出金されたと仮定するキャッシュ・トレース手法は？",
         "accept": [
           "FIFO",
+          "First In First Out",
           "先入先出",
           "ファイフォ"
         ]
@@ -2148,6 +2186,7 @@
         "q": "Break-Even Discount（損益分岐ディスカウント）を求める式は、1からHold Value等の合計を何で割った値を引くか？",
         "accept": [
           "NAV",
+          "Net Asset Value",
           "NAVで割った値",
           "ナブ"
         ]
@@ -2299,7 +2338,7 @@
       {
         "id": "ffdd-15_01",
         "tier": 0,
-        "q": "融資担当者はLPプールの平均信用力が高いことに安心していたが、フィッチのPCMではストレスが強まるほど相関係数が上昇する設計だと知った。この非線形構造が飲み込んでしまうものは？",
+        "q": "融資担当者はLPプールの平均信用力が高いことに安心していたが、フィッチのポートフォリオ信用モデル（PCM: Portfolio Credit Model）ではストレスが強まるほど相関係数が上昇する設計だと知った。この非線形構造が飲み込んでしまうものは？",
         "accept": [
           "平穏時の分散メリット",
           "分散メリット"
@@ -2308,7 +2347,7 @@
       {
         "id": "ffdd-15_02",
         "tier": 0,
-        "q": "PCMがストレス下の同時デフォルト分布を生成する際に用いる、確率的乱数を使った反復計算手法は？",
+        "q": "フィッチのポートフォリオ信用モデル（PCM）がストレス下の同時デフォルト分布を生成する際に用いる、確率的乱数を使った反復計算手法は？",
         "accept": [
           "モンテカルロ法",
           "Monte Carlo method",
@@ -2331,6 +2370,7 @@
         "q": "米国の従業員退職所得保障法を指す略語で、本文では米国年金系LPの規制連動の文脈で登場するものは？",
         "accept": [
           "ERISA",
+          "Employee Retirement Income Security Act",
           "エリサ法"
         ]
       }
@@ -2378,6 +2418,7 @@
         "q": "GPが四半期ごとに非公開資産の公正価値を推定する際に使う、将来キャッシュフローを現在価値に割り引く評価手法を何と呼ぶか?",
         "accept": [
           "DCF",
+          "Discounted Cash Flow",
           "ディスカウントキャッシュフロー"
         ]
       },
@@ -2451,6 +2492,7 @@
         "q": "Cambridge Associatesが採用する、各期間の仮想ポートフォリオ規模をファンドのNAVに比例させて動かす方式は？",
         "accept": [
           "mPME",
+          "Modified PME",
           "エムピーエムイ"
         ]
       },
@@ -2560,6 +2602,7 @@
         "q": "主要LPで構成され、GPの利益相反案件を承認・助言するファンドの諮問委員会を何と呼ぶか？",
         "accept": [
           "LPAC",
+          "Limited Partner Advisory Committee",
           "LP Advisory Committee",
           "エルパック"
         ]
@@ -2812,7 +2855,7 @@
       {
         "id": "ffdd-20_09",
         "tier": 0,
-        "q": "バーゼルIII/IVのCRR3のもとで、ファンドの投資マンデートが明示されている場合、マンデート内で最もリスクの高い資産のリスクウェイトを保守的に使うアプローチを何と呼ぶか?",
+        "q": "バーゼルIII/IVの自己資本規制（CRR3: Capital Requirements Regulation 3）のもとで、ファンドの投資マンデートが明示されている場合、マンデート内で最もリスクの高い資産のリスクウェイトを保守的に使うアプローチを何と呼ぶか?",
         "accept": [
           "マンデート・ベースド・アプローチ",
           "Mandate-Based Approach"
@@ -2821,7 +2864,7 @@
       {
         "id": "ffdd-20_10",
         "tier": 0,
-        "q": "CRR3のフォールバック・アプローチが適用される場合、プライベートエクイティのLP持分に課されるリスクウェイトは何%か?",
+        "q": "自己資本規制CRR3のフォールバック・アプローチが適用される場合、プライベートエクイティのLP持分に課されるリスクウェイトは何%か?",
         "accept": [
           "1250%",
           "1,250%"
@@ -2840,7 +2883,7 @@
       {
         "id": "ffdd-20_12",
         "tier": 0,
-        "q": "銀行が対象ファンドの基礎資産を個々に把握し、各資産のリスクウェイトでRWAを計算するアプローチを何と呼ぶか?",
+        "q": "銀行が対象ファンドの基礎資産を個々に把握し、各資産のリスクウェイトでリスク加重資産（RWA: Risk-Weighted Assets）を計算するアプローチを何と呼ぶか?",
         "accept": [
           "ルックスルー・アプローチ",
           "Look-Through Approach"
@@ -2890,6 +2933,7 @@
         "q": "借入金を主な財源として対象企業を買収する手法の略称は?",
         "accept": [
           "LBO",
+          "Leveraged Buyout",
           "レバレッジドバイアウト"
         ]
       },

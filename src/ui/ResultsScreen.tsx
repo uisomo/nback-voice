@@ -35,18 +35,89 @@ function positionMark(row: AnswerReview): { label: string; color: string } {
   return { label: '位置 —', color: NEUTRAL };
 }
 
-const ASCII_TERM = /^[A-Za-z0-9]+$/;
+const ASCII_TERM = /^[A-Za-z0-9&.\-+ ]+$/;
+/** A short token with no space — MFN, NAV, LPA — as opposed to its expansion. */
+const ASCII_ABBREVIATION = /^[A-Za-z0-9&.\-]+$/;
+/** Marks a term as an actual Japanese equivalent, not a katakana reading. */
+const KANJI = /[一-龯]/;
 
 /**
  * accept[0] is the canonical answer; the rest is recognizer tolerance plus
- * whatever the judge learned at runtime, not the answer. The one exception:
- * an English form (e.g. NAV) elsewhere in the list is worth surfacing next
- * to accept[0] so both spellings show, not just whichever came first.
+ * whatever the judge learned at runtime, not the answer. Three exceptions are
+ * worth surfacing alongside accept[0], because together they are the answer
+ * to "what does this abbreviation mean" rather than just "what do I say":
+ * the English abbreviation itself (e.g. MFN), the full name it expands to
+ * (e.g. Most Favored Nation), and — when accept[0] is not already Japanese —
+ * a Japanese form. Plain English terms with no abbreviation (Side Letter,
+ * Bridge) have nothing to expand, so only the parts that exist are shown.
  */
-function englishForm(accept: string[]): string | null {
+interface AnswerForms {
+  abbreviation: string | null;
+  expansion: string | null;
+  japanese: string | null;
+}
+
+function answerForms(accept: string[]): AnswerForms {
   const [canonical, ...rest] = accept;
-  if (canonical !== undefined && ASCII_TERM.test(canonical)) return null;
-  return rest.find((term) => ASCII_TERM.test(term)) ?? null;
+  const canonicalIsAscii = canonical !== undefined && ASCII_TERM.test(canonical);
+  const canonicalIsAbbreviation =
+    canonicalIsAscii && ASCII_ABBREVIATION.test(canonical);
+
+  // The abbreviation is accept[0] itself when that is already a short ASCII
+  // token; otherwise look for one in the rest of the list.
+  const abbreviation = canonicalIsAbbreviation
+    ? canonical
+    : (rest.find((term) => ASCII_ABBREVIATION.test(term)) ?? null);
+
+  // The expansion is any other ASCII term that is NOT the abbreviation
+  // itself — i.e. it has a space (or is simply longer), which is what marks
+  // it as the spelled-out name rather than another rendering of the acronym.
+  const expansion =
+    [canonical, ...rest].find(
+      (term) =>
+        term !== abbreviation &&
+        ASCII_TERM.test(term) &&
+        !ASCII_ABBREVIATION.test(term),
+    ) ?? null;
+
+  // Japanese only needs surfacing when accept[0] is not already Japanese —
+  // otherwise accept[0] itself on screen already is the Japanese form. A pure
+  // katakana reading of the English (e.g. エヌエーブイ for NAV) is how to say
+  // the English word, not a translation of it — kanji is what marks a term
+  // as an actual Japanese equivalent, so that is preferred when both exist.
+  const japaneseCandidates = canonicalIsAscii
+    ? rest.filter((term) => !ASCII_TERM.test(term))
+    : [];
+  const japanese =
+    japaneseCandidates.find((term) => KANJI.test(term)) ??
+    japaneseCandidates[0] ??
+    null;
+
+  return { abbreviation, expansion, japanese };
+}
+
+/**
+ * The line shown under a review row: accept[0], plus whichever of the
+ * abbreviation/expansion/Japanese forms are not already accept[0] and exist —
+ * e.g. "MFN（Most Favored Nation）/ 最恵国優遇条項" for a JP canonical answer,
+ * or "最恵国優遇条項" alone with nothing appended when there is nothing to add.
+ */
+function answerDisplay(question: { accept: string[] }): string {
+  const [canonical] = question.accept;
+  if (canonical === undefined) return '';
+  const { abbreviation, expansion, japanese } = answerForms(question.accept);
+
+  const canonicalIsAbbreviation = canonical === abbreviation;
+  const parenParts = [
+    // accept[0] already covers whichever of abbreviation/japanese it equals.
+    canonicalIsAbbreviation ? null : abbreviation,
+    expansion,
+  ].filter((part): part is string => part !== null);
+
+  let out = canonical;
+  if (parenParts.length > 0) out += `（${parenParts.join(' / ')}）`;
+  if (japanese !== null && japanese !== canonical) out += `　/　${japanese}`;
+  return out;
 }
 
 export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
@@ -105,9 +176,7 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
                 >
                   答え:{' '}
                   <Text style={styles.answerValue}>
-                    {item.question.accept[0]}
-                    {englishForm(item.question.accept) !== null &&
-                      `（${englishForm(item.question.accept)}）`}
+                    {answerDisplay(item.question)}
                   </Text>
                 </Text>
               )}

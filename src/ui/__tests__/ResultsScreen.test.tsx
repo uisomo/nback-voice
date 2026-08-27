@@ -295,7 +295,13 @@ describe('ResultsScreen correct answer', () => {
     }
   });
 
-  it('shows only the canonical form when accept[0] is already English', () => {
+  /**
+   * The owner asked to always see both languages, not just whichever
+   * happened to be accept[0]: an English canonical answer still needs its
+   * Japanese equivalent on screen, so a round played to the English form
+   * still teaches the Japanese one.
+   */
+  it('adds the Japanese form when accept[0] is already English', () => {
     const bank: Question[] = Array.from({ length: 20 }, (_, i) => ({
       id: `n${i}`,
       tier: 1,
@@ -309,8 +315,41 @@ describe('ResultsScreen correct answer', () => {
     for (const row of engine.review) {
       const shown = textOf(getByTestId(`review-answer-${row.index}`));
       expect(shown).toContain(row.question.accept[0]);
+      // The katakana reading of the English word is not a translation of it —
+      // kanji is what marks a term as the actual Japanese equivalent.
       expect(shown).not.toContain(row.question.accept[1]);
-      expect(shown).not.toContain(row.question.accept[2]);
+      expect(shown).toContain(row.question.accept[2]);
+    }
+  });
+
+  /**
+   * The exact case that prompted this: an abbreviation whose full English
+   * name is worth teaching alongside it, e.g. MFN（Most Favored Nation）/
+   * 最恵国優遇条項 rather than just "MFN" with no indication of what it
+   * stands for.
+   */
+  it('shows the abbreviation, its full English name, and the Japanese term together', () => {
+    const bank: Question[] = Array.from({ length: 20 }, (_, i) => ({
+      id: `m${i}`,
+      tier: 1,
+      q: `質問${i}`,
+      accept: [
+        `最恵国優遇条項${i}`,
+        `MFN${i}`,
+        `Most Favored Nation${i}`,
+        `エムエフエヌ${i}`,
+      ],
+    }));
+    const engine = engineWith(bank);
+    const { getByTestId } = render(
+      <ResultsScreen engine={engine} n={2} onAgain={() => {}} onChangeSeries={() => {}} />,
+    );
+    for (const row of engine.review) {
+      const shown = textOf(getByTestId(`review-answer-${row.index}`));
+      expect(shown).toContain(row.question.accept[0]); // 最恵国優遇条項
+      expect(shown).toContain(row.question.accept[1]); // MFN
+      expect(shown).toContain(row.question.accept[2]); // Most Favored Nation
+      expect(shown).not.toContain(row.question.accept[3]); // エムエフエヌ (reading)
     }
   });
 });
