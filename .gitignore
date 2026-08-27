@@ -42,6 +42,10 @@ yarn-error.*
 # to avoid needing tsx as a devDependency (see wsl-npm-rename-race memory)
 .review-build/
 
+# scripts/translate-questions.ts compiled here by `npm run translate-questions`,
+# same reason as .review-build/ above
+.translate-build/
+
 # generated native folders
 /ios
 /android
