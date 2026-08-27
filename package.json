@@ -32,7 +32,7 @@
     "test": "jest",
     "check:bundle": "expo export --platform ios --output-dir dist/bundle-check-ios && expo export --platform web --output-dir dist/bundle-check-web",
     "review-questions": "tsc scripts/review-questions.ts src/content/review.ts src/engine/types.ts --outDir .review-build --module commonjs --target es2020 --esModuleInterop --resolveJsonModule --skipLibCheck --strict false --ignoreConfig && node -e \"require('fs').copyFileSync('src/content/series.json','.review-build/src/content/series.json')\" && node .review-build/scripts/review-questions.js",
-    "translate-questions": "tsc scripts/translate-questions.ts src/content/translate.ts src/engine/types.ts --outDir .translate-build --module commonjs --target es2020 --esModuleInterop --resolveJsonModule --skipLibCheck --strict false --ignoreConfig && node -e \"require('fs').copyFileSync('src/content/series.json','.translate-build/src/content/series.json')\" && node .translate-build/scripts/translate-questions.js"
+    "translate-questions": "tsc scripts/translate-questions.ts src/content/translate.ts src/engine/types.ts --outDir .translate-build --module commonjs --target es2020 --esModuleInterop --resolveJsonModule --skipLibCheck --strict false --ignoreConfig --types node && node -e \"require('fs').copyFileSync('src/content/series.json','.translate-build/src/content/series.json')\" && node .translate-build/scripts/translate-questions.js"
   },
   "jest": {
     "preset": "jest-expo",
