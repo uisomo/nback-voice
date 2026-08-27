@@ -114,15 +114,18 @@ describe('RoundRunner utterance overlap', () => {
     ]);
   });
 
-  it('reaches the end of the round with every utterance still unresolved', () => {
+  it('reaches the end of the round even though tick() never awaits the utterance', () => {
     // tick() itself never blocks; only readyToClose() does. A caller that
-    // ignores the gate must still drive the machine to completion.
+    // ignores the gate must still drive the machine to completion. Every
+    // A -> B transition stops the speaker on its way through (see "silences
+    // the synthesizer before the mic opens" below), which is why nothing is
+    // left pending at the end rather than the whole round's worth.
     const speaker = new SlowFakeSpeaker();
     const { runner } = setup(2, speaker);
     runner.start();
     for (let i = 0; i < 11 * 2; i++) runner.tick();
     expect(runner.finished).toBe(true);
-    expect(speaker.pending).toBe(9);
+    expect(speaker.pending).toBe(0);
   });
 
   it('silences the synthesizer before the mic opens', () => {
@@ -561,11 +564,6 @@ describe('RoundRunner merged steps', () => {
     return done;
   }
 
-  /**
-   * The reason phase A used to wait out the utterance has not gone away: a
-   * question clipped mid-way is unanswerable N steps later. Answering fast
-   * must not be able to cut it off.
-   */
   /** The real listener of this mode: settle() resolves when 送る is pressed. */
   function typedSetup(speaker: FakeSpeaker | SlowFakeSpeaker) {
     const plan = buildRound(2, BANK, Math.random);
@@ -581,17 +579,23 @@ describe('RoundRunner merged steps', () => {
     return { runner, listener };
   }
 
-  it('will not close on the answer alone while the question is still being said', async () => {
+  /**
+   * Unlike phase A, this field has no microphone for the synthesizer to
+   * bleed into — so once the owner presses 送る there is nothing left to
+   * protect by waiting, and doing so anyway reads as the button not working.
+   * Pressing send cuts a still-speaking question short rather than outlasting
+   * it, even though that risks a question being clipped mid-sentence.
+   */
+  it('closes on 送る immediately, cutting off a still-speaking question', async () => {
     const speaker = new SlowFakeSpeaker();
     const { runner, listener } = typedSetup(speaker);
     runner.start();
+    expect(speaker.pending).toBe(1); // still speaking
 
     listener.push('こたえ');
     listener.submit(); // 送る
-    expect(await settled(runner.readyToClose())).toBe(false);
-
-    speaker.resolveSpeak();
     expect(await settled(runner.readyToClose())).toBe(true);
+    expect(speaker.stopped).toBe(1);
   });
 
   it('will not close on the question alone while the answer is still owed', async () => {

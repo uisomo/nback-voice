@@ -165,11 +165,13 @@ export class RoundRunner {
     if (this.phase === 'done') return Promise.resolve();
     if (this.phase === 'A') return this.speaking;
     if (this.phase === 'B') return this.deps.listener.settle();
-    // A merged step drives both at once, so it waits out both: answering
-    // early must not cut the question short any more than it does in phase A.
-    return Promise.all([this.speaking, this.deps.listener.settle()]).then(
-      () => undefined,
-    );
+    // A merged step's field has no microphone for the synthesizer to bleed
+    // into, so — unlike phase A — an explicit 送る is the owner saying they
+    // are done with this step right now. Waiting out the rest of a long
+    // question after that press reads as the button doing nothing, so
+    // settling first cuts the utterance short via stop() rather than
+    // outlasting it.
+    return this.deps.listener.settle().then(() => this.deps.speaker.stop());
   }
 
   /**

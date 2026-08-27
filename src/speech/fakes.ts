@@ -41,8 +41,10 @@ export class SlowFakeSpeaker implements Speaker {
     });
   }
 
+  /** Mirrors ExpoSpeaker: Speech.stop() fires onStopped, resolving speak(). */
   stop(): void {
     this.stopped++;
+    this.resolveSpeak();
   }
 
   /** Utterances started but not yet finished. */
