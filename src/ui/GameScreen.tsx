@@ -178,6 +178,31 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Drives the on-screen countdown during a timed typed answer window. */
   const clockRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /**
+   * The step index the open typed answer window belongs to, or null when
+   * none is open. `remainingMs` alone cannot gate handleTypedSubmit: it is
+   * React state, so a second press queued from a rapid double-tap on 送る can
+   * still read the pre-submit value after the first press has already
+   * resolved readyToClose() and advanced the round to the *next* window —
+   * submitting that new window instantly and reading as a skipped question.
+   * This ref is set the instant a window opens and cleared the instant a
+   * submit is accepted, both synchronously, so the second press always sees
+   * the update the first press made.
+   */
+  const openStepRef = useRef<number | null>(null);
+  /**
+   * When the last accepted 送る press happened, epoch ms. `disabled` on the
+   * button follows React state, which only reaches the native view after a
+   * render and a bridge round trip — slower than a genuine fast double-tap on
+   * a real device. A second physical press landing inside that gap arrives
+   * *after* openStepRef has already been re-armed for the next window (see
+   * above), so that guard alone cannot tell it apart from a deliberate press
+   * on the new window. A short cooldown can: a real answer is never sent
+   * twice within the same fraction of a second.
+   */
+  const lastSubmitAtRef = useRef(0);
+  /** How long a second 送る press is ignored for after one is accepted. */
+  const SUBMIT_COOLDOWN_MS = 500;
 
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript;
@@ -370,6 +395,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               target.question?.accept[0] ?? '',
               budgetBaseMs,
             );
+            openStepRef.current = stepIndex;
             setTypedText('');
             setRemainingMs(budget);
             const startedAt = Date.now();
@@ -490,7 +516,21 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     // this a tap here would repaint that stale text under the new step's
     // index and, worse, steal the previous step's own live-transcript slot —
     // making its genuine ○/× verdict fail to land.
-    if (remainingMs === null) return;
+    //
+    // Checked and cleared here, synchronously, rather than trusting
+    // `remainingMs`: that is React state, so a rapid double-tap on 送る can
+    // have its second press read the pre-submit value even after the first
+    // press's promise chain already opened the *next* window — submitting
+    // that new window before the player has seen it, which reads as the
+    // question being silently skipped.
+    if (openStepRef.current === null) return;
+    // The stale half of a fast double-tap: a real press is never repeated
+    // within SUBMIT_COOLDOWN_MS, so this one is the native touch layer
+    // re-firing before the disabled state it should have picked up landed.
+    const now = Date.now();
+    if (now - lastSubmitAtRef.current < SUBMIT_COOLDOWN_MS) return;
+    lastSubmitAtRef.current = now;
+    openStepRef.current = null;
     const typed = typedRef.current;
     if (!typed) return;
     const text = typed.text;
@@ -503,7 +543,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         : null,
     );
     typed.submit();
-  }, [remainingMs]);
+  }, []);
 
   const handleTap = useCallback((position: Position) => {
     runnerRef.current?.onTap(position);

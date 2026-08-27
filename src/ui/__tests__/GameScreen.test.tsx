@@ -4,7 +4,7 @@ import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import type { RoundEngine } from '../../engine';
-import { SPEAK_TIMEOUT_MS } from '../../engine/runner';
+import { speakTimeoutMs } from '../../engine/runner';
 import type { Listener, Speaker } from '../../speech/types';
 import {
   FakeListener,
@@ -428,8 +428,16 @@ describe('GameScreen phase A pacing', () => {
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
+    // The watchdog scales with the question's own length (see
+    // speakTimeoutMs), so its exact bound depends on which question this
+    // round happened to draw.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS - 1);
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const timeout = speakTimeoutMs(speaker.spoken[0]);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(timeout - 1);
     });
     expect(listener.sessions).toBe(0);
 
@@ -1530,5 +1538,78 @@ describe('GameScreen answer clock', () => {
     // grading drain.
     expect(screen.queryByTestId('answer-clock')).toBeNull();
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
+  });
+});
+
+describe('GameScreen double-press guard', () => {
+  beforeEach(async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'typed' });
+  });
+
+  /**
+   * On a real device, disabling 送る after a press has to travel: React state
+   * update -> re-render -> bridge round trip to the native touchable. A fast
+   * double-tap's second touch-up can land before that finishes, by which
+   * point the first press's promise chain has already run tick()/schedule()
+   * and opened the *next* window — so the second press's own step-index guard
+   * sees a legitimately open window and cannot tell it apart from a real
+   * press on it. Modelled here by letting the first submit's promise chain
+   * resolve fully (advancing to the next step) and then firing the second
+   * press within the same 500ms real-world instant the first one landed in.
+   */
+  it('does not let a stale second press submit the window that just opened', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5000);
+    });
+    expect(screen.queryByText('2 / 10　1-back　どうぞ')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+    // The first press's chain fully resolved: the round is on step 3 now.
+    expect(screen.queryByText('3 / 10　1-back　どうぞ')).toBeTruthy();
+
+    // The stale second press of the same physical double-tap, arriving a
+    // moment later in wall-clock time but still well inside the cooldown.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+
+    // It must not have silently submitted (and skipped) step 3's window.
+    expect(screen.queryByText('4 / 10　1-back　どうぞ')).toBeNull();
+    expect(screen.queryByText('3 / 10　1-back　どうぞ')).toBeTruthy();
+    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
+  });
+
+  it('accepts a genuine second press once the cooldown has passed', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5000);
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+    expect(screen.queryByText('3 / 10　1-back　どうぞ')).toBeTruthy();
+
+    // A real, deliberate press on step 3's own window, well after the
+    // cooldown from step 2's submit has elapsed.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(600);
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+
+    expect(screen.queryByText('4 / 10　1-back　どうぞ')).toBeTruthy();
   });
 });
