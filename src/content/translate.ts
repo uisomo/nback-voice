@@ -1,5 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
-
 export interface AuthoredQuestion {
   id: string;
   tier: number;
@@ -75,7 +73,7 @@ export function parseTranslatedSeries(
   };
 }
 
-const TRANSLATE_MODEL = 'claude-opus-5';
+const TRANSLATE_MODEL = 'stealth/ox-alpha';
 
 const TRANSLATE_SCHEMA = {
   type: 'object',
@@ -129,26 +127,37 @@ export async function translateSeries(
     throw new Error('APIキーが設定されていません');
   }
 
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-  const response = await client.messages.create({
-    model: TRANSLATE_MODEL,
-    max_tokens: 8192,
-    output_config: {
-      effort: 'medium',
-      format: { type: 'json_schema', schema: TRANSLATE_SCHEMA },
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     },
-    system: TRANSLATE_SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content: JSON.stringify(series),
+    body: JSON.stringify({
+      model: TRANSLATE_MODEL,
+      messages: [
+        { role: 'system', content: TRANSLATE_SYSTEM },
+        { role: 'user', content: JSON.stringify(series) },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'translated_series', strict: true, schema: TRANSLATE_SCHEMA },
       },
-    ],
+    }),
   });
 
-  const block = response.content.find((b) => b.type === 'text');
-  if (!block || block.type !== 'text') {
-    throw new Error(`translation response for ${series.id} contained no text block`);
+  if (!response.ok) {
+    throw new Error(
+      `translation request for ${series.id} failed: ${response.status} ${await response.text()}`,
+    );
   }
-  return parseTranslatedSeries(block.text, series);
+
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const text = data.choices?.[0]?.message?.content;
+  if (typeof text !== 'string') {
+    throw new Error(`translation response for ${series.id} contained no message content`);
+  }
+  return parseTranslatedSeries(text, series);
 }

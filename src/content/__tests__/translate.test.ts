@@ -69,51 +69,60 @@ describe('CATEGORIES_EN', () => {
   });
 });
 
-const mockCreate = jest.fn(async (_params: Record<string, unknown>) => ({
-  content: [
-    {
-      type: 'text',
-      text: JSON.stringify({
-        id: 'cc-test',
-        category: 'finance',
-        title: 'Commitments and Capital Calls',
-        credit: 'Based on *Fund Finance no Kyokasho*',
-        questions: [
-          { id: 'cc_01', tier: 0, q: 'What is a Capital Call?', accept: ['Capital Call'] },
-          { id: 'cc_02', tier: 0, q: 'What is Uncalled Commitment?', accept: ['Uncalled Commitment'] },
-        ],
-      }),
-    },
-  ],
+const mockFetch = jest.fn(async (_url: string, _init: RequestInit) => ({
+  ok: true,
+  status: 200,
+  json: async () => ({
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            id: 'cc-test',
+            category: 'finance',
+            title: 'Commitments and Capital Calls',
+            credit: 'Based on *Fund Finance no Kyokasho*',
+            questions: [
+              { id: 'cc_01', tier: 0, q: 'What is a Capital Call?', accept: ['Capital Call'] },
+              { id: 'cc_02', tier: 0, q: 'What is Uncalled Commitment?', accept: ['Uncalled Commitment'] },
+            ],
+          }),
+        },
+      },
+    ],
+  }),
 }));
 
-jest.mock('@anthropic-ai/sdk', () => ({
-  __esModule: true,
-  default: class {
-    messages: unknown;
-    constructor() {
-      this.messages = { create: mockCreate };
-    }
-  },
-}));
+global.fetch = mockFetch as unknown as typeof fetch;
 
 describe('translateSeries', () => {
   beforeEach(() => {
-    mockCreate.mockClear();
+    mockFetch.mockClear();
   });
 
   it('sends the whole series as one request and returns a parsed translation', async () => {
     const result = await translateSeries(SOURCE, async () => 'sk-test');
-    expect(mockCreate).toHaveBeenCalledTimes(1);
-    const params = mockCreate.mock.calls[0][0] as unknown as {
-      messages: Array<{ content: string }>;
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const init = mockFetch.mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string) as {
+      messages: Array<{ role: string; content: string }>;
     };
-    expect(params.messages[0].content).toContain('cc_01');
-    expect(params.messages[0].content).toContain('cc_02');
+    const userMessage = body.messages.find((m) => m.role === 'user');
+    expect(userMessage?.content).toContain('cc_01');
+    expect(userMessage?.content).toContain('cc_02');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer sk-test');
     expect(result.title).toBe('Commitments and Capital Calls');
   });
 
   it('throws when no API key is available', async () => {
     await expect(translateSeries(SOURCE, async () => '')).rejects.toThrow(/API/);
+  });
+
+  it('throws with the status code when the request fails', async () => {
+    mockFetch.mockImplementationOnce(async () => ({
+      ok: false,
+      status: 401,
+      text: async () => 'unauthorized',
+    } as Awaited<ReturnType<typeof fetch>>));
+    await expect(translateSeries(SOURCE, async () => 'sk-test')).rejects.toThrow(/401/);
   });
 });
