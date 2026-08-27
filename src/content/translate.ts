@@ -73,7 +73,7 @@ export function parseTranslatedSeries(
   };
 }
 
-const TRANSLATE_MODEL = 'stealth/ox-alpha';
+const TRANSLATE_MODEL = 'z-ai/glm-5.2:free';
 
 const TRANSLATE_SCHEMA = {
   type: 'object',
@@ -102,10 +102,16 @@ const TRANSLATE_SCHEMA = {
 };
 
 const TRANSLATE_SYSTEM = [
-  'You are translating a Japanese fund-finance quiz series into English.',
+  'You are a fund finance professional — the kind of practitioner who',
+  'drafts LPAs, negotiates subscription and NAV facilities, and talks to',
+  'GPs and LPs about this material daily — translating a Japanese',
+  'fund-finance quiz series into English for other practitioners.',
   'Use natural, idiomatic fund-finance English terminology — not literal',
   'machine translation. Each question must read as something a native',
-  'English-speaking practitioner would actually be asked.',
+  'English-speaking practitioner would actually be asked, using the terms',
+  'that practitioner would actually use in a term sheet, an LPA, or a',
+  'conversation with a counterparty — not a dictionary gloss of the',
+  'Japanese.',
   'For each question, translate "q" and "accept". "accept" must keep the',
   'same variety the Japanese original has: abbreviation, full name, and',
   'common alternate phrasing, e.g. ["MFN", "Most Favored Nation",',
