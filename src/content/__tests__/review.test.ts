@@ -1,4 +1,9 @@
-import { parseReview, reviewQuestion } from '../review';
+import {
+  findSemanticDuplicates,
+  parseDuplicateGroups,
+  parseReview,
+  reviewQuestion,
+} from '../review';
 import type { Question } from '../../engine/types';
 
 const mockCreate = jest.fn(async (_params: Record<string, unknown>) => ({
@@ -73,6 +78,77 @@ describe('reviewQuestion', () => {
 
   it('throws on an unset key without spending a network call', async () => {
     await expect(reviewQuestion(NAV, async () => '   ')).rejects.toThrow(/APIキー/);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('parseDuplicateGroups', () => {
+  it('parses an empty duplicate list', () => {
+    expect(parseDuplicateGroups('{"duplicates":[]}')).toEqual([]);
+  });
+
+  it('parses grouped concepts with their locations', () => {
+    expect(
+      parseDuplicateGroups(
+        '{"duplicates":[{"concept":"MFN条項","locations":["a/1","b/2"]}]}',
+      ),
+    ).toEqual([{ concept: 'MFN条項', locations: ['a/1', 'b/2'] }]);
+  });
+
+  it('throws on malformed JSON rather than guessing', () => {
+    expect(() => parseDuplicateGroups('not json')).toThrow(/duplicate/i);
+  });
+
+  it('throws when duplicates is missing', () => {
+    expect(() => parseDuplicateGroups('{}')).toThrow(/duplicate/i);
+  });
+});
+
+describe('findSemanticDuplicates', () => {
+  beforeEach(() => {
+    mockCreate.mockClear();
+  });
+
+  const MFN_A = { location: 'capital-call/cc_06', q: '他のLPと同等の条件を保証する条項は？', accept: ['MFN'] };
+  const MFN_B = {
+    location: 'ffdd-03/ffdd-03_02',
+    q: 'ある LP が他の LP より有利な条件を得た場合、自分も同等の条件を要求できる権利を定めた条項を何と呼ぶか？',
+    accept: ['最恵国待遇'],
+  };
+
+  it('sends every question location, text, and accepted answers to the model', async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: '{"duplicates":[]}' }],
+    });
+    await findSemanticDuplicates([MFN_A, MFN_B], async () => 'sk-test');
+    const params = mockCreate.mock.calls[0][0] as unknown as {
+      messages: Array<{ content: string }>;
+    };
+    expect(params.messages[0].content).toContain(MFN_A.location);
+    expect(params.messages[0].content).toContain(MFN_B.location);
+    expect(params.messages[0].content).toContain('最恵国待遇');
+  });
+
+  it('returns concept groups even when accept[0] strings differ', async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            duplicates: [{ concept: 'MFN条項', locations: [MFN_A.location, MFN_B.location] }],
+          }),
+        },
+      ],
+    });
+    expect(await findSemanticDuplicates([MFN_A, MFN_B], async () => 'sk-test')).toEqual([
+      { concept: 'MFN条項', locations: [MFN_A.location, MFN_B.location] },
+    ]);
+  });
+
+  it('throws on an unset key without spending a network call', async () => {
+    await expect(findSemanticDuplicates([MFN_A, MFN_B], async () => '   ')).rejects.toThrow(
+      /APIキー/,
+    );
     expect(mockCreate).not.toHaveBeenCalled();
   });
 });

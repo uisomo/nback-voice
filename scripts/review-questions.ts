@@ -20,7 +20,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { reviewQuestion } from '../src/content/review';
+import { findSemanticDuplicates, reviewQuestion } from '../src/content/review';
 import type { Question } from '../src/engine/types';
 
 interface AuthoredSeries {
@@ -91,9 +91,25 @@ async function auditAll(): Promise<void> {
     console.log(`[重複回答] "${answer}" が複数の問題で正解になっています: ${locations.join(', ')}`);
   }
 
+  // Exact-string matching above only catches a shared literal accept[0]
+  // ("MFN" === "MFN"); it cannot see that "MFN" and "最恵国待遇" name the
+  // same clause. This pass asks the model to group by underlying concept
+  // across the whole pool, which is the only way to catch that class.
+  const located = series.flatMap((s) =>
+    s.questions.map((q) => ({ location: `${s.id}/${q.id}`, q: q.q, accept: q.accept })),
+  );
+  const semanticDuplicates = await findSemanticDuplicates(located, getApiKey);
+  for (const { concept, locations } of semanticDuplicates) {
+    flagged += 1;
+    console.log(`[概念重複] "${concept}" を複数の問題が問うています: ${locations.join(', ')}`);
+  }
+
   console.log(`\n${checked}問中${flagged}問に指摘あり`);
   if (duplicates.length > 0) {
     console.log(`（うち${duplicates.length}件は同じ答えを問う重複問題）`);
+  }
+  if (semanticDuplicates.length > 0) {
+    console.log(`（うち${semanticDuplicates.length}件は表記違いの概念重複問題）`);
   }
   if (flagged > 0) process.exitCode = 1;
 }
@@ -161,7 +177,14 @@ async function generateCandidates(
       '「その場合」「この状況で」のように問題文の外の前提に依存する書き方はしないでください。',
       '既存の問題と意味が重複しないようにしてください。',
       '既存の正解一覧に挙げた用語は、たとえ問題文の言い回しを変えても正解として再利用しないでください。',
+      'これは表記が完全一致する場合に限りません。「MFN」「最恵国待遇」「最恵国待遇条項」のように',
+      '略語・正式名称・日本語訳が異なるだけで同じ概念を指す場合も、既存の用語の再利用とみなして',
+      '避けてください。',
       '同じ用語を別の聞き方で問い直すことは、プレイヤーには同じ問題が繰り返し出ているように見えます。',
+      '「ILPAが公開した事例で」「本書の事例では」のように、特定の書籍・報告書中の一事例だけが',
+      '持つ具体的な数値（IRRが何%からいくらに変化したか、など）を答えさせる問題は作らないでください。',
+      '一般に通用する概念・定義・計算方法・基準を問う問題にし、出典資料の一節を読んだ人にしか',
+      '解けない出題は避けてください。',
     ].join('\n'),
     messages: [
       {

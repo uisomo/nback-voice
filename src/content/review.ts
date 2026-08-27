@@ -6,6 +6,11 @@ export interface ReviewVerdict {
   issues: string[];
 }
 
+export interface DuplicateGroup {
+  concept: string;
+  locations: string[];
+}
+
 export function parseReview(text: string): ReviewVerdict {
   let data: unknown;
   try {
@@ -18,6 +23,26 @@ export function parseReview(text: string): ReviewVerdict {
     throw new Error(`review missing "ok": ${text.slice(0, 120)}`);
   }
   return { ok: v.ok, issues: v.issues ?? [] };
+}
+
+export function parseDuplicateGroups(text: string): DuplicateGroup[] {
+  let data: unknown;
+  try {
+    data = JSON.parse(text.trim());
+  } catch {
+    throw new Error(`could not parse duplicate check: ${text.slice(0, 120)}`);
+  }
+  const v = data as { duplicates?: unknown };
+  if (!Array.isArray(v.duplicates)) {
+    throw new Error(`duplicate check missing "duplicates": ${text.slice(0, 120)}`);
+  }
+  return v.duplicates.map((d) => {
+    const group = d as Partial<DuplicateGroup>;
+    if (typeof group.concept !== 'string' || !Array.isArray(group.locations)) {
+      throw new Error(`malformed duplicate group: ${JSON.stringify(d).slice(0, 120)}`);
+    }
+    return { concept: group.concept, locations: group.locations as string[] };
+  });
 }
 
 const REVIEW_MODEL = 'claude-opus-5';
@@ -45,6 +70,10 @@ const SYSTEM = [
   '   省略してはいけない。1つでも欠けていれば指摘する。',
   '3. 問題文だけを読んで意味が通じるか。「その状況」「この場合」のように問題文の外にある',
   '   前提や文脈に依存していて、問題文単独では何を問われているか分からないものは指摘する。',
+  '4. 「ILPAが公開した事例で」「本書の事例では」のように、特定の書籍・報告書中の一事例だけが',
+  '   持つ具体的な数値（IRRが何%からいくらに変化したか、など）を暗記していないと答えられない',
+  '   問題になっていないか。一般に通用する概念・定義・計算方法を問うのではなく、出典資料の',
+  '   一節を読んだことがある人にしか解けない出題は、読者にとって再現性・汎用性がないため指摘する。',
   '問題なければ ok を true、issues を空配列にしてください。',
   '問題があれば ok を false にし、issues に日本語で具体的な理由を入れてください。',
 ].join('\n');
@@ -88,4 +117,88 @@ export async function reviewQuestion(
     throw new Error('review response contained no text block');
   }
   return parseReview(block.text);
+}
+
+export interface LocatedQuestion {
+  /** e.g. "ffdd-03/ffdd-03_02" — opaque to this module, echoed back verbatim. */
+  location: string;
+  q: string;
+  accept: string[];
+}
+
+const DUPLICATE_MODEL = 'claude-opus-5';
+
+const DUPLICATE_SCHEMA = {
+  type: 'object',
+  properties: {
+    duplicates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          concept: { type: 'string' },
+          locations: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['concept', 'locations'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['duplicates'],
+  additionalProperties: false,
+};
+
+const DUPLICATE_SYSTEM = [
+  'あなたは日本語の一問一答クイズの編集者です。',
+  '問題一覧が渡されます。正解の表記が完全に同じでなくても、問われている概念・用語が',
+  '実質的に同じ問題（例: 「MFN」「最恵国待遇」「最恵国待遇条項」「MFN条項」はすべて同じ',
+  '条項を指す）をグループ化してください。言い換え・略語・日英表記の違い・定義文言の違いは',
+  '別概念として扱わず、同じ概念とみなしてください。',
+  '2問以上が同じ概念を問うている場合のみ、そのグループを duplicates に含めてください。',
+  '概念が異なる問題（例: MFNとキーパーソン条項）は絶対に同じグループにしないでください。',
+  '重複が無ければ duplicates を空配列にしてください。',
+  '各グループの concept には概念名を日本語で、locations には該当する問題の location を',
+  'すべてそのまま入れてください。',
+].join('\n');
+
+/**
+ * Exact-string accept[0] matching (see the review script's history) misses
+ * synonyms: "MFN" and "最恵国待遇" never collide as strings but are the same
+ * clause, so two questions asking for it in different series looked distinct
+ * to a literal dedup pass. This asks the model to group by underlying
+ * concept instead, which is the only way to catch that class of duplicate.
+ */
+export async function findSemanticDuplicates(
+  questions: LocatedQuestion[],
+  getApiKey: () => Promise<string>,
+): Promise<DuplicateGroup[]> {
+  const apiKey = (await getApiKey()).trim();
+  if (!apiKey) {
+    throw new Error('APIキーが設定されていません');
+  }
+
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const response = await client.messages.create({
+    model: DUPLICATE_MODEL,
+    max_tokens: 4096,
+    output_config: {
+      effort: 'medium',
+      format: { type: 'json_schema', schema: DUPLICATE_SCHEMA },
+    },
+    system: DUPLICATE_SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: questions
+          .map((q) => `location: ${q.location}\n問題: ${q.q}\n正解一覧: ${q.accept.join(' / ')}`)
+          .join('\n\n'),
+      },
+    ],
+  });
+
+  const block = response.content.find((b) => b.type === 'text');
+  if (!block || block.type !== 'text') {
+    throw new Error('duplicate check response contained no text block');
+  }
+  return parseDuplicateGroups(block.text);
 }

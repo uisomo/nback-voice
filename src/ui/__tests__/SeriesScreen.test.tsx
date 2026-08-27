@@ -22,7 +22,7 @@ describe('SeriesScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('コミットメントとキャピタルコール')).toBeTruthy();
     });
-    expect(screen.getByTestId('series-count-capital-call')).toHaveTextContent('15問');
+    expect(screen.getByTestId('series-count-capital-call')).toHaveTextContent('14問');
     expect(
       screen.getAllByText('『ファンドファイナンスの教科書』より').length,
     ).toBeGreaterThan(0);
