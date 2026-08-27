@@ -34,11 +34,14 @@ export class JudgeQueue {
       .then(
         (verdict) => {
           this.callbacks.onVerdict(answer.index, verdict.correct);
+          // Learns what the owner actually said, never verdict.matched: that
+          // field is Claude restating what it understood in whatever words
+          // it picks, not a phrasing anyone typed or spoke. Learning it let
+          // an LLM paraphrase (e.g. "Subscription Facility" for a bank entry
+          // that only ever said "Subscription Line") get saved as if it were
+          // a real synonym, so names for the same thing drifted over time.
           if (verdict.correct) {
-            this.callbacks.onLearn(
-              answer.question.id,
-              verdict.matched ?? answer.transcript,
-            );
+            this.callbacks.onLearn(answer.question.id, answer.transcript);
           }
         },
         () => {

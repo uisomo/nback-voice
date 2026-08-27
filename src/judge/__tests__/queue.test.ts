@@ -58,6 +58,31 @@ describe('JudgeQueue', () => {
     expect(learned).toEqual([['q042', 'わんこ']]);
   });
 
+  /**
+   * The bug this guards: verdict.matched is Claude restating what it
+   * understood in whatever words it picks — not a phrasing anyone actually
+   * typed or spoke. Learning it let an LLM paraphrase (e.g. "Subscription
+   * Facility" for a bank entry that only ever said "Subscription Line") get
+   * saved as a synonym nobody used, so the same term's spelling drifted over
+   * time. Only what the owner actually said is real signal worth learning.
+   */
+  it('learns the transcript the owner actually gave, never the judge’s own paraphrase', async () => {
+    const client: JudgeClient = {
+      judge: async (): Promise<Verdict> => ({
+        correct: true,
+        matched: 'サブスクリプション・ファシリティ',
+      }),
+    };
+    const { queue, learned } = makeQueue(client);
+    queue.enqueue({
+      index: 3,
+      question: DOG,
+      transcript: 'サブスクリプションライン',
+    });
+    await queue.drain();
+    expect(learned).toEqual([['q042', 'サブスクリプションライン']]);
+  });
+
   it('does not learn from a rejected answer', async () => {
     const client: JudgeClient = {
       judge: async (): Promise<Verdict> => ({ correct: false, matched: null }),
