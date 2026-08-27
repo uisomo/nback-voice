@@ -35,6 +35,36 @@ async function getApiKey(): Promise<string> {
   return process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
 }
 
+/**
+ * Two different questions asking for the same underlying term (e.g. one
+ * series' "資産価値に対する借入金の比率は？" and another's "借入残高を担保
+ * 価値で割った指標は？", both answered "LTV") is invisible to a per-question
+ * review: each question looks fine in isolation. This only shows up as a
+ * repeated canonical answer across the whole pool, so it has to be checked
+ * pool-wide rather than per-question. accept[0] is the canonical form (see
+ * ResultsScreen's answerDisplay) — a shared accept[0] across two questions
+ * means the same fact is being asked about twice, in different series or
+ * the same one, which the round then repeats without the player ever
+ * knowing it was the same answer both times.
+ */
+function findDuplicateAnswers(
+  series: AuthoredSeries[],
+): Array<{ answer: string; locations: string[] }> {
+  const bySeries = new Map<string, string[]>();
+  for (const s of series) {
+    for (const q of s.questions) {
+      const canonical = q.accept[0];
+      if (canonical === undefined) continue;
+      const locations = bySeries.get(canonical) ?? [];
+      locations.push(`${s.id}/${q.id}`);
+      bySeries.set(canonical, locations);
+    }
+  }
+  return [...bySeries.entries()]
+    .filter(([, locations]) => locations.length > 1)
+    .map(([answer, locations]) => ({ answer, locations }));
+}
+
 async function auditAll(): Promise<void> {
   const series = JSON.parse(readFileSync(SERIES_PATH, 'utf-8')) as AuthoredSeries[];
   let flagged = 0;
@@ -55,7 +85,16 @@ async function auditAll(): Promise<void> {
     }
   }
 
+  const duplicates = findDuplicateAnswers(series);
+  for (const { answer, locations } of duplicates) {
+    flagged += 1;
+    console.log(`[重複回答] "${answer}" が複数の問題で正解になっています: ${locations.join(', ')}`);
+  }
+
   console.log(`\n${checked}問中${flagged}問に指摘あり`);
+  if (duplicates.length > 0) {
+    console.log(`（うち${duplicates.length}件は同じ答えを問う重複問題）`);
+  }
   if (flagged > 0) process.exitCode = 1;
 }
 
@@ -99,6 +138,7 @@ async function generateCandidates(
   topic: string,
   count: number,
   existing: Question[],
+  existingAnswers: string[],
 ): Promise<Array<{ q: string; accept: string[] }>> {
   const apiKey = await getApiKey();
   if (!apiKey.trim()) throw new Error('APIキーが設定されていません');
@@ -120,6 +160,8 @@ async function generateCandidates(
       '問題文は、それだけを読んで何を問われているか分かるように書いてください。',
       '「その場合」「この状況で」のように問題文の外の前提に依存する書き方はしないでください。',
       '既存の問題と意味が重複しないようにしてください。',
+      '既存の正解一覧に挙げた用語は、たとえ問題文の言い回しを変えても正解として再利用しないでください。',
+      '同じ用語を別の聞き方で問い直すことは、プレイヤーには同じ問題が繰り返し出ているように見えます。',
     ].join('\n'),
     messages: [
       {
@@ -128,6 +170,10 @@ async function generateCandidates(
           `トピック: ${topic}`,
           `作る数: ${count}`,
           `既存の問題: ${existing.map((q) => q.q).join(' / ')}`,
+          // The whole pool's answers, not just this series' — a term already
+          // used as the answer in a different series is exactly as much a
+          // repeat to the player as one reused within the same series.
+          `既存の正解一覧（シリーズ全体、これらを正解にしないでください）: ${existingAnswers.join(' / ')}`,
         ].join('\n'),
       },
     ],
@@ -148,15 +194,35 @@ async function generate(): Promise<void> {
   if (!target) {
     throw new Error(`series not found: ${seriesId}`);
   }
+  // Pool-wide, not just the target series: a term already used as the
+  // answer anywhere in the corpus must not be reused, even under a
+  // differently worded question in a different series (see the ffdd
+  // duplicate-answer cleanup this guards against).
+  const existingAnswers = series.flatMap((s) =>
+    s.questions.map((q) => q.accept[0]).filter((a): a is string => a !== undefined),
+  );
 
-  const candidates = await generateCandidates(topic, count, target.questions);
+  const candidates = await generateCandidates(topic, count, target.questions, existingAnswers);
+  const existingAnswerSet = new Set(existingAnswers);
   const accepted: Question[] = [];
 
   for (const candidate of candidates) {
+    // The prompt already asks the model to avoid this, but a generated
+    // batch is not trusted on its own say-so — checked in code the same way
+    // findDuplicateAnswers checks the existing pool, against every answer
+    // already accepted in THIS run too, so two candidates in one batch
+    // cannot both slip through with the same canonical answer.
+    const canonical = candidate.accept[0];
+    if (canonical !== undefined && existingAnswerSet.has(canonical)) {
+      console.error(`却下（既存の答えと重複）: ${candidate.q} -> ${canonical}`);
+      continue;
+    }
+
     const probe: Question = { id: '', tier: 0, q: candidate.q, accept: candidate.accept };
     const verdict = await reviewQuestion(probe, getApiKey);
     if (verdict.ok) {
       accepted.push(probe);
+      if (canonical !== undefined) existingAnswerSet.add(canonical);
     } else {
       console.error(`却下: ${candidate.q}`);
       for (const issue of verdict.issues) {
