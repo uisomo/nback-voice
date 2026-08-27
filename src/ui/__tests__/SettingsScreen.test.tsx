@@ -4,11 +4,14 @@ import {
   addCustom,
   DEFAULT_SETTINGS,
   loadApiKey,
+  loadN,
   loadSettings,
+  saveN,
   saveSettings,
 } from '../../store/storage';
 import type { JudgeClient } from '../../judge/types';
 import { SettingsScreen } from '../SettingsScreen';
+import { STANDARD_SERIES_ID } from '../../content/series';
 
 beforeEach(async () => {
   await AsyncStorage.clear();
@@ -256,5 +259,80 @@ describe('SettingsScreen answer input', () => {
     await waitFor(() => {
       expect(getByTestId('budget-base-input').props.value).toBe('6');
     });
+  });
+});
+
+describe('SettingsScreen per-series N', () => {
+  it('shows the standard series starting at N=1', async () => {
+    const { getByTestId } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {
+      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('1');
+    });
+  });
+
+  it('shows a series lag already earned in a previous round', async () => {
+    await saveN(STANDARD_SERIES_ID, 4);
+    const { getByTestId } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {
+      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('4');
+    });
+  });
+
+  it('raises a series N and persists it', async () => {
+    const { getByTestId } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => getByTestId(`series-n-up-${STANDARD_SERIES_ID}`));
+    fireEvent.press(getByTestId(`series-n-up-${STANDARD_SERIES_ID}`));
+    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('2');
+    await waitFor(async () => {
+      expect(await loadN(STANDARD_SERIES_ID)).toBe(2);
+    });
+  });
+
+  it('does not lower a series N below 1', async () => {
+    const { getByTestId } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => getByTestId(`series-n-down-${STANDARD_SERIES_ID}`));
+    fireEvent.press(getByTestId(`series-n-down-${STANDARD_SERIES_ID}`));
+    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('1');
+    await waitFor(async () => {
+      expect(await loadN(STANDARD_SERIES_ID)).toBe(1);
+    });
+  });
+
+  it('resets an earned series N back to 1', async () => {
+    await saveN(STANDARD_SERIES_ID, 5);
+    const { getByTestId } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {
+      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('5');
+    });
+    fireEvent.press(getByTestId(`series-n-reset-${STANDARD_SERIES_ID}`));
+    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('1');
+    await waitFor(async () => {
+      expect(await loadN(STANDARD_SERIES_ID)).toBe(1);
+    });
+  });
+
+  it('keeps each series independent', async () => {
+    await addCustom('自作', '答え');
+    await saveN(STANDARD_SERIES_ID, 3);
+    const { getByTestId } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {
+      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('3');
+      expect(getByTestId('series-n-value-custom')).toHaveTextContent('1');
+    });
+    fireEvent.press(getByTestId('series-n-up-custom'));
+    expect(getByTestId('series-n-value-custom')).toHaveTextContent('2');
+    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('3');
   });
 });

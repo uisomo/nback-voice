@@ -12,15 +12,21 @@ import type { RoundMode } from '../engine/types';
 import {
   DEFAULT_SETTINGS,
   loadApiKey,
+  loadCustom,
+  loadLearned,
+  loadN,
   loadSettings,
   saveApiKey,
+  saveN,
   saveSettings,
+  STARTING_N,
   type AnswerInput,
   type Settings,
 } from '../store/storage';
 import { ClaudeJudgeClient } from '../judge/claude';
 import type { JudgeClient } from '../judge/types';
 import type { Question } from '../engine/types';
+import { listSeries, type Series } from '../content/series';
 
 interface Props {
   onClose: () => void;
@@ -97,6 +103,47 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
       setBudgetText(msToSeconds(loaded.budgetBaseMs));
     });
     void loadApiKey().then(setApiKey);
+  }, []);
+
+  const [series, setSeries] = useState<Series[]>([]);
+  const [seriesN, setSeriesN] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      // Series identity (id, title) does not depend on maxTier — that only
+      // filters which standard-series *questions* a round draws from, never
+      // which series exist or what N they are stored under — so this loads
+      // once rather than re-running on every settings change.
+      const [custom, learned] = await Promise.all([loadCustom(), loadLearned()]);
+      if (cancelled) return;
+      const all = listSeries({ custom, learned, maxTier: DEFAULT_SETTINGS.maxTier });
+      setSeries(all);
+      const entries = await Promise.all(
+        all.map(async (s) => [s.id, await loadN(s.id)] as const),
+      );
+      if (cancelled) return;
+      setSeriesN(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Clamped at STARTING_N: there is no lag below the one the app starts at. */
+  const adjustSeriesN = useCallback((seriesId: string, delta: number) => {
+    setSeriesN((current) => {
+      const next = Math.max(STARTING_N, (current[seriesId] ?? STARTING_N) + delta);
+      void saveN(seriesId, next);
+      return { ...current, [seriesId]: next };
+    });
+  }, []);
+
+  const resetSeriesN = useCallback((seriesId: string) => {
+    setSeriesN((current) => {
+      void saveN(seriesId, STARTING_N);
+      return { ...current, [seriesId]: STARTING_N };
+    });
   }, []);
 
   const judge = useMemo(
@@ -240,6 +287,42 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           </View>
         )}
 
+        <Text style={styles.label}>シリーズごとのN</Text>
+        <Text style={styles.note}>
+          自動調整の到達点をシリーズごとに直接調整・リセットできる。
+        </Text>
+        {series.map((s) => (
+          <View key={s.id} testID={`series-n-row-${s.id}`} style={styles.seriesRow}>
+            <Text style={styles.seriesTitle}>{s.title}</Text>
+            <View style={styles.seriesControls}>
+              <Pressable
+                testID={`series-n-down-${s.id}`}
+                style={styles.chip}
+                onPress={() => adjustSeriesN(s.id, -1)}
+              >
+                <Text style={styles.chipLabel}>－</Text>
+              </Pressable>
+              <Text testID={`series-n-value-${s.id}`} style={styles.seriesN}>
+                {seriesN[s.id] ?? STARTING_N}
+              </Text>
+              <Pressable
+                testID={`series-n-up-${s.id}`}
+                style={styles.chip}
+                onPress={() => adjustSeriesN(s.id, 1)}
+              >
+                <Text style={styles.chipLabel}>＋</Text>
+              </Pressable>
+              <Pressable
+                testID={`series-n-reset-${s.id}`}
+                style={styles.chip}
+                onPress={() => resetSeriesN(s.id)}
+              >
+                <Text style={styles.chipLabel}>リセット</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
+
         <Text style={styles.label}>標準問題のむずかしさ</Text>
         <View style={styles.row}>
           {TIER_CHOICES.map(({ tier, label }) => (
@@ -300,6 +383,16 @@ const styles = StyleSheet.create({
   link: { marginBottom: 24 },
   linkLabel: { color: '#c96f4a', fontSize: 16 },
   chipLabel: { color: '#f4f1ea', fontSize: 16 },
+  seriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 8,
+  },
+  seriesTitle: { color: '#f4f1ea', fontSize: 14, flexShrink: 1 },
+  seriesControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  seriesN: { color: '#f4f1ea', fontSize: 16, minWidth: 20, textAlign: 'center' },
   note: { color: '#8e8e93', fontSize: 14, marginBottom: 24 },
   input: {
     backgroundColor: '#1c1c1e',
