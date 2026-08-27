@@ -9,12 +9,33 @@ import type { Position, RoundPlan } from './types';
 export type Phase = 'A' | 'B' | 'AB' | 'done';
 
 /**
- * Hard ceiling on one utterance. iOS can interrupt AVSpeechSynthesizer via an
- * audio-session change (the recognizer causes one every step) without firing
- * onDone/onStopped/onError, which would otherwise leave `utterance` pending
- * forever. Nothing in the step machine waits on it, but callers may.
+ * Floor of the ceiling on one utterance — see speakTimeoutMs(). Also the
+ * whole of the ceiling for a step with no question (the trailing recall-only
+ * steps), which pass '' and get this floor with nothing added to it.
  */
 export const SPEAK_TIMEOUT_MS = 10_000;
+
+/**
+ * Ceiling on one utterance, scaled to what it is actually saying. iOS can
+ * interrupt AVSpeechSynthesizer via an audio-session change (the recognizer
+ * causes one every step) without firing onDone/onStopped/onError, which would
+ * otherwise leave `utterance` pending forever — this is the watchdog for
+ * that. A flat 10s used to serve as this ceiling for every question
+ * regardless of length: ja-JP TTS at the default rate runs well under
+ * 200ms/mora, but a long scenario-style question (the ~90-character items in
+ * the deep-dive series) can take 12-16s to actually finish speaking, longer
+ * than the flat ceiling — so the watchdog fired on ordinary, unhurried speech
+ * and cut the question off mid-sentence, which read as the round silently
+ * skipping ahead. 220ms/char keeps a wide margin above natural speaking pace
+ * without leaving a truly hung synthesizer waiting materially longer than
+ * before on the short questions the flat constant was sized for.
+ *
+ * Array.from counts code points, so a surrogate pair costs what a reader
+ * thinks it costs — one character.
+ */
+export function speakTimeoutMs(text: string): number {
+  return SPEAK_TIMEOUT_MS + Array.from(text).length * 220;
+}
 
 export interface RunnerState {
   stepIndex: number;
@@ -211,7 +232,7 @@ export class RoundRunner {
     this.phase = this.deps.merged ? 'AB' : 'A';
     const question = this.deps.plan.steps[this.stepIndex]?.question;
     this.speaking = question
-      ? settleWithin(this.deps.speaker.speak(question.q), SPEAK_TIMEOUT_MS)
+      ? settleWithin(this.deps.speaker.speak(question.q), speakTimeoutMs(question.q))
       : Promise.resolve();
     if (this.deps.merged) this.openWindow();
   }

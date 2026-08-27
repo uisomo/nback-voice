@@ -1,5 +1,5 @@
 import { RoundEngine } from '../round';
-import { RoundRunner, SPEAK_TIMEOUT_MS } from '../runner';
+import { RoundRunner, SPEAK_TIMEOUT_MS, speakTimeoutMs } from '../runner';
 import { buildRound } from '../sequence';
 import {
   FakeListener,
@@ -185,15 +185,16 @@ describe('RoundRunner phase A closing', () => {
     jest.useFakeTimers();
     try {
       const speaker = new SlowFakeSpeaker();
-      const { runner, listener } = setup(2, speaker);
+      const { runner, listener, plan } = setup(2, speaker);
       runner.start();
+      const timeout = speakTimeoutMs(plan.steps[0].question!.q);
 
       let closed = false;
       void runner.readyToClose().then(() => {
         closed = true;
       });
 
-      await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS - 1);
+      await jest.advanceTimersByTimeAsync(timeout - 1);
       expect(closed).toBe(false);
       expect(listener.sessions).toBe(0); // mic still shut during phase A
 
@@ -203,6 +204,53 @@ describe('RoundRunner phase A closing', () => {
       runner.tick();
       expect(speaker.stopped).toBe(1); // the runaway utterance is cut off
       expect(listener.sessions).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  /**
+   * The bug this guards: a long scenario-style question (the deep-dive
+   * series runs some to ~90 characters) can genuinely take well over the old
+   * flat 10s to finish on real ja-JP TTS. A watchdog sized for a short
+   * question fired on that ordinary, unhurried speech and cut it off
+   * mid-sentence — which reads as the round silently skipping ahead while
+   * the question is still being read.
+   */
+  it('gives a long question more time before the watchdog fires', async () => {
+    jest.useFakeTimers();
+    try {
+      const longQuestion: Question = {
+        id: 'long',
+        tier: 1,
+        q: '融資担当者はLPプールの平均信用力が高いことに安心していたが、フィッチのPCMではストレスが強まるほど相関係数が上昇する設計だと知った',
+        accept: ['答え'],
+      };
+      const bank = [longQuestion, ...BANK];
+      const speaker = new SlowFakeSpeaker();
+      const plan = buildRound(2, bank, () => 0); // deterministic: draws index 0 first
+      const engine = new RoundEngine(plan);
+      const listener = new FakeListener();
+      const runner = new RoundRunner({
+        plan,
+        engine,
+        speaker,
+        listener,
+        onJudge: () => {},
+      });
+      runner.start();
+      expect(plan.steps[0].question).toBe(longQuestion);
+
+      let closed = false;
+      void runner.readyToClose().then(() => {
+        closed = true;
+      });
+
+      // Past the old flat 10s ceiling, but the question is still genuinely
+      // being spoken — must not have been cut off yet.
+      await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS + 1_000);
+      expect(closed).toBe(false);
+      expect(speaker.stopped).toBe(0);
     } finally {
       jest.useRealTimers();
     }
@@ -229,14 +277,15 @@ describe('RoundRunner phase A closing', () => {
     jest.useFakeTimers();
     try {
       const speaker = new SlowFakeSpeaker();
-      const { runner } = setup(2, speaker);
+      const { runner, plan } = setup(2, speaker);
       runner.start();
+      const timeout = speakTimeoutMs(plan.steps[0].question!.q);
 
       let settled = false;
       void runner.utterance.then(() => {
         settled = true;
       });
-      await jest.advanceTimersByTimeAsync(SPEAK_TIMEOUT_MS + 1);
+      await jest.advanceTimersByTimeAsync(timeout + 1);
       expect(settled).toBe(true);
     } finally {
       jest.useRealTimers();
