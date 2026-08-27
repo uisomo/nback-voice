@@ -48,3 +48,6 @@ yarn-error.*
 
 # SDD workspace (scratch space for this workflow; never commit)
 .superpowers/
+
+# Isolated worktrees for in-progress plan execution
+.worktrees/
