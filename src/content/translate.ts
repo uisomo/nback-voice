@@ -127,6 +127,7 @@ const TRANSLATE_SYSTEM = [
 export async function translateSeries(
   series: AuthoredSeries,
   getApiKey: () => Promise<string>,
+  model: string = TRANSLATE_MODEL,
 ): Promise<TranslatedSeries> {
   const apiKey = (await getApiKey()).trim();
   if (!apiKey) {
@@ -140,7 +141,7 @@ export async function translateSeries(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: TRANSLATE_MODEL,
+      model,
       messages: [
         { role: 'system', content: TRANSLATE_SYSTEM },
         { role: 'user', content: JSON.stringify(series) },
