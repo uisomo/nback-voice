@@ -1310,17 +1310,14 @@ describe('GameScreen typed answer feedback', () => {
     });
     expect(onFinished).toHaveBeenCalled();
 
-    // The last answer is still up, marked, and the window is shut.
+    // The window is shut, and the by-now-cleared verdict does not reappear.
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
-    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+    expect(screen.queryByTestId('live-transcript')).toBeNull();
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('typed-submit'));
     });
-    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
-    expect(styleOf(screen.getByTestId('live-transcript'))?.color).toBe(
-      CORRECT_COLOR,
-    );
+    expect(screen.queryByTestId('live-transcript')).toBeNull();
   });
 
   /**
@@ -1348,10 +1345,12 @@ describe('GameScreen typed answer feedback', () => {
 
   /**
    * The verdict for the answer just sent arrives after the step has closed.
-   * With no phase A to hold it, it has to stay up through the following step
-   * — otherwise the default mode gives no ○/× feedback at all mid-round.
+   * With no phase A to hold it, briefly showing it into the following step
+   * is what gives the default mode any ○/× feedback at all mid-round — see
+   * VERDICT_DISPLAY_MS. It self-clears after that (below), rather than
+   * staying up through the whole of the next question.
    */
-  it('keeps the previous verdict on screen through the next step', async () => {
+  it('keeps the previous verdict on screen briefly into the next step', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
@@ -1369,6 +1368,31 @@ describe('GameScreen typed answer feedback', () => {
     });
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
     expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+  });
+
+  /**
+   * The bug this guards: a solved answer used to stay on screen through the
+   * whole of the following question, which read as stuck rather than
+   * helpful. A brief flash of the colour is enough — it clears on its own
+   * shortly after the verdict lands, without waiting for the next mic-open.
+   */
+  it('clears the verdict on its own a short while after it lands', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(5000);
+    });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+    expect(screen.getByTestId('live-transcript')).toHaveTextContent(/○/);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1500);
+    });
+    expect(screen.queryByTestId('live-transcript')).toBeNull();
   });
 
   /** Sending nothing is 聞き取れず, not the previous step's verdict again. */
@@ -1547,46 +1571,17 @@ describe('GameScreen double-press guard', () => {
   });
 
   /**
-   * On a real device, disabling 送る after a press has to travel: React state
-   * update -> re-render -> bridge round trip to the native touchable. A fast
-   * double-tap's second touch-up can land before that finishes, by which
-   * point the first press's promise chain has already run tick()/schedule()
-   * and opened the *next* window — so the second press's own step-index guard
-   * sees a legitimately open window and cannot tell it apart from a real
-   * press on it. Modelled here by letting the first submit's promise chain
-   * resolve fully (advancing to the next step) and then firing the second
-   * press within the same 500ms real-world instant the first one landed in.
+   * A stale second press of one double-tap and a fast player's genuine
+   * answer to the very next question look identical at this layer: both are
+   * a press on whatever window is open right now, moments after the last
+   * submit. A cooldown was tried here and reverted (see handleTypedSubmit)
+   * because it could not tell the two apart — it fixed the rare double-tap
+   * skip by routinely swallowing fast, genuine play instead, which read as
+   * the round having frozen. This test pins the traded-off behaviour: a
+   * press on a freshly opened window is always accepted, never delayed or
+   * dropped, however soon after the previous submit it lands.
    */
-  it('does not let a stale second press submit the window that just opened', async () => {
-    const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
-    await beginRound();
-
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
-    expect(screen.queryByText('2 / 10　1-back　どうぞ')).toBeTruthy();
-
-    await act(async () => {
-      fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
-      fireEvent.press(screen.getByTestId('typed-submit'));
-    });
-    // The first press's chain fully resolved: the round is on step 3 now.
-    expect(screen.queryByText('3 / 10　1-back　どうぞ')).toBeTruthy();
-
-    // The stale second press of the same physical double-tap, arriving a
-    // moment later in wall-clock time but still well inside the cooldown.
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('typed-submit'));
-    });
-
-    // It must not have silently submitted (and skipped) step 3's window.
-    expect(screen.queryByText('4 / 10　1-back　どうぞ')).toBeNull();
-    expect(screen.queryByText('3 / 10　1-back　どうぞ')).toBeTruthy();
-    expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
-  });
-
-  it('accepts a genuine second press once the cooldown has passed', async () => {
+  it('accepts a fast genuine answer to the next question without delay', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
@@ -1600,16 +1595,40 @@ describe('GameScreen double-press guard', () => {
     });
     expect(screen.queryByText('3 / 10　1-back　どうぞ')).toBeTruthy();
 
-    // A real, deliberate press on step 3's own window, well after the
-    // cooldown from step 2's submit has elapsed.
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(600);
-    });
+    // Answers step 3 immediately — no timer advance at all between the two
+    // submits, the fastest a real player's second answer could ever land.
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
       fireEvent.press(screen.getByTestId('typed-submit'));
     });
 
     expect(screen.queryByText('4 / 10　1-back　どうぞ')).toBeTruthy();
+  });
+
+  /** Once a step's window has actually closed, a further press is inert. */
+  it('still ignores a press once the round is over', async () => {
+    const onFinished = jest.fn();
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    await beginRound();
+
+    for (let i = 0; i < 24; i++) {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5000);
+      });
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
+        fireEvent.press(screen.getByTestId('typed-submit'));
+      });
+    }
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(20_000);
+    });
+    expect(onFinished).toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('typed-submit'));
+    });
+    expect(onFinished).toHaveBeenCalledTimes(1);
   });
 });

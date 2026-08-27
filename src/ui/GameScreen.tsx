@@ -176,6 +176,16 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   /** Starts the prepared round; set once setup finishes, called by the tap. */
   const beginRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Clears the just-judged answer off screen a moment after its ○/× lands.
+   * Kept on screen through the next question used to be the design (so a
+   * verdict arriving late still had somewhere to land), but seeing a solved
+   * answer linger through the whole of the following question read as
+   * broken rather than helpful — a brief flash of the colour is enough.
+   */
+  const verdictClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** How long the ○/× stays on screen before it clears itself. */
+  const VERDICT_DISPLAY_MS = 1500;
   /** Drives the on-screen countdown during a timed typed answer window. */
   const clockRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /**
@@ -190,19 +200,6 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
    * the update the first press made.
    */
   const openStepRef = useRef<number | null>(null);
-  /**
-   * When the last accepted 送る press happened, epoch ms. `disabled` on the
-   * button follows React state, which only reaches the native view after a
-   * render and a bridge round trip — slower than a genuine fast double-tap on
-   * a real device. A second physical press landing inside that gap arrives
-   * *after* openStepRef has already been re-armed for the next window (see
-   * above), so that guard alone cannot tell it apart from a deliberate press
-   * on the new window. A short cooldown can: a real answer is never sent
-   * twice within the same fraction of a second.
-   */
-  const lastSubmitAtRef = useRef(0);
-  /** How long a second 送る press is ignored for after one is accepted. */
-  const SUBMIT_COOLDOWN_MS = 500;
 
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript;
@@ -302,6 +299,15 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             setAnswer((current) =>
               current && current.index === index ? { ...current, correct } : current,
             );
+            // Briefly shows the ○/× and then clears it, rather than leaving
+            // a solved answer on screen through the whole of the next
+            // question. Guarded the same way the colour above is: only
+            // clears if this verdict's answer is still the one showing.
+            if (verdictClearRef.current) clearTimeout(verdictClearRef.current);
+            verdictClearRef.current = setTimeout(() => {
+              verdictClearRef.current = null;
+              setAnswer((current) => (current?.index === index ? null : current));
+            }, VERDICT_DISPLAY_MS);
           },
           onLearn: (questionId, answer) => {
             void addLearned(questionId, answer);
@@ -478,6 +484,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
       if (clockRef.current) clearInterval(clockRef.current);
+      if (verdictClearRef.current) clearTimeout(verdictClearRef.current);
       resolved.listener.stop();
       typedRef.current?.stop();
       resolved.speaker.stop();
@@ -523,13 +530,16 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     // press's promise chain already opened the *next* window — submitting
     // that new window before the player has seen it, which reads as the
     // question being silently skipped.
+    //
+    // A time-based cooldown was tried here and reverted: a stale second
+    // press from one double-tap and a fast player's genuine answer to the
+    // very next question are the same shape at this layer (a press on the
+    // window that is open right now, moments after the previous submit) —
+    // nothing here can tell them apart. Rejecting both trades a rare,
+    // cosmetic double-tap skip for silently swallowing ordinary fast play,
+    // which reads as the whole round having frozen. The rarer failure is
+    // the one to keep.
     if (openStepRef.current === null) return;
-    // The stale half of a fast double-tap: a real press is never repeated
-    // within SUBMIT_COOLDOWN_MS, so this one is the native touch layer
-    // re-firing before the disabled state it should have picked up landed.
-    const now = Date.now();
-    if (now - lastSubmitAtRef.current < SUBMIT_COOLDOWN_MS) return;
-    lastSubmitAtRef.current = now;
     openStepRef.current = null;
     const typed = typedRef.current;
     if (!typed) return;
