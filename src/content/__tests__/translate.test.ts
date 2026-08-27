@@ -59,6 +59,21 @@ describe('parseTranslatedSeries', () => {
   it('throws on malformed JSON rather than guessing', () => {
     expect(() => parseTranslatedSeries('not json', SOURCE)).toThrow(/translat/i);
   });
+
+  it('strips a ```json code fence some models wrap structured output in', () => {
+    const payload = {
+      id: 'cc-test',
+      category: 'finance',
+      title: 'Commitments and Capital Calls',
+      questions: [
+        { id: 'cc_01', tier: 0, q: 'What is a Capital Call?', accept: ['Capital Call'] },
+        { id: 'cc_02', tier: 0, q: 'What is Uncalled Commitment?', accept: ['Uncalled Commitment'] },
+      ],
+    };
+    const fenced = '```json\n' + JSON.stringify(payload) + '\n```';
+    const result = parseTranslatedSeries(fenced, SOURCE);
+    expect(result.title).toBe('Commitments and Capital Calls');
+  });
 });
 
 describe('CATEGORIES_EN', () => {

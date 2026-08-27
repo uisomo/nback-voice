@@ -17,7 +17,7 @@ import { translateSeries, type AuthoredSeries } from '../src/content/translate';
 const SERIES_PATH = join(__dirname, '../src/content/series.json');
 const OUTPUT_PATH = join(__dirname, '../src/content/series.en.json');
 
-const MODELS = ['z-ai/glm-5.2:free', 'minimax/minimax-m3:free'];
+const MODELS = ['minimax/minimax-m3:free'];
 const RETRY_DELAY_MS = 10_000;
 
 async function getApiKey(): Promise<string> {

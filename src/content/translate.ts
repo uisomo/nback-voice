@@ -27,13 +27,22 @@ export const CATEGORIES_EN: Record<string, string> = {
   basics: 'Anyone can answer',
 };
 
+/**
+ * Strips a ```json ... ``` (or bare ```) fence some models wrap structured
+ * output in despite response_format: json_schema. A no-op on plain JSON.
+ */
+function stripCodeFence(text: string): string {
+  const match = text.trim().match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  return match ? match[1] : text;
+}
+
 export function parseTranslatedSeries(
   text: string,
   expected: AuthoredSeries,
 ): TranslatedSeries {
   let data: unknown;
   try {
-    data = JSON.parse(text.trim());
+    data = JSON.parse(stripCodeFence(text).trim());
   } catch {
     throw new Error(`could not parse translation for ${expected.id}: ${text.slice(0, 200)}`);
   }
