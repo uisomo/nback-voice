@@ -25,6 +25,8 @@ export interface Settings {
   answerInput: AnswerInput;
   /** Base of the answer time budget, before the per-character part. */
   budgetBaseMs: number;
+  /** UI/content/speech/judge language. Switching requires series.en.json etc. */
+  language: 'ja' | 'en';
 }
 
 export interface RoundRecord {
@@ -49,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seriesId: STANDARD_SERIES_ID,
   answerInput: 'typed',
   budgetBaseMs: DEFAULT_BUDGET_BASE_MS,
+  language: 'ja',
 };
 
 const KEY_SETTINGS = 'nback.settings';

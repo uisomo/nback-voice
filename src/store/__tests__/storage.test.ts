@@ -40,6 +40,20 @@ describe('settings', () => {
     expect(s.stepDurationMs).toBe(4000);
     expect(s.adaptive).toBe(DEFAULT_SETTINGS.adaptive);
   });
+
+  it('defaults language to ja', async () => {
+    expect((await loadSettings()).language).toBe('ja');
+  });
+
+  it('round-trips a saved language', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, language: 'en' });
+    expect((await loadSettings()).language).toBe('en');
+  });
+
+  it('defaults language to ja when loading settings stored before it existed', async () => {
+    await AsyncStorage.setItem('nback.settings', JSON.stringify({ stepDurationMs: 4000 }));
+    expect((await loadSettings()).language).toBe('ja');
+  });
 });
 
 describe('adaptive N per series', () => {
