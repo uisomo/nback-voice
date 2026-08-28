@@ -3,9 +3,11 @@
  *   translates every series in src/content/series.json to English via
  *   translateSeries, one request per series, and writes the result to
  *   src/content/series.en.json. Requires OPENROUTER_API_KEY in the
- *   environment. Alternates each series between two free OpenRouter
- *   models so neither model's shared rate-limit pool takes the full
- *   25-request run; retries once per series on a 429 from either.
+ *   environment. MODELS cycles through free OpenRouter models by series
+ *   index — currently just one, after z-ai/glm-5.2:free stayed
+ *   rate-limited through the whole run (see the SDD ledger); add more
+ *   back if a future re-run needs to spread load across pools again.
+ *   Retries once per series after a delay on a 429.
  *
  * No tsx/ts-node dependency: the npm script compiles this file with the
  * already-installed tsc and runs the plain JS, same as review-questions.

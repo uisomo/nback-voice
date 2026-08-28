@@ -82,7 +82,12 @@ export function parseTranslatedSeries(
   };
 }
 
-const TRANSLATE_MODEL = 'z-ai/glm-5.2:free';
+// The default used only when a caller doesn't pass a model explicitly (e.g.
+// direct test/API use) — translate-questions.ts always passes one of MODELS.
+// minimax/minimax-m3:free is what actually produced the shipped content;
+// z-ai/glm-5.2:free stayed rate-limited through the whole run (see the SDD
+// ledger) and was dropped from rotation, not just from this default.
+const TRANSLATE_MODEL = 'minimax/minimax-m3:free';
 
 const TRANSLATE_SCHEMA = {
   type: 'object',
