@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { groupSeries, listSeries, type CategoryGroup } from '../content/series';
 import { MIN_QUESTIONS } from '../content/pool';
 import { loadCustom, loadLearned, loadN, loadSettings } from '../store/storage';
+import { useStrings } from '../strings';
 
 interface Props {
   onSelect: (seriesId: string) => void;
@@ -26,6 +27,7 @@ interface Group {
 
 export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
   const [groups, setGroups] = useState<Group[]>([]);
+  const strings = useStrings();
 
   useEffect(() => {
     let cancelled = false;
@@ -63,9 +65,9 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.heading}>シリーズを選ぶ</Text>
+        <Text style={styles.heading}>{strings.series.heading}</Text>
         <Pressable onPress={onOpenSettings}>
-          <Text style={styles.settings}>設定</Text>
+          <Text style={styles.settings}>{strings.common.settings}</Text>
         </Pressable>
       </View>
 
@@ -87,11 +89,11 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
                   {row.credit && <Text style={styles.credit}>{row.credit}</Text>}
                   <View style={styles.meta}>
                     <Text testID={`series-count-${row.id}`} style={styles.count}>
-                      {usable ? `${row.count}問` : `あと ${shortfall} 問`}
+                      {usable ? strings.series.count(row.count) : strings.series.shortfall(shortfall)}
                     </Text>
                     {usable && (
                       <Text testID={`series-lag-${row.id}`} style={styles.lag}>
-                        {row.n}-back
+                        {strings.series.lag(row.n)}
                       </Text>
                     )}
                   </View>

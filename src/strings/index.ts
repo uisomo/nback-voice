@@ -76,7 +76,12 @@ export interface Strings {
     again: string;
     changeSeries: string;
   };
-  series: Record<string, never>;
+  series: {
+    heading: string;
+    count: (n: number) => string;
+    shortfall: (n: number) => string;
+    lag: (n: number) => string;
+  };
   questions: Record<string, never>;
 }
 
@@ -156,7 +161,12 @@ export const ja: Strings = {
     again: 'もう一度',
     changeSeries: 'シリーズを変える',
   },
-  series: {},
+  series: {
+    heading: 'シリーズを選ぶ',
+    count: (n) => `${n}問`,
+    shortfall: (n) => `あと ${n} 問`,
+    lag: (n) => `${n}-back`,
+  },
   questions: {},
 };
 
@@ -236,7 +246,12 @@ export const en: Strings = {
     again: 'Again',
     changeSeries: 'Change series',
   },
-  series: {},
+  series: {
+    heading: 'Choose a series',
+    count: (n) => `${n} questions`,
+    shortfall: (n) => `${n} more needed`,
+    lag: (n) => `${n}-back`,
+  },
   questions: {},
 };
 
