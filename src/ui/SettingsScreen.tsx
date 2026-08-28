@@ -27,6 +27,8 @@ import { ClaudeJudgeClient } from '../judge/claude';
 import type { JudgeClient } from '../judge/types';
 import type { Question } from '../engine/types';
 import { listSeries, type Series } from '../content/series';
+import { useStrings } from '../strings';
+import type { Strings } from '../strings';
 
 interface Props {
   onClose: () => void;
@@ -47,9 +49,9 @@ const PROBE: Question = {
  * Shows enough of the key to tell two apart, never enough to use. A key is
  * pasted once and then only ever recognized.
  */
-function maskApiKey(apiKey: string): string {
-  if (!apiKey) return '未設定';
-  if (apiKey.length <= 12) return '設定済み';
+function maskApiKey(apiKey: string, strings: Strings['settings']): string {
+  if (!apiKey) return strings.apiKeyUnset;
+  if (apiKey.length <= 12) return strings.apiKeySet;
   return `${apiKey.slice(0, 7)}…${apiKey.slice(-4)}`;
 }
 
@@ -61,16 +63,16 @@ type CheckState =
 
 const STEP_CHOICES = [3000, 4000, 5000, 6000, 8000];
 const TIER_CHOICES = [
-  { tier: 1, label: 'やさしい' },
-  { tier: 2, label: 'ふつう' },
+  { tier: 1, labelKey: 'tierEasy' as const },
+  { tier: 2, labelKey: 'tierNormal' as const },
 ];
-const MODE_CHOICES: { mode: RoundMode; label: string }[] = [
-  { mode: 'dual', label: '位置＋質問' },
-  { mode: 'question', label: '質問のみ' },
+const MODE_CHOICES: { mode: RoundMode; labelKey: 'modeDual' | 'modeQuestion' }[] = [
+  { mode: 'dual', labelKey: 'modeDual' },
+  { mode: 'question', labelKey: 'modeQuestion' },
 ];
-const INPUT_CHOICES: { input: AnswerInput; label: string }[] = [
-  { input: 'typed', label: '入力' },
-  { input: 'voice', label: '音声' },
+const INPUT_CHOICES: { input: AnswerInput; labelKey: 'inputTyped' | 'inputVoice' }[] = [
+  { input: 'typed', labelKey: 'inputTyped' },
+  { input: 'voice', labelKey: 'inputVoice' },
 ];
 
 /**
@@ -88,6 +90,7 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
 
   const [apiKey, setApiKey] = useState('');
   const [check, setCheck] = useState<CheckState>({ name: 'idle' });
+  const strings = useStrings();
 
   // Seeded from DEFAULT_SETTINGS so the field shows something before load
   // resolves, then resynced once — see the effect below. Kept separate from
@@ -190,44 +193,44 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.heading}>設定</Text>
+      <Text style={styles.heading}>{strings.common.settings}</Text>
 
       {/* This screen is taller than a phone, and the web build disables page
           scrolling (`body { overflow: hidden }`), so without this the lower
           half was clipped away with no way to reach it. 閉じる stays outside,
           below, so the way out is never the thing you have to scroll for. */}
       <ScrollView testID="settings-scroll" style={styles.body}>
-        <Text style={styles.label}>モード</Text>
+        <Text style={styles.label}>{strings.settings.sectionMode}</Text>
         <View style={styles.row}>
-          {MODE_CHOICES.map(({ mode, label }) => (
+          {MODE_CHOICES.map(({ mode, labelKey }) => (
             <Pressable
               key={mode}
               onPress={() => update({ mode })}
               style={[styles.chip, settings.mode === mode && styles.chipOn]}
             >
-              <Text style={styles.chipLabel}>{label}</Text>
+              <Text style={styles.chipLabel}>{strings.settings[labelKey]}</Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.label}>回答のしかた</Text>
+        <Text style={styles.label}>{strings.settings.sectionAnswerInput}</Text>
         <View style={styles.row}>
-          {INPUT_CHOICES.map(({ input, label }) => (
+          {INPUT_CHOICES.map(({ input, labelKey }) => (
             <Pressable
               key={input}
               testID={`answer-input-${input}`}
               onPress={() => update({ answerInput: input })}
               style={[styles.chip, settings.answerInput === input && styles.chipOn]}
             >
-              <Text style={styles.chipLabel}>{label}</Text>
+              <Text style={styles.chipLabel}>{strings.settings[labelKey]}</Text>
             </Pressable>
           ))}
         </View>
         <Text style={styles.note}>
-          入力にすると、キーボードのマイクで喋った文字を、送る前に直せる。
+          {strings.settings.noteTypedInput}
         </Text>
 
-        <Text style={styles.label}>考える時間の基準 (秒)</Text>
+        <Text style={styles.label}>{strings.settings.sectionBudget}</Text>
         <TextInput
           testID="budget-base-input"
           style={styles.input}
@@ -245,14 +248,14 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           }}
         />
         <Text style={styles.note}>
-          答え1文字につき1秒が、この基準に足される。時計が0になっても先へは進まない。
+          {strings.settings.noteBudget}
         </Text>
 
         <Pressable style={styles.link} onPress={onEditQuestions}>
-          <Text style={styles.linkLabel}>自分の問題を編集</Text>
+          <Text style={styles.linkLabel}>{strings.settings.linkEditQuestions}</Text>
         </Pressable>
 
-        <Text style={styles.label}>1ステップの長さ</Text>
+        <Text style={styles.label}>{strings.settings.sectionStepDuration}</Text>
         <View style={styles.row}>
           {STEP_CHOICES.map((ms) => (
             <Pressable
@@ -260,13 +263,13 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
               onPress={() => update({ stepDurationMs: ms })}
               style={[styles.chip, settings.stepDurationMs === ms && styles.chipOn]}
             >
-              <Text style={styles.chipLabel}>{ms / 1000}秒</Text>
+              <Text style={styles.chipLabel}>{ms / 1000}{strings.settings.stepDurationUnit}</Text>
             </Pressable>
           ))}
         </View>
 
         <View style={styles.row}>
-          <Text style={styles.label}>Nを自動調整</Text>
+          <Text style={styles.label}>{strings.settings.sectionAdaptive}</Text>
           <Switch
             value={settings.adaptive}
             onValueChange={(adaptive) => update({ adaptive })}
@@ -287,9 +290,9 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           </View>
         )}
 
-        <Text style={styles.label}>シリーズごとのN</Text>
+        <Text style={styles.label}>{strings.settings.sectionSeriesN}</Text>
         <Text style={styles.note}>
-          自動調整の到達点をシリーズごとに直接調整・リセットできる。
+          {strings.settings.noteSeriesN}
         </Text>
         {series.map((s) => (
           <View key={s.id} testID={`series-n-row-${s.id}`} style={styles.seriesRow}>
@@ -300,7 +303,7 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
                 style={styles.chip}
                 onPress={() => adjustSeriesN(s.id, -1)}
               >
-                <Text style={styles.chipLabel}>－</Text>
+                <Text style={styles.chipLabel}>{strings.settings.seriesNDown}</Text>
               </Pressable>
               <Text testID={`series-n-value-${s.id}`} style={styles.seriesN}>
                 {seriesN[s.id] ?? STARTING_N}
@@ -310,37 +313,37 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
                 style={styles.chip}
                 onPress={() => adjustSeriesN(s.id, 1)}
               >
-                <Text style={styles.chipLabel}>＋</Text>
+                <Text style={styles.chipLabel}>{strings.settings.seriesNUp}</Text>
               </Pressable>
               <Pressable
                 testID={`series-n-reset-${s.id}`}
                 style={styles.chip}
                 onPress={() => resetSeriesN(s.id)}
               >
-                <Text style={styles.chipLabel}>リセット</Text>
+                <Text style={styles.chipLabel}>{strings.settings.seriesNReset}</Text>
               </Pressable>
             </View>
           </View>
         ))}
 
-        <Text style={styles.label}>標準問題のむずかしさ</Text>
+        <Text style={styles.label}>{strings.settings.sectionMaxTier}</Text>
         <View style={styles.row}>
-          {TIER_CHOICES.map(({ tier, label }) => (
+          {TIER_CHOICES.map(({ tier, labelKey }) => (
             <Pressable
               key={tier}
               onPress={() => update({ maxTier: tier })}
               style={[styles.chip, settings.maxTier === tier && styles.chipOn]}
             >
-              <Text style={styles.chipLabel}>{label}</Text>
+              <Text style={styles.chipLabel}>{strings.settings[labelKey]}</Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.label}>Claude APIキー</Text>
+        <Text style={styles.label}>{strings.settings.sectionApiKey}</Text>
         <TextInput
           testID="api-key-input"
           style={styles.input}
-          placeholder="sk-ant-..."
+          placeholder={strings.settings.apiKeyPlaceholder}
           placeholderTextColor="#8e8e93"
           secureTextEntry
           autoCapitalize="none"
@@ -348,24 +351,24 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           onChangeText={editApiKey}
         />
         <View style={styles.row}>
-          <Text style={styles.keyState}>{maskApiKey(apiKey)}</Text>
+          <Text style={styles.keyState}>{maskApiKey(apiKey, strings.settings)}</Text>
           <Pressable style={styles.chip} onPress={() => void runCheck()}>
-            <Text style={styles.chipLabel}>接続を確認</Text>
+            <Text style={styles.chipLabel}>{strings.settings.checkConnection}</Text>
           </Pressable>
         </View>
         {check.name === 'checking' && (
-          <Text style={styles.keyState}>確認中…</Text>
+          <Text style={styles.keyState}>{strings.settings.checking}</Text>
         )}
         {check.name === 'ok' && (
-          <Text style={styles.keyOk}>確認できました。採点が使えます。</Text>
+          <Text style={styles.keyOk}>{strings.settings.checkOk}</Text>
         )}
         {check.name === 'failed' && (
-          <Text style={styles.keyError}>失敗: {check.message}</Text>
+          <Text style={styles.keyError}>{strings.settings.checkFailedPrefix}{check.message}</Text>
         )}
       </ScrollView>
 
       <Pressable style={styles.button} onPress={onClose}>
-        <Text style={styles.chipLabel}>閉じる</Text>
+        <Text style={styles.chipLabel}>{strings.common.close}</Text>
       </Pressable>
     </View>
   );

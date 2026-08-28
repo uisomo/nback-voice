@@ -336,3 +336,12 @@ describe('SettingsScreen per-series N', () => {
     expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('3');
   });
 });
+
+it('renders English labels when language is en', async () => {
+  await saveSettings({ ...DEFAULT_SETTINGS, language: 'en' });
+  const { findByText } = render(
+    <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+  );
+  expect(await findByText('Easy')).toBeTruthy();
+  expect(await findByText('Auto-adjust N')).toBeTruthy();
+});
