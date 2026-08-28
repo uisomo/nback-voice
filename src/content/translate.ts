@@ -182,6 +182,7 @@ export async function translateSeries(
     },
     body: JSON.stringify({
       model,
+      max_tokens: 8192,
       messages: [
         { role: 'system', content: TRANSLATE_SYSTEM },
         { role: 'user', content: JSON.stringify(series) },
