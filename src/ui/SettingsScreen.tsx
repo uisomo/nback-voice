@@ -276,6 +276,15 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           />
         </View>
 
+        <View style={styles.row}>
+          <Text style={styles.label}>{strings.settings.sectionLanguage}</Text>
+          <Switch
+            testID="language-switch"
+            value={settings.language === 'en'}
+            onValueChange={(isEn) => update({ language: isEn ? 'en' : 'ja' })}
+          />
+        </View>
+
         {!settings.adaptive && (
           <View style={styles.row}>
             {[1, 2, 3, 4, 5].map((n) => (

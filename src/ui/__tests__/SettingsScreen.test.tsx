@@ -48,11 +48,11 @@ describe('SettingsScreen', () => {
   });
 
   it('reveals the fixed-N picker when adaptive is turned off', async () => {
-    const { getByRole, findByText } = render(
+    const { getAllByRole, findByText } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     await waitFor(() => {});
-    fireEvent(getByRole('switch'), 'valueChange', false);
+    fireEvent(getAllByRole('switch')[0], 'valueChange', false);
     expect(await findByText('5')).toBeTruthy();
   });
 
@@ -335,6 +335,25 @@ describe('SettingsScreen per-series N', () => {
     expect(getByTestId('series-n-value-custom')).toHaveTextContent('2');
     expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('3');
   });
+});
+
+it('persists the language toggle', async () => {
+  const { getByTestId } = render(
+    <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+  );
+  await waitFor(() => {});
+  fireEvent(getByTestId('language-switch'), 'valueChange', true);
+  await waitFor(async () => {
+    expect((await loadSettings()).language).toBe('en');
+  });
+});
+
+it('defaults the language switch to off (ja)', async () => {
+  const { getByTestId } = render(
+    <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+  );
+  await waitFor(() => {});
+  expect(getByTestId('language-switch').props.value).toBe(false);
 });
 
 it('renders English labels when language is en', async () => {
