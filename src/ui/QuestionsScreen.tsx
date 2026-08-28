@@ -14,6 +14,7 @@ import {
   loadCustom,
   updateCustom,
 } from '../store/storage';
+import { useStrings } from '../strings';
 
 interface Props {
   onClose: () => void;
@@ -24,6 +25,7 @@ export function QuestionsScreen({ onClose }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftQ, setDraftQ] = useState('');
   const [draftAnswer, setDraftAnswer] = useState('');
+  const strings = useStrings();
 
   const refresh = useCallback(async () => {
     setQuestions(await loadCustom());
@@ -67,19 +69,19 @@ export function QuestionsScreen({ onClose }: Props) {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.heading}>自分の問題</Text>
-      <Text style={styles.count}>{questions.length} 問</Text>
+      <Text style={styles.heading}>{strings.questions.heading}</Text>
+      <Text style={styles.count}>{strings.questions.count(questions.length)}</Text>
 
       <TextInput
         style={styles.input}
-        placeholder="問題"
+        placeholder={strings.questions.placeholderQuestion}
         placeholderTextColor="#8e8e93"
         value={draftQ}
         onChangeText={setDraftQ}
       />
       <TextInput
         style={styles.input}
-        placeholder="答え"
+        placeholder={strings.questions.placeholderAnswer}
         placeholderTextColor="#8e8e93"
         value={draftAnswer}
         onChangeText={setDraftAnswer}
@@ -87,15 +89,15 @@ export function QuestionsScreen({ onClose }: Props) {
 
       <View style={styles.formRow}>
         <Pressable style={styles.primary} onPress={() => void submit()}>
-          <Text style={styles.label}>{editingId ? '保存' : '追加'}</Text>
+          <Text style={styles.label}>{editingId ? strings.questions.save : strings.questions.add}</Text>
         </Pressable>
         {editingId && (
           <>
             <Pressable style={styles.secondary} onPress={() => void remove()}>
-              <Text style={styles.label}>削除</Text>
+              <Text style={styles.label}>{strings.questions.delete}</Text>
             </Pressable>
             <Pressable style={styles.secondary} onPress={resetForm}>
-              <Text style={styles.label}>取消</Text>
+              <Text style={styles.label}>{strings.questions.cancel}</Text>
             </Pressable>
           </>
         )}
@@ -115,7 +117,7 @@ export function QuestionsScreen({ onClose }: Props) {
       </ScrollView>
 
       <Pressable style={styles.secondary} onPress={onClose}>
-        <Text style={styles.label}>閉じる</Text>
+        <Text style={styles.label}>{strings.common.close}</Text>
       </Pressable>
     </View>
   );

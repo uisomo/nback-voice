@@ -82,7 +82,16 @@ export interface Strings {
     shortfall: (n: number) => string;
     lag: (n: number) => string;
   };
-  questions: Record<string, never>;
+  questions: {
+    heading: string;
+    count: (n: number) => string;
+    placeholderQuestion: string;
+    placeholderAnswer: string;
+    save: string;
+    add: string;
+    delete: string;
+    cancel: string;
+  };
 }
 
 export const ja: Strings = {
@@ -167,7 +176,16 @@ export const ja: Strings = {
     shortfall: (n) => `あと ${n} 問`,
     lag: (n) => `${n}-back`,
   },
-  questions: {},
+  questions: {
+    heading: '自分の問題',
+    count: (n) => `${n} 問`,
+    placeholderQuestion: '問題',
+    placeholderAnswer: '答え',
+    save: '保存',
+    add: '追加',
+    delete: '削除',
+    cancel: '取消',
+  },
 };
 
 export const en: Strings = {
@@ -252,7 +270,16 @@ export const en: Strings = {
     shortfall: (n) => `${n} more needed`,
     lag: (n) => `${n}-back`,
   },
-  questions: {},
+  questions: {
+    heading: 'My Questions',
+    count: (n) => `${n} questions`,
+    placeholderQuestion: 'Question',
+    placeholderAnswer: 'Answer',
+    save: 'Save',
+    add: 'Add',
+    delete: 'Delete',
+    cancel: 'Cancel',
+  },
 };
 
 export function useStrings(): Strings {
