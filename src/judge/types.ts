@@ -7,5 +7,5 @@ export interface Verdict {
 }
 
 export interface JudgeClient {
-  judge(question: Question, transcript: string): Promise<Verdict>;
+  judge(question: Question, transcript: string, language?: 'ja' | 'en'): Promise<Verdict>;
 }

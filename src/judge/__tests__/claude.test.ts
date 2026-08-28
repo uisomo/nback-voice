@@ -128,3 +128,33 @@ describe('ClaudeJudgeClient key provider', () => {
     expect(mockClientOptions).toHaveLength(0);
   });
 });
+
+describe('ClaudeJudgeClient language selection', () => {
+  beforeEach(() => {
+    mockCreate.mockClear();
+    mockClientOptions.length = 0;
+  });
+
+  it('uses the Japanese system prompt and template by default', async () => {
+    await new ClaudeJudgeClient(async () => 'sk-test').judge(DOG, 'わんこ');
+    const params = mockCreate.mock.calls[0][0] as unknown as {
+      system: string;
+      messages: Array<{ content: string }>;
+    };
+    expect(params.system).toMatch(/日本語/);
+    expect(params.messages[0].content).toMatch(/^問題: /);
+  });
+
+  it('uses the English system prompt and template when language is en', async () => {
+    const ENGLISH_DOG: Question = { id: 'q042', tier: 2, q: 'What sound does a dog make?', accept: ['Woof'] };
+    await new ClaudeJudgeClient(async () => 'sk-test').judge(ENGLISH_DOG, 'woof', 'en');
+    const params = mockCreate.mock.calls[0][0] as unknown as {
+      system: string;
+      messages: Array<{ content: string }>;
+    };
+    expect(params.system).toMatch(/English/);
+    expect(params.messages[0].content).toMatch(/^Question: /);
+    expect(params.messages[0].content).toContain('Accepted answers:');
+    expect(params.messages[0].content).toContain("User's answer:");
+  });
+});

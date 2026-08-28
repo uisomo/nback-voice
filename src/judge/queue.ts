@@ -18,6 +18,7 @@ export class JudgeQueue {
   constructor(
     private readonly client: JudgeClient,
     private readonly callbacks: JudgeQueueCallbacks,
+    private readonly language: 'ja' | 'en' = 'ja',
   ) {}
 
   enqueue(answer: PendingAnswer): void {
@@ -30,7 +31,7 @@ export class JudgeQueue {
     // rejection means 未判定. A throw from onVerdict/onLearn is a bug in the
     // caller and must stay visible rather than masquerading as a dead network.
     const task = this.client
-      .judge(answer.question, answer.transcript)
+      .judge(answer.question, answer.transcript, this.language)
       .then(
         (verdict) => {
           this.callbacks.onVerdict(answer.index, verdict.correct);

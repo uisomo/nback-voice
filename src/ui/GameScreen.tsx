@@ -290,29 +290,33 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           ? settings.budgetBaseMs + a
           : settings.budgetBaseMs;
         const engine = new RoundEngine(plan, { budgetBaseMs });
-        const queue = new JudgeQueue(resolved.judgeClient, {
-          onVerdict: (index, correct) => {
-            engine.resolveAnswer(index, correct);
-            // Colours the answer only while it is still the one on screen —
-            // a verdict that arrives after the owner has spoken again belongs
-            // to a step they are no longer looking at.
-            setAnswer((current) =>
-              current && current.index === index ? { ...current, correct } : current,
-            );
-            // Briefly shows the ○/× and then clears it, rather than leaving
-            // a solved answer on screen through the whole of the next
-            // question. Guarded the same way the colour above is: only
-            // clears if this verdict's answer is still the one showing.
-            if (verdictClearRef.current) clearTimeout(verdictClearRef.current);
-            verdictClearRef.current = setTimeout(() => {
-              verdictClearRef.current = null;
-              setAnswer((current) => (current?.index === index ? null : current));
-            }, VERDICT_DISPLAY_MS);
+        const queue = new JudgeQueue(
+          resolved.judgeClient,
+          {
+            onVerdict: (index, correct) => {
+              engine.resolveAnswer(index, correct);
+              // Colours the answer only while it is still the one on screen —
+              // a verdict that arrives after the owner has spoken again belongs
+              // to a step they are no longer looking at.
+              setAnswer((current) =>
+                current && current.index === index ? { ...current, correct } : current,
+              );
+              // Briefly shows the ○/× and then clears it, rather than leaving
+              // a solved answer on screen through the whole of the next
+              // question. Guarded the same way the colour above is: only
+              // clears if this verdict's answer is still the one showing.
+              if (verdictClearRef.current) clearTimeout(verdictClearRef.current);
+              verdictClearRef.current = setTimeout(() => {
+                verdictClearRef.current = null;
+                setAnswer((current) => (current?.index === index ? null : current));
+              }, VERDICT_DISPLAY_MS);
+            },
+            onLearn: (questionId, answer) => {
+              void addLearned(questionId, answer);
+            },
           },
-          onLearn: (questionId, answer) => {
-            void addLearned(questionId, answer);
-          },
-        });
+          settings.language,
+        );
 
         const runner = new RoundRunner({
           plan,

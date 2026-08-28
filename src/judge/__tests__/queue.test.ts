@@ -138,4 +138,36 @@ describe('JudgeQueue', () => {
     await queue.drain();
     expect(verdicts).toEqual([[4, true]]);
   });
+
+  it('passes the configured language to the judge client', async () => {
+    const judged: Array<string | undefined> = [];
+    const client: JudgeClient = {
+      judge: async (_q, _t, language): Promise<Verdict> => {
+        judged.push(language);
+        return { correct: true, matched: null };
+      },
+    };
+    const queue = new JudgeQueue(
+      client,
+      { onVerdict: () => {}, onLearn: () => {} },
+      'en',
+    );
+    queue.enqueue({ index: 3, question: DOG, transcript: 'わんこ' });
+    await queue.drain();
+    expect(judged).toEqual(['en']);
+  });
+
+  it('defaults to ja when no language is given to the constructor', async () => {
+    const judged: Array<string | undefined> = [];
+    const client: JudgeClient = {
+      judge: async (_q, _t, language): Promise<Verdict> => {
+        judged.push(language);
+        return { correct: true, matched: null };
+      },
+    };
+    const { queue } = makeQueue(client);
+    queue.enqueue({ index: 3, question: DOG, transcript: 'わんこ' });
+    await queue.drain();
+    expect(judged).toEqual(['ja']);
+  });
 });

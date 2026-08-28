@@ -17,13 +17,43 @@ const VERDICT_SCHEMA = {
   additionalProperties: false,
 };
 
-const SYSTEM = [
+const SYSTEM_JA = [
   'あなたは日本語の一問一答クイズの採点者です。',
   '出題と、想定される正答例と、利用者が音声で答えた内容が与えられます。',
   '音声認識の誤りや言い回しの違いは許容し、意味が合っていれば正解としてください。',
   'correct には正誤を、matched には正解と判断した場合にその答えの標準的な表記を入れてください。',
   '不正解の場合 matched は null にしてください。',
 ].join('\n');
+
+const SYSTEM_EN = [
+  'You are grading a one-question-one-answer English quiz.',
+  'You are given the question, a set of accepted answers, and what the user',
+  'said (transcribed from speech or typed).',
+  'Tolerate speech-recognition errors and phrasing differences; if the',
+  'meaning matches, grade it correct.',
+  'Set "correct" to whether the answer is right. Set "matched" to the',
+  'standard form of the answer when you judge it correct.',
+  'Set "matched" to null when the answer is incorrect.',
+].join('\n');
+
+function buildMessage(
+  language: 'ja' | 'en',
+  question: Question,
+  transcript: string,
+): string {
+  if (language === 'en') {
+    return [
+      `Question: ${question.q}`,
+      `Accepted answers: ${question.accept.join(' / ')}`,
+      `User's answer: ${transcript}`,
+    ].join('\n');
+  }
+  return [
+    `問題: ${question.q}`,
+    `正答例: ${question.accept.join(' / ')}`,
+    `利用者の回答: ${transcript}`,
+  ].join('\n');
+}
 
 export function parseVerdict(text: string): Verdict {
   let data: unknown;
@@ -78,7 +108,11 @@ export class ClaudeJudgeClient implements JudgeClient {
     return this.client;
   }
 
-  async judge(question: Question, transcript: string): Promise<Verdict> {
+  async judge(
+    question: Question,
+    transcript: string,
+    language: 'ja' | 'en' = 'ja',
+  ): Promise<Verdict> {
     const client = await this.resolveClient();
     const params: Anthropic.MessageCreateParamsNonStreaming = {
       model: JUDGE_MODEL,
@@ -90,15 +124,11 @@ export class ClaudeJudgeClient implements JudgeClient {
         effort: 'low',
         format: { type: 'json_schema', schema: VERDICT_SCHEMA },
       },
-      system: SYSTEM,
+      system: language === 'en' ? SYSTEM_EN : SYSTEM_JA,
       messages: [
         {
           role: 'user',
-          content: [
-            `問題: ${question.q}`,
-            `正答例: ${question.accept.join(' / ')}`,
-            `利用者の回答: ${transcript}`,
-          ].join('\n'),
+          content: buildMessage(language, question, transcript),
         },
       ],
     };
