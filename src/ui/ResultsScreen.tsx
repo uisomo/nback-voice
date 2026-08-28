@@ -1,20 +1,23 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { RoundEngine } from '../engine';
 import type { AnswerReview } from '../engine/round';
+import { ja, en } from '../strings';
+import type { Strings } from '../strings';
 
 interface Props {
   engine: RoundEngine;
   n: number;
   onAgain: () => void;
   onChangeSeries: () => void;
+  language?: 'ja' | 'en';
 }
 
 const CORRECT = '#4caf7d';
 const WRONG = '#e5534b';
 const NEUTRAL = '#8e8e93';
 
-function pct(v: number | null): string {
-  return v === null ? '—' : `${Math.round(v * 100)}%`;
+function pct(v: number | null, strings: Strings['results']): string {
+  return v === null ? strings.dash : `${Math.round(v * 100)}%`;
 }
 
 /** Green only for a verdict of correct: 未判定 and 聞き取れず are not failures. */
@@ -23,16 +26,16 @@ function answerColor(row: AnswerReview): string {
   return row.correct ? CORRECT : WRONG;
 }
 
-function verdictLabel(row: AnswerReview): string {
-  if (row.transcript === null) return '—';
-  if (row.correct === null) return '未判定';
-  return row.correct ? '○' : '×';
+function verdictLabel(row: AnswerReview, strings: Strings['results']): string {
+  if (row.transcript === null) return strings.dash;
+  if (row.correct === null) return strings.unjudged;
+  return row.correct ? strings.correctMark : strings.wrongMark;
 }
 
-function positionMark(row: AnswerReview): { label: string; color: string } {
-  if (row.position === 'correct') return { label: '位置 ○', color: CORRECT };
-  if (row.position === 'wrong') return { label: '位置 ×', color: WRONG };
-  return { label: '位置 —', color: NEUTRAL };
+function positionMark(row: AnswerReview, strings: Strings['results']): { label: string; color: string } {
+  if (row.position === 'correct') return { label: strings.positionCorrect, color: CORRECT };
+  if (row.position === 'wrong') return { label: strings.positionWrong, color: WRONG };
+  return { label: strings.positionDash, color: NEUTRAL };
 }
 
 const ASCII_TERM = /^[A-Za-z0-9&.\-+ ]+$/;
@@ -120,24 +123,25 @@ function answerDisplay(question: { accept: string[] }): string {
   return out;
 }
 
-export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
+export function ResultsScreen({ engine, n, onAgain, onChangeSeries, language = 'ja' }: Props) {
+  const strings = (language === 'en' ? en : ja).results;
   return (
     <View style={styles.screen}>
-      <Text style={styles.heading}>{n}-back の結果</Text>
-      <Text style={styles.lag}>{n}つ前の質問に答えるラウンド</Text>
-      <Text style={styles.row}>位置　{pct(engine.positionScore)}</Text>
-      <Text style={styles.row}>回答　{pct(engine.answerScore)}</Text>
+      <Text style={styles.heading}>{strings.heading(n)}</Text>
+      <Text style={styles.lag}>{strings.subheading(n)}</Text>
+      <Text style={styles.row}>{strings.rowPosition}{pct(engine.positionScore, strings)}</Text>
+      <Text style={styles.row}>{strings.rowAnswer}{pct(engine.answerScore, strings)}</Text>
       {engine.onTimeScore !== null && (
-        <Text style={styles.row}>時間内　{pct(engine.onTimeScore)}</Text>
+        <Text style={styles.row}>{strings.rowOnTime}{pct(engine.onTimeScore, strings)}</Text>
       )}
       {engine.unresolvedCount > 0 && (
-        <Text style={styles.note}>未判定 {engine.unresolvedCount} 件</Text>
+        <Text style={styles.note}>{strings.unjudgedCount(engine.unresolvedCount)}</Text>
       )}
-      <Text style={styles.row}>総合　{pct(engine.roundScore)}</Text>
+      <Text style={styles.row}>{strings.rowTotal}{pct(engine.roundScore, strings)}</Text>
 
       <ScrollView style={styles.list}>
         {engine.review.map((item) => {
-          const position = positionMark(item);
+          const position = positionMark(item, strings);
           return (
             <View
               key={item.index}
@@ -151,14 +155,14 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
                   style={[styles.heard, { color: answerColor(item) }]}
                 >
                   {item.transcript === null
-                    ? '（聞き取れず）'
-                    : `「${item.transcript}」`}
+                    ? strings.notHeard
+                    : strings.heardQuote(item.transcript)}
                 </Text>
                 <Text
                   testID={`review-verdict-${item.index}`}
                   style={[styles.verdict, { color: answerColor(item) }]}
                 >
-                  {verdictLabel(item)}
+                  {verdictLabel(item, strings)}
                 </Text>
                 {item.position !== null && (
                   <Text
@@ -174,7 +178,7 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
                   testID={`review-answer-${item.index}`}
                   style={styles.answerLabel}
                 >
-                  答え:{' '}
+                  {strings.answerLabelPrefix}
                   <Text style={styles.answerValue}>
                     {answerDisplay(item.question)}
                   </Text>
@@ -182,7 +186,7 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
               )}
               {item.onTime === false && (
                 <Text testID={`review-late-${item.index}`} style={styles.late}>
-                  時間超過（目安 {(item.budgetMs / 1000).toFixed(0)}s）
+                  {strings.lateNote((item.budgetMs / 1000).toFixed(0))}
                 </Text>
               )}
             </View>
@@ -192,10 +196,10 @@ export function ResultsScreen({ engine, n, onAgain, onChangeSeries }: Props) {
 
       <View style={styles.buttons}>
         <Pressable style={styles.button} onPress={onAgain}>
-          <Text style={styles.buttonLabel}>もう一度</Text>
+          <Text style={styles.buttonLabel}>{strings.again}</Text>
         </Pressable>
         <Pressable style={styles.secondary} onPress={onChangeSeries}>
-          <Text style={styles.buttonLabel}>シリーズを変える</Text>
+          <Text style={styles.buttonLabel}>{strings.changeSeries}</Text>
         </Pressable>
       </View>
     </View>

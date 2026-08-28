@@ -86,6 +86,20 @@ describe('ResultsScreen', () => {
     fireEvent.press(getByText('もう一度'));
     expect(onAgain).toHaveBeenCalled();
   });
+
+  it('renders English text when language is en', () => {
+    const { getByText } = render(
+      <ResultsScreen
+        engine={finishedEngine(9)}
+        n={2}
+        onAgain={() => {}}
+        onChangeSeries={() => {}}
+        language="en"
+      />,
+    );
+    expect(getByText(/2-back Results/)).toBeTruthy();
+    expect(getByText('Change series')).toBeTruthy();
+  });
 });
 
 /** The colour a node actually renders with, whatever the style shape. */

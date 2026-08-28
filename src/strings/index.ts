@@ -54,7 +54,28 @@ export interface Strings {
     typedPlaceholderOpen: string;
     send: string;
   };
-  results: Record<string, never>;
+  results: {
+    dash: string;
+    unjudged: string;
+    correctMark: string;
+    wrongMark: string;
+    positionCorrect: string;
+    positionWrong: string;
+    positionDash: string;
+    heading: (n: number) => string;
+    subheading: (n: number) => string;
+    rowPosition: string;
+    rowAnswer: string;
+    rowOnTime: string;
+    unjudgedCount: (n: number) => string;
+    rowTotal: string;
+    notHeard: string;
+    heardQuote: (text: string) => string;
+    answerLabelPrefix: string;
+    lateNote: (s: string) => string;
+    again: string;
+    changeSeries: string;
+  };
   series: Record<string, never>;
   questions: Record<string, never>;
 }
@@ -113,7 +134,28 @@ export const ja: Strings = {
     typedPlaceholderOpen: '答えを入力',
     send: '送る',
   },
-  results: {},
+  results: {
+    dash: '—',
+    unjudged: '未判定',
+    correctMark: '○',
+    wrongMark: '×',
+    positionCorrect: '位置 ○',
+    positionWrong: '位置 ×',
+    positionDash: '位置 —',
+    heading: (n) => `${n}-back の結果`,
+    subheading: (n) => `${n}つ前の質問に答えるラウンド`,
+    rowPosition: '位置　',
+    rowAnswer: '回答　',
+    rowOnTime: '時間内　',
+    unjudgedCount: (n) => `未判定 ${n} 件`,
+    rowTotal: '総合　',
+    notHeard: '（聞き取れず）',
+    heardQuote: (text) => `「${text}」`,
+    answerLabelPrefix: '答え: ',
+    lateNote: (s) => `時間超過（目安 ${s}s）`,
+    again: 'もう一度',
+    changeSeries: 'シリーズを変える',
+  },
   series: {},
   questions: {},
 };
@@ -172,7 +214,28 @@ export const en: Strings = {
     typedPlaceholderOpen: 'Type your answer',
     send: 'Send',
   },
-  results: {},
+  results: {
+    dash: '—',
+    unjudged: 'Ungraded',
+    correctMark: '○',
+    wrongMark: '×',
+    positionCorrect: 'Position ○',
+    positionWrong: 'Position ×',
+    positionDash: 'Position —',
+    heading: (n) => `${n}-back Results`,
+    subheading: (n) => `A round answering the question from ${n} step${n === 1 ? '' : 's'} ago`,
+    rowPosition: 'Position   ',
+    rowAnswer: 'Answer   ',
+    rowOnTime: 'On time   ',
+    unjudgedCount: (n) => `${n} ungraded`,
+    rowTotal: 'Total   ',
+    notHeard: '(not heard)',
+    heardQuote: (text) => `"${text}"`,
+    answerLabelPrefix: 'Answer: ',
+    lateNote: (s) => `Over time (budget ${s}s)`,
+    again: 'Again',
+    changeSeries: 'Change series',
+  },
   series: {},
   questions: {},
 };
