@@ -1565,6 +1565,27 @@ describe('GameScreen answer clock', () => {
   });
 });
 
+describe('language-driven locale', () => {
+  it('constructs the real ExpoSpeaker/ExpoListener with the settings locale, not the ja-JP default', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, language: 'en' });
+    const Speech = require('expo-speech');
+    render(<GameScreen seriesId="standard" onFinished={() => {}} />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    // The warm-up tap calls speaker.unlock(), which is the first observable
+    // Speech.speak() call and proves which locale the constructed ExpoSpeaker holds.
+    const warmupChoice = await screen.findByTestId('warmup-choice-0');
+    fireEvent.press(warmupChoice);
+    expect(Speech.speak).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ language: 'en-US' }),
+    );
+  });
+});
+
 describe('GameScreen double-press guard', () => {
   beforeEach(async () => {
     await saveSettings({ ...DEFAULT_SETTINGS, answerInput: 'typed' });

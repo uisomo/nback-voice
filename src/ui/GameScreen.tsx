@@ -20,6 +20,7 @@ import { ClaudeJudgeClient } from '../judge/claude';
 import { JudgeQueue } from '../judge/queue';
 import type { JudgeClient } from '../judge/types';
 import { ExpoListener } from '../speech/listener';
+import { languageToLocale } from '../speech/locale';
 import { ExpoSpeaker } from '../speech/speaker';
 import { TypedListener } from '../speech/typed';
 import type { Listener, Speaker } from '../speech/types';
@@ -68,10 +69,10 @@ export interface GameScreenDeps {
   requestPermissions(): Promise<boolean>;
 }
 
-function realDeps(): GameScreenDeps {
+function realDeps(locale: string = 'ja-JP'): GameScreenDeps {
   return {
-    speaker: new ExpoSpeaker(),
-    listener: new ExpoListener(),
+    speaker: new ExpoSpeaker(locale),
+    listener: new ExpoListener(locale),
     judgeClient: new ClaudeJudgeClient(loadApiKey),
     requestPermissions: ExpoListener.requestPermissions,
   };
@@ -138,7 +139,11 @@ function LagHeader({ n }: { n: number | null }) {
 }
 
 export function GameScreen({ seriesId, onFinished, deps }: Props) {
-  const resolved = useMemo(() => deps ?? realDeps(), [deps]);
+  const [language, setLanguage] = useState<'ja' | 'en' | null>(null);
+  const resolved = useMemo(
+    () => deps ?? realDeps(language ? languageToLocale(language) : undefined),
+    [deps, language],
+  );
   const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState<Position | null>(null);
   const [selected, setSelected] = useState<Position | null>(null);
@@ -252,6 +257,8 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           loadCustom(),
         ]);
         if (cancelled) return;
+
+        setLanguage(settings.language);
 
         const series = findSeries(
           listSeries({ custom, learned, maxTier: settings.maxTier, language: settings.language }),
