@@ -24,6 +24,8 @@ import { languageToLocale } from '../speech/locale';
 import { ExpoSpeaker } from '../speech/speaker';
 import { TypedListener } from '../speech/typed';
 import type { Listener, Speaker } from '../speech/types';
+import { useStrings } from '../strings';
+import type { Strings } from '../strings';
 import {
   addLearned,
   type AnswerInput,
@@ -129,16 +131,13 @@ function verdictMark(answer: LiveAnswer): string {
  * label alone ("2-back") does not say whether that means the question just
  * asked or the one before it, and getting it wrong costs a whole round.
  */
-function LagHeader({ n }: { n: number | null }) {
+function LagHeader({ n, strings }: { n: number | null; strings: Strings['game'] }) {
   if (n === null) return null;
-  return (
-    <Text style={styles.lag}>
-      {n}-back ・ {n}つ前の質問に答える
-    </Text>
-  );
+  return <Text style={styles.lag}>{strings.lagHeader(n)}</Text>;
 }
 
 export function GameScreen({ seriesId, onFinished, deps }: Props) {
+  const strings = useStrings();
   const [language, setLanguage] = useState<'ja' | 'en' | null>(null);
   const resolved = useMemo(
     () => deps ?? realDeps(language ? languageToLocale(language) : undefined),
@@ -147,7 +146,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState<Position | null>(null);
   const [selected, setSelected] = useState<Position | null>(null);
-  const [label, setLabel] = useState('準備中…');
+  const [label, setLabel] = useState(strings.game.preparing);
   const [mode, setMode] = useState<RoundMode>('dual');
   const [tapVerdict, setTapVerdict] = useState<PositionOutcome | null>(null);
   /** The answer on screen: what was heard, and how it was judged once known. */
@@ -246,7 +245,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
       const granted = await resolved.requestPermissions();
       if (cancelled) return;
       if (!granted) {
-        setLabel('マイクの許可が必要です');
+        setLabel(strings.game.micPermissionNeeded);
         return;
       }
 
@@ -273,12 +272,12 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         // Named before the mic opens: the lag alone does not say which set of
         // questions is about to be asked, and picking the wrong one costs a
         // whole round.
-        setSeriesLabel(`${series.title} ／ ${pool.length}問`);
+        setSeriesLabel(strings.game.seriesLabel(series.title, pool.length));
 
         // Questions can be deleted after the source was chosen, so re-check
         // here rather than trusting the settings screen's guard alone.
         if (pool.length < MIN_QUESTIONS) {
-          setLabel('問題が足りません');
+          setLabel(strings.game.notEnoughQuestions);
           return;
         }
 
@@ -394,10 +393,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           // Merged steps are always the owner's turn, so they say so — except
           // on the opening steps, which ask for nothing yet.
           const answering = phase === 'AB' ? owesAnswer : phase === 'B';
-          setLabel(
-            `${stepIndex + 1} / ${plan.steps.length}　${n}-back　` +
-              (answering ? 'どうぞ' : '出題中'),
-          );
+          setLabel(strings.game.stepLabel(stepIndex + 1, plan.steps.length, n, answering));
 
           // Spoken and shown both: the question stays up through its own
           // answer window, and the trailing steps show nothing at all.
@@ -479,7 +475,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             schedule();
           } catch (error) {
             console.error('[nback] ラウンドの開始に失敗しました', error);
-            setLabel('準備に失敗しました。アプリを再起動してください');
+            setLabel(strings.game.setupFailed);
           }
         };
         if (cancelled) return;
@@ -487,7 +483,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         setWarmup(makeWarmup());
       } catch (error) {
         console.error('[nback] ラウンドの準備に失敗しました', error);
-        if (!cancelled) setLabel('準備に失敗しました。アプリを再起動してください');
+        if (!cancelled) setLabel(strings.game.setupFailed);
       }
     })();
 
@@ -575,11 +571,11 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   if (warmup) {
     return (
       <View style={styles.screen}>
-        <LagHeader n={lag} />
+        <LagHeader n={lag} strings={strings.game} />
         <Text testID="warmup-series" style={styles.warmupSeries}>
           {seriesLabel}
         </Text>
-        <Text style={styles.warmupCaption}>ウォームアップ</Text>
+        <Text style={styles.warmupCaption}>{strings.game.warmupCaption}</Text>
         <Text testID="warmup-question" style={styles.warmupQuestion}>
           {warmup.question} = ?
         </Text>
@@ -595,7 +591,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.warmupHint}>タップすると始まります</Text>
+        <Text style={styles.warmupHint}>{strings.game.warmupHint}</Text>
       </View>
     );
   }
@@ -609,14 +605,15 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <LagHeader n={lag} />
+      <LagHeader n={lag} strings={strings.game} />
       {warmupTapped !== null && !ready && (
-        <Text style={styles.warmupCaption}>準備中…</Text>
+        <Text style={styles.warmupCaption}>{strings.game.preparing}</Text>
       )}
       <Text style={styles.label}>{label}</Text>
       {recogError && (
         <Text testID="recog-error" style={styles.error}>
-          認識エラー: {recogError}
+          {strings.game.recogErrorPrefix}
+          {recogError}
         </Text>
       )}
       {answer && (
@@ -624,7 +621,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           testID="live-transcript"
           style={[styles.heard, { color: answerColor(answer) }]}
         >
-          「{answer.text}」{verdictMark(answer)}
+          {`${strings.game.heardQuote(answer.text)}${verdictMark(answer)}`}
         </Text>
       )}
       {answerInput === 'typed' && (
@@ -650,7 +647,11 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               value={typedText}
               editable={remainingMs !== null}
               autoCorrect={false}
-              placeholder={remainingMs === null ? 'まだ答えません' : '答えを入力'}
+              placeholder={
+                remainingMs === null
+                  ? strings.game.typedPlaceholderClosed
+                  : strings.game.typedPlaceholderOpen
+              }
               onChangeText={(text) => {
                 setTypedText(text);
                 typedRef.current?.push(text);
@@ -663,7 +664,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               onPress={handleTypedSubmit}
               disabled={remainingMs === null}
             >
-              <Text style={styles.typedSend}>送る</Text>
+              <Text style={styles.typedSend}>{strings.game.send}</Text>
             </Pressable>
           </View>
         </View>

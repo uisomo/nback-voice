@@ -38,7 +38,22 @@ export interface Strings {
     checkFailedPrefix: string;
     sectionLanguage: string;
   };
-  game: Record<string, never>;
+  game: {
+    lagHeader: (n: number) => string;
+    preparing: string;
+    micPermissionNeeded: string;
+    seriesLabel: (title: string, count: number) => string;
+    notEnoughQuestions: string;
+    stepLabel: (index: number, total: number, n: number, answering: boolean) => string;
+    setupFailed: string;
+    warmupCaption: string;
+    warmupHint: string;
+    recogErrorPrefix: string;
+    heardQuote: (text: string) => string;
+    typedPlaceholderClosed: string;
+    typedPlaceholderOpen: string;
+    send: string;
+  };
   results: Record<string, never>;
   series: Record<string, never>;
   questions: Record<string, never>;
@@ -81,7 +96,23 @@ export const ja: Strings = {
     checkFailedPrefix: '失敗: ',
     sectionLanguage: '言語 (英語)',
   },
-  game: {},
+  game: {
+    lagHeader: (n) => `${n}-back ・ ${n}つ前の質問に答える`,
+    preparing: '準備中…',
+    micPermissionNeeded: 'マイクの許可が必要です',
+    seriesLabel: (title, count) => `${title} ／ ${count}問`,
+    notEnoughQuestions: '問題が足りません',
+    stepLabel: (index, total, n, answering) =>
+      `${index} / ${total}　${n}-back　${answering ? 'どうぞ' : '出題中'}`,
+    setupFailed: '準備に失敗しました。アプリを再起動してください',
+    warmupCaption: 'ウォームアップ',
+    warmupHint: 'タップすると始まります',
+    recogErrorPrefix: '認識エラー: ',
+    heardQuote: (text) => `「${text}」`,
+    typedPlaceholderClosed: 'まだ答えません',
+    typedPlaceholderOpen: '答えを入力',
+    send: '送る',
+  },
   results: {},
   series: {},
   questions: {},
@@ -124,7 +155,23 @@ export const en: Strings = {
     checkFailedPrefix: 'Failed: ',
     sectionLanguage: 'Language (English)',
   },
-  game: {},
+  game: {
+    lagHeader: (n) => `${n}-back — answer the question from ${n} step${n === 1 ? '' : 's'} ago`,
+    preparing: 'Preparing…',
+    micPermissionNeeded: 'Microphone permission is required',
+    seriesLabel: (title, count) => `${title} — ${count} questions`,
+    notEnoughQuestions: 'Not enough questions',
+    stepLabel: (index, total, n, answering) =>
+      `${index} / ${total}   ${n}-back   ${answering ? 'Your turn' : 'Listen'}`,
+    setupFailed: 'Setup failed. Please restart the app',
+    warmupCaption: 'Warm-up',
+    warmupHint: 'Tap to begin',
+    recogErrorPrefix: 'Recognition error: ',
+    heardQuote: (text) => `"${text}"`,
+    typedPlaceholderClosed: 'Not answering yet',
+    typedPlaceholderOpen: 'Type your answer',
+    send: 'Send',
+  },
   results: {},
   series: {},
   questions: {},
