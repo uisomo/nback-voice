@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import type { RoundEngine } from './src/engine';
 import type { RoundPlan } from './src/engine/types';
+import { DEFAULT_SETTINGS, loadSettings, type Settings } from './src/store/storage';
 import { GameScreen } from './src/ui/GameScreen';
 import { QuestionsScreen } from './src/ui/QuestionsScreen';
 import { ResultsScreen } from './src/ui/ResultsScreen';
@@ -24,6 +25,15 @@ export default function App() {
   // The series list is home: what you are training on is chosen before a
   // round starts, not buried in settings behind a round already running.
   const [screen, setScreen] = useState<Screen>({ name: 'series' });
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+
+  // language only changes via the toggle inside SettingsScreen, and closing
+  // Settings goes through onClose={() => setScreen({ name: 'series' })}, not
+  // through App.tsx re-reading storage. Reload whenever the results screen is
+  // reached (the only place this prop is consumed) so it can't go stale.
+  useEffect(() => {
+    if (screen.name === 'results') void loadSettings().then(setSettings);
+  }, [screen]);
 
   return (
     <View style={styles.root}>
@@ -56,6 +66,7 @@ export default function App() {
         <ResultsScreen
           engine={screen.engine}
           n={screen.plan.n}
+          language={settings.language}
           onAgain={() =>
             setScreen({
               name: 'game',
