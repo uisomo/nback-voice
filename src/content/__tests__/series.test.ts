@@ -86,6 +86,37 @@ describe('series.json data contract', () => {
   });
 });
 
+describe('listSeries language switch', () => {
+  it('defaults to Japanese category labels and series titles', () => {
+    const result = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2 });
+    expect(result.find((s) => s.id === STANDARD_SERIES_ID)!.title).toBe('標準問題');
+  });
+
+  it('serves English category labels and series titles when language is en', () => {
+    const ja = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2 });
+    const en = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2, language: 'en' });
+    // Same series ids in the same order — only titles/content differ.
+    expect(en.map((s) => s.id)).toEqual(ja.map((s) => s.id));
+    expect(en.find((s) => s.id === STANDARD_SERIES_ID)!.title).toBe('Standard Questions');
+    // An authored series' title must differ between ja and en (proves the
+    // English file, not the Japanese one, was actually loaded).
+    const authoredId = ja.find((s) => s.id !== STANDARD_SERIES_ID && s.id !== CUSTOM_SERIES_ID)!.id;
+    const jaTitle = ja.find((s) => s.id === authoredId)!.title;
+    const enTitle = en.find((s) => s.id === authoredId)!.title;
+    expect(enTitle).not.toBe(jaTitle);
+  });
+
+  it('groups English series under the English category labels', () => {
+    const en = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2, language: 'en' });
+    const grouped = groupSeries(en, 'en');
+    expect(grouped.map((g) => g.label)).toEqual([
+      'Building financial vocabulary',
+      'Changing how you explain it',
+      'Anyone can answer',
+    ]);
+  });
+});
+
 describe('listSeries', () => {
   it('synthesizes the standard series from the built-in bank', () => {
     const standard = all().find((s) => s.id === STANDARD_SERIES_ID);

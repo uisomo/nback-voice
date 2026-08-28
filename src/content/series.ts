@@ -1,6 +1,8 @@
 import type { Question } from '../engine/types';
 import { loadBank, mergeLearned } from './bank';
-import raw from './series.json';
+import { CATEGORIES_EN } from './translate';
+import rawJa from './series.json';
+import rawEn from './series.en.json';
 
 /**
  * Purpose-shaped groupings, in display order. A category exists to answer
@@ -41,13 +43,33 @@ interface AuthoredSeries {
   questions: Question[];
 }
 
-const AUTHORED = raw as AuthoredSeries[];
+const AUTHORED_JA = rawJa as AuthoredSeries[];
+const AUTHORED_EN = rawEn as AuthoredSeries[];
+
+const STANDARD_TITLE: Record<'ja' | 'en', string> = {
+  ja: '標準問題',
+  en: 'Standard Questions',
+};
+const CUSTOM_TITLE: Record<'ja' | 'en', string> = {
+  ja: '自分の問題',
+  en: 'My Questions',
+};
+
+/** Category labels for the given language, in `CATEGORIES`' fixed order. */
+function categoryLabels(language: 'ja' | 'en'): Record<CategoryId, string> {
+  if (language === 'ja') {
+    return Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label])) as Record<CategoryId, string>;
+  }
+  return CATEGORIES_EN as Record<CategoryId, string>;
+}
 
 export interface SeriesInput {
   custom: Question[];
   learned: Record<string, string[]>;
   /** Highest built-in tier to draw from. Applies to the standard series only. */
   maxTier: number;
+  /** UI/content language. Defaults to 'ja' so existing callers are unaffected. */
+  language?: 'ja' | 'en';
 }
 
 /**
@@ -58,8 +80,9 @@ export interface SeriesInput {
  * `custom` arrives as an argument rather than being read from AsyncStorage —
  * that is what keeps this module free of device imports (boundaries.test.ts).
  */
-export function listSeries({ custom, learned, maxTier }: SeriesInput): Series[] {
-  const authored: Series[] = AUTHORED.map((series) => ({
+export function listSeries({ custom, learned, maxTier, language = 'ja' }: SeriesInput): Series[] {
+  const source = language === 'en' ? AUTHORED_EN : AUTHORED_JA;
+  const authored: Series[] = source.map((series) => ({
     ...series,
     category: series.category as CategoryId,
     questions: mergeLearned(series.questions, learned),
@@ -69,13 +92,13 @@ export function listSeries({ custom, learned, maxTier }: SeriesInput): Series[] 
     {
       id: STANDARD_SERIES_ID,
       category: 'basics',
-      title: '標準問題',
+      title: STANDARD_TITLE[language],
       questions: loadBank(learned).filter((q) => q.tier <= maxTier),
     },
     {
       id: CUSTOM_SERIES_ID,
       category: 'basics',
-      title: '自分の問題',
+      title: CUSTOM_TITLE[language],
       questions: mergeLearned(custom, learned),
     },
   ];
@@ -87,10 +110,11 @@ export function listSeries({ custom, learned, maxTier }: SeriesInput): Series[] 
 }
 
 /** Groups for the picker. Categories with no series are dropped, not shown empty. */
-export function groupSeries(all: Series[]): CategoryGroup[] {
+export function groupSeries(all: Series[], language: 'ja' | 'en' = 'ja'): CategoryGroup[] {
+  const labels = categoryLabels(language);
   return CATEGORIES.map((category) => ({
     id: category.id,
-    label: category.label,
+    label: labels[category.id],
     series: all.filter((series) => series.category === category.id),
   })).filter((group) => group.series.length > 0);
 }

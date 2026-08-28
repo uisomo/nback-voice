@@ -36,9 +36,9 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
         loadCustom(),
         loadLearned(),
       ]);
-      const all = listSeries({ custom, learned, maxTier: settings.maxTier });
+      const all = listSeries({ custom, learned, maxTier: settings.maxTier, language: settings.language });
       const withLag = await Promise.all(
-        groupSeries(all).map(async (group: CategoryGroup) => ({
+        groupSeries(all, settings.language).map(async (group: CategoryGroup) => ({
           id: group.id,
           label: group.label,
           rows: await Promise.all(

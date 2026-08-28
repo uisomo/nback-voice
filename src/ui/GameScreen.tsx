@@ -254,7 +254,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         if (cancelled) return;
 
         const series = findSeries(
-          listSeries({ custom, learned, maxTier: settings.maxTier }),
+          listSeries({ custom, learned, maxTier: settings.maxTier, language: settings.language }),
           seriesId,
         );
         const storedN = await loadN(series.id);
