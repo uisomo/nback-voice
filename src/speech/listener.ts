@@ -32,47 +32,53 @@ function sameLocale(a: string, b: string): boolean {
 /**
  * Spec §3 wants recognition on-device (¥0, works offline). Enabling it blindly
  * fails outright when the model is not installed, so probe first and fall back
- * to server recognition. Memoised: one probe and one log line per app launch.
+ * to server recognition. Memoised per locale: one probe and one log line per
+ * locale per app launch — switching from ja to en must not reuse a ja probe
+ * result (or vice versa), since installedLocales differs per locale.
  *
  * The probe is a *request*, not a guarantee. On iOS the package builds a bare
  * SFSpeechRecognizer for the device locale, and getSupportedLocales() returns
  * supportedLocales() for installedLocales, so neither signal is specific to
- * ja-JP being downloaded. The native layer gates the real flag on the ja-JP
- * recognizer's own supportsOnDeviceRecognition, so a false positive here
- * degrades silently to server recognition rather than failing — which is why
- * the log says "requested", not "using".
+ * the requested locale being downloaded. The native layer gates the real flag
+ * on that locale's recognizer's own supportsOnDeviceRecognition, so a false
+ * positive here degrades silently to server recognition rather than failing —
+ * which is why the log says "requested", not "using".
  */
-let onDeviceProbe: Promise<boolean> | null = null;
+const onDeviceProbes = new Map<string, Promise<boolean>>();
 
-export function detectOnDeviceRecognition(): Promise<boolean> {
-  onDeviceProbe ??= (async () => {
-    let available = false;
-    try {
-      if (ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
-        const { installedLocales } =
-          await ExpoSpeechRecognitionModule.getSupportedLocales({});
-        available = installedLocales.some((locale) =>
-          sameLocale(locale, RECOGNITION_LANG),
-        );
+export function detectOnDeviceRecognition(
+  locale: string = RECOGNITION_LANG,
+): Promise<boolean> {
+  let probe = onDeviceProbes.get(locale);
+  if (!probe) {
+    probe = (async () => {
+      let available = false;
+      try {
+        if (ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
+          const { installedLocales } =
+            await ExpoSpeechRecognitionModule.getSupportedLocales({});
+          available = installedLocales.some((l) => sameLocale(l, locale));
+        }
+      } catch {
+        available = false;
       }
-    } catch {
-      available = false;
-    }
-    console.log(
-      `[nback] speech recognition: ${
-        available
-          ? 'on-device requested (iOS may still fall back to server)'
-          : 'server'
-      }`,
-    );
-    return available;
-  })();
-  return onDeviceProbe;
+      console.log(
+        `[nback] speech recognition (${locale}): ${
+          available
+            ? 'on-device requested (iOS may still fall back to server)'
+            : 'server'
+        }`,
+      );
+      return available;
+    })();
+    onDeviceProbes.set(locale, probe);
+  }
+  return probe;
 }
 
-/** Test-only: forget the memoised probe. */
+/** Test-only: forget the memoised probes. */
 export function resetOnDeviceProbe(): void {
-  onDeviceProbe = null;
+  onDeviceProbes.clear();
 }
 
 /**
@@ -95,10 +101,10 @@ export class ExpoListener implements Listener {
   /** This session has said its last word — nothing more is coming. */
   private finished = false;
 
-  constructor() {
+  constructor(private readonly locale: string = RECOGNITION_LANG) {
     // Fires well before the first phase B; until it answers we use the safe
     // fallback (server recognition), which is what the app did before.
-    void detectOnDeviceRecognition().then((available) => {
+    void detectOnDeviceRecognition(this.locale).then((available) => {
       this.onDevice = available;
     });
   }
@@ -113,7 +119,7 @@ export class ExpoListener implements Listener {
     this.listening = true;
     this.finished = false;
     ExpoSpeechRecognitionModule.start({
-      lang: RECOGNITION_LANG,
+      lang: this.locale,
       interimResults: true,
       continuous: false,
       requiresOnDeviceRecognition: this.onDevice,

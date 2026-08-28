@@ -269,6 +269,18 @@ describe('settling a session', () => {
   });
 });
 
+describe('locale selection', () => {
+  it('starts recognition in ja-JP by default', () => {
+    new ExpoListener().start();
+    expect(mocked.start.mock.calls[0][0]).toMatchObject({ lang: 'ja-JP' });
+  });
+
+  it('starts recognition in the locale passed to the constructor', () => {
+    new ExpoListener('en-US').start();
+    expect(mocked.start.mock.calls[0][0]).toMatchObject({ lang: 'en-US' });
+  });
+});
+
 describe('sessions that finish before the step does', () => {
   it('settles at once when the final result already arrived', async () => {
     jest.useFakeTimers();

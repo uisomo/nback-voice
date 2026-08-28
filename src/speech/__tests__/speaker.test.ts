@@ -10,6 +10,10 @@ const { ExpoSpeaker } =
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // clearAllMocks() only wipes call history, not implementations set via
+  // mockImplementation() — without this, a throwing implementation from one
+  // test (e.g. "does not stall the round...") leaks into the next.
+  mocked.speak.mockImplementation(() => {});
 });
 
 describe('ExpoSpeaker', () => {
@@ -47,5 +51,22 @@ describe('unlocking audio', () => {
       throw new Error('speech synthesis unavailable');
     });
     expect(() => new ExpoSpeaker().unlock()).not.toThrow();
+  });
+});
+
+describe('locale selection', () => {
+  it('speaks in ja-JP by default', () => {
+    void new ExpoSpeaker().speak('質問');
+    expect(mocked.speak.mock.calls[0][1]).toMatchObject({ language: 'ja-JP' });
+  });
+
+  it('speaks in the locale passed to the constructor', () => {
+    void new ExpoSpeaker('en-US').speak('question');
+    expect(mocked.speak.mock.calls[0][1]).toMatchObject({ language: 'en-US' });
+  });
+
+  it('unlocks using the constructor locale too', () => {
+    new ExpoSpeaker('en-US').unlock();
+    expect(mocked.speak.mock.calls[0][1]).toMatchObject({ language: 'en-US' });
   });
 });

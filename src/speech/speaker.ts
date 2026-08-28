@@ -2,10 +2,12 @@ import * as Speech from 'expo-speech';
 import type { Speaker } from './types';
 
 export class ExpoSpeaker implements Speaker {
+  constructor(private readonly locale: string = 'ja-JP') {}
+
   speak(text: string): Promise<void> {
     return new Promise((resolve) => {
       Speech.speak(text, {
-        language: 'ja-JP',
+        language: this.locale,
         rate: 1.0,
         pitch: 1.0,
         onDone: () => resolve(),
@@ -23,7 +25,7 @@ export class ExpoSpeaker implements Speaker {
    */
   unlock(): void {
     try {
-      Speech.speak('　', { language: 'ja-JP', volume: 0 });
+      Speech.speak('　', { language: this.locale, volume: 0 });
     } catch {
       // A synthesizer that will not warm up is not a reason to block the
       // round: the questions simply go unspoken, which the owner can see.
