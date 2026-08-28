@@ -29,7 +29,15 @@ interface AuthoredSeries {
   questions: Question[];
 }
 
-const SERIES_PATH = join(__dirname, '../src/content/series.json');
+const DEFAULT_SERIES_PATH = join(__dirname, '../src/content/series.json');
+
+function resolveSeriesPath(argv: string[]): string {
+  const i = argv.indexOf('--file');
+  if (i === -1) return DEFAULT_SERIES_PATH;
+  const file = argv[i + 1];
+  if (!file) throw new Error('--file requires a path');
+  return join(__dirname, '..', file);
+}
 
 async function getApiKey(): Promise<string> {
   return process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
@@ -65,8 +73,8 @@ function findDuplicateAnswers(
     .map(([answer, locations]) => ({ answer, locations }));
 }
 
-async function auditAll(): Promise<void> {
-  const series = JSON.parse(readFileSync(SERIES_PATH, 'utf-8')) as AuthoredSeries[];
+async function auditAll(seriesPath: string): Promise<void> {
+  const series = JSON.parse(readFileSync(seriesPath, 'utf-8')) as AuthoredSeries[];
   let flagged = 0;
   let checked = 0;
 
@@ -212,7 +220,7 @@ async function generateCandidates(
 
 async function generate(): Promise<void> {
   const { series: seriesId, topic, count } = parseArgs(process.argv.slice(2));
-  const series = JSON.parse(readFileSync(SERIES_PATH, 'utf-8')) as AuthoredSeries[];
+  const series = JSON.parse(readFileSync(DEFAULT_SERIES_PATH, 'utf-8')) as AuthoredSeries[];
   const target = series.find((s) => s.id === seriesId);
   if (!target) {
     throw new Error(`series not found: ${seriesId}`);
@@ -258,8 +266,9 @@ async function generate(): Promise<void> {
   console.error(`\n${candidates.length}件中${accepted.length}件が検証を通過`);
 }
 
-const hasFlags = process.argv.slice(2).some((a) => a.startsWith('--'));
-const run = hasFlags ? generate() : auditAll();
+const argv = process.argv.slice(2);
+const hasGenerateFlags = argv.includes('--series') || argv.includes('--topic');
+const run = hasGenerateFlags ? generate() : auditAll(resolveSeriesPath(argv));
 run.catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
