@@ -1,0 +1,2584 @@
+[
+  {
+    "id": "capital-call",
+    "category": "finance",
+    "title": "Commitments and Capital Calls",
+    "credit": "Based on *Fund Finance no Kyoukasho*",
+    "questions": [
+      {
+        "id": "cc_01",
+        "tier": 0,
+        "q": "What is the term for a GP demanding a capital contribution from an LP?",
+        "accept": [
+          "Capital Call",
+          "capital call",
+          "capital contribution call",
+          "drawdown"
+        ]
+      },
+      {
+        "id": "cc_02",
+        "tier": 0,
+        "q": "What is the uncalled capital that serves as the source of repayment for a subline?",
+        "accept": [
+          "Uncalled Commitment",
+          "uncalled commitment",
+          "Unfunded Commitment",
+          "unfunded commitment",
+          "Commitment"
+        ]
+      },
+      {
+        "id": "cc_03",
+        "tier": 0,
+        "q": "What is the cap on a credit facility calculated by applying a percentage to the uncalled balance?",
+        "accept": [
+          "Borrowing Base",
+          "borrowing base"
+        ]
+      },
+      {
+        "id": "cc_04",
+        "tier": 0,
+        "q": "What is the percentage applied when calculating the Borrowing Base?",
+        "accept": [
+          "Advance Rate",
+          "advance rate"
+        ]
+      },
+      {
+        "id": "cc_05",
+        "tier": 0,
+        "q": "What is the side agreement setting out bespoke terms between an LP and a GP?",
+        "accept": [
+          "Side Letter",
+          "side letter",
+          "side letter agreement"
+        ]
+      },
+      {
+        "id": "cc_07",
+        "tier": 0,
+        "q": "What is it called when only a portion of a commitment is included?",
+        "accept": [
+          "Haircut",
+          "haircut"
+        ]
+      },
+      {
+        "id": "cc_08",
+        "tier": 0,
+        "q": "What is the bridge funding between investment execution and capital call?",
+        "accept": [
+          "Bridge",
+          "bridge",
+          "Bridge Financing",
+          "bridge financing"
+        ]
+      },
+      {
+        "id": "cc_09",
+        "tier": 0,
+        "q": "What is the source of funds applied to ordinary repayment?",
+        "accept": [
+          "Primary Source of Repayment",
+          "primary source of repayment"
+        ]
+      },
+      {
+        "id": "cc_10",
+        "tier": 0,
+        "q": "What is the risk that over-concentration in a specific LP undermines the source of repayment?",
+        "accept": [
+          "Concentration Risk",
+          "concentration risk"
+        ]
+      },
+      {
+        "id": "cc_11",
+        "tier": 0,
+        "q": "What is the form of credit facility that allows repeated borrowing and repayment?",
+        "accept": [
+          "Revolving",
+          "revolving",
+          "Revolver",
+          "revolver",
+          "Revolving Credit Facility",
+          "revolving credit facility"
+        ]
+      },
+      {
+        "id": "cc_12",
+        "tier": 0,
+        "q": "What is it called when amounts are allocated in proportion to equity share?",
+        "accept": [
+          "Pro Rata",
+          "pro rata"
+        ]
+      },
+      {
+        "id": "cc_13",
+        "tier": 0,
+        "q": "What is the agreement that sets out the fundamental rules of a fund?",
+        "accept": [
+          "LPA",
+          "Limited Partnership Agreement",
+          "limited partnership agreement"
+        ]
+      },
+      {
+        "id": "cc_14",
+        "tier": 0,
+        "q": "Which party issues the capital call?",
+        "accept": [
+          "GP",
+          "General Partner",
+          "general partner"
+        ]
+      },
+      {
+        "id": "cc_15",
+        "tier": 0,
+        "q": "What is the period during which a fund is permitted to make new investments?",
+        "accept": [
+          "Investment Period",
+          "investment period"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "nav-finance",
+    "category": "finance",
+    "title": "Fundamentals of NAV and Collateral",
+    "credit": "Based on *Fund Finance no Kyoukasho*",
+    "questions": [
+      {
+        "id": "nav_01",
+        "tier": 0,
+        "q": "What is the net asset value calculated as assets at fair market value minus liabilities?",
+        "accept": [
+          "NAV",
+          "Net Asset Value"
+        ]
+      },
+      {
+        "id": "nav_02",
+        "tier": 0,
+        "q": "What is the ratio of outstanding loan balance to asset value?",
+        "accept": [
+          "LTV",
+          "Loan to Value"
+        ]
+      },
+      {
+        "id": "nav_03",
+        "tier": 0,
+        "q": "What is the regular repayment source received from portfolio investments?",
+        "accept": [
+          "Distribution",
+          "Distribution proceeds"
+        ]
+      },
+      {
+        "id": "nav_04",
+        "tier": 0,
+        "q": "What is the exit strategy of divesting a portfolio investment to recover capital?",
+        "accept": [
+          "Exit",
+          "Exit strategy"
+        ]
+      },
+      {
+        "id": "nav_05",
+        "tier": 0,
+        "q": "What is the agreement a lender enters into to gain control over the collection account?",
+        "accept": [
+          "Account Control Agreement",
+          "ACA"
+        ]
+      },
+      {
+        "id": "nav_06",
+        "tier": 0,
+        "q": "What is the mechanism that automatically applies incoming payments to repayment?",
+        "accept": [
+          "Sweep",
+          "Sweep mechanism",
+          "Cash sweep"
+        ]
+      },
+      {
+        "id": "nav_07",
+        "tier": 0,
+        "q": "What is the product that combines a subline with a NAV facility?",
+        "accept": [
+          "Hybrid",
+          "Hybrid facility",
+          "Hybrid product"
+        ]
+      },
+      {
+        "id": "nav_08",
+        "tier": 0,
+        "q": "What is the product that restricts repayment sources to specific assets or distributions only?",
+        "accept": [
+          "Asset-Backed",
+          "Asset-Backed facility",
+          "Asset-backed"
+        ]
+      },
+      {
+        "id": "nav_09",
+        "tier": 0,
+        "q": "What is the provision in which the borrower promises the lender to maintain financial metrics above a certain level?",
+        "accept": [
+          "Covenant",
+          "Financial covenant"
+        ]
+      },
+      {
+        "id": "nav_10",
+        "tier": 0,
+        "q": "What is the distribution mechanism that sets the order in which incoming payments are applied?",
+        "accept": [
+          "Waterfall",
+          "Payment waterfall",
+          "Distribution waterfall"
+        ]
+      },
+      {
+        "id": "nav_11",
+        "tier": 0,
+        "q": "What is it called when a security interest is made enforceable against third parties?",
+        "accept": [
+          "Perfection",
+          "Perfection of security interest"
+        ]
+      },
+      {
+        "id": "nav_12",
+        "tier": 0,
+        "q": "What is the opinion letter obtained from counsel on local law matters?",
+        "accept": [
+          "Legal Opinion",
+          "Local law opinion"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fund-cast",
+    "category": "finance",
+    "title": "Fund Cast",
+    "credit": "Based on *Fund Finance no Kyoukasho*",
+    "questions": [
+      {
+        "id": "fc_01",
+        "tier": 0,
+        "q": "What is the term for an investor who commits capital but does not participate in the investment management?",
+        "accept": [
+          "LP",
+          "Limited Partner"
+        ]
+      },
+      {
+        "id": "fc_02",
+        "tier": 0,
+        "q": "What is the term for a separate vehicle created for tax or regulatory reasons?",
+        "accept": [
+          "AIV",
+          "Alternative Investment Vehicle"
+        ]
+      },
+      {
+        "id": "fc_03",
+        "tier": 0,
+        "q": "What is the term for an entity interposed to block tax?",
+        "accept": [
+          "Blocker",
+          "Blocker entity"
+        ]
+      },
+      {
+        "id": "fc_04",
+        "tier": 0,
+        "q": "What is the term for a sibling fund that runs alongside the main fund on the same terms?",
+        "accept": [
+          "Parallel Fund",
+          "Parallel"
+        ]
+      },
+      {
+        "id": "fc_05",
+        "tier": 0,
+        "q": "What is the contract that brings a new party into an existing agreement?",
+        "accept": [
+          "Joinder",
+          "Joinder agreement"
+        ]
+      },
+      {
+        "id": "fc_06",
+        "tier": 0,
+        "q": "What is the term for a fund that invests in funds?",
+        "accept": [
+          "FoF",
+          "Fund of Funds"
+        ]
+      },
+      {
+        "id": "fc_07",
+        "tier": 0,
+        "q": "What is the term for a massive state-managed investment fund?",
+        "accept": [
+          "SWF",
+          "Sovereign Wealth Fund"
+        ]
+      },
+      {
+        "id": "fc_08",
+        "tier": 0,
+        "q": "What is the international principle promoting transparency of sovereign wealth funds?",
+        "accept": [
+          "Santiago Principles",
+          "Santiago"
+        ]
+      },
+      {
+        "id": "fc_09",
+        "tier": 0,
+        "q": "What is the management practice of matching asset and liability durations?",
+        "accept": [
+          "ALM",
+          "Asset Liability Management"
+        ]
+      },
+      {
+        "id": "fc_10",
+        "tier": 0,
+        "q": "What is the U.S. law governing pension plans?",
+        "accept": [
+          "ERISA",
+          "Employee Retirement Income Security Act"
+        ]
+      },
+      {
+        "id": "fc_11",
+        "tier": 0,
+        "q": "What is the term for an organization that manages a wealthy family's assets?",
+        "accept": [
+          "Family Office"
+        ]
+      },
+      {
+        "id": "fc_12",
+        "tier": 0,
+        "q": "What is the term for total assets under management?",
+        "accept": [
+          "AUM",
+          "Assets Under Management"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "persuasion",
+    "category": "delivery",
+    "title": "The Design of Persuasion",
+    "credit": "Based on *Fukuzatsu na Joho de Aite wo Ugokasu*",
+    "questions": [
+      {
+        "id": "pe_01",
+        "tier": 0,
+        "q": "Midway through your pitch, the other party tenses up and feels they're being pushed. What's the one line that eases that resistance?",
+        "accept": [
+          "The final decision is yours",
+          "It's up to you to choose",
+          "I'm not trying to force anything"
+        ]
+      },
+      {
+        "id": "pe_02",
+        "tier": 0,
+        "q": "When opening a report on a complex issue using the situation–complication–question–answer flow, what's the first line?",
+        "accept": [
+          "Until recently, things were on track",
+          "The current state was that…",
+          "Let me start with the background"
+        ]
+      },
+      {
+        "id": "pe_03",
+        "tier": 0,
+        "q": "Reporting up to your boss — if you lead with the conclusion, what's the first line?",
+        "accept": [
+          "To cut to the conclusion",
+          "Let me give you the bottom line up front",
+          "The answer is…"
+        ]
+      },
+      {
+        "id": "pe_04",
+        "tier": 0,
+        "q": "You want to line up five reasons. To make them stick in the listener's memory, what's the first line?",
+        "accept": [
+          "There are three main points",
+          "There are four key points",
+          "In summary, there are three takeaways"
+        ]
+      },
+      {
+        "id": "pe_05",
+        "tier": 0,
+        "q": "Before walking through seven items, what's the one line that makes it easier to follow?",
+        "accept": [
+          "I've narrowed it down to four",
+          "If I boil it down to four buckets",
+          "The key points are four"
+        ]
+      },
+      {
+        "id": "pe_06",
+        "tier": 0,
+        "q": "How do you explain NAV to someone who doesn't know the term?",
+        "accept": [
+          "Think of it as what your house is worth minus the mortgage still owed",
+          "It's the net value of your assets after subtracting debt"
+        ]
+      },
+      {
+        "id": "pe_07",
+        "tier": 0,
+        "q": "You want to check whether the other person truly understands. What's the one line you use?",
+        "accept": [
+          "If you had to sum up what I just said in one line?",
+          "How would you explain this to someone else?",
+          "Try putting it in your own words"
+        ]
+      },
+      {
+        "id": "pe_08",
+        "tier": 0,
+        "q": "You want to draw out the real concern of someone who is strongly opposed. What's the first line?",
+        "accept": [
+          "Tell me why you feel that way",
+          "Walk me through how you arrived at that view",
+          "Can you tell me more?"
+        ]
+      },
+      {
+        "id": "pe_09",
+        "tier": 0,
+        "q": "For someone who wants to keep the status quo, what's the one line that surfaces the gap to the real goal?",
+        "accept": [
+          "Will where you are now get you to where you want to be?",
+          "How far is today from the outcome you're really after?",
+          "At this pace, will you hit the target?"
+        ]
+      },
+      {
+        "id": "pe_10",
+        "tier": 0,
+        "q": "For someone pushing back, how do you get them to spot the contradiction without putting them on the spot?",
+        "accept": [
+          "How does that connect to what you said earlier?",
+          "Given the premise you laid out, what follows?",
+          "Doesn't that contradict what you said before?"
+        ]
+      },
+      {
+        "id": "pe_11",
+        "tier": 0,
+        "q": "Before a strong counter-argument lands, you want to acknowledge the weak point yourself. What's the one line?",
+        "accept": [
+          "Of course, cost is an issue",
+          "The one concern is…",
+          "As a downside, there is…"
+        ]
+      },
+      {
+        "id": "pe_12",
+        "tier": 0,
+        "q": "Rather than going in with a big ask, you start small. What's the one line?",
+        "accept": [
+          "Could you just take a look at the materials first?",
+          "Could I have five minutes of your time?",
+          "Could you give it a try once?"
+        ]
+      },
+      {
+        "id": "pe_13",
+        "tier": 0,
+        "q": "A presentation meant to drive action — what's the opening line that grabs attention?",
+        "accept": [
+          "Have you ever experienced something like this?",
+          "Imagine for a moment…",
+          "What if…?"
+        ]
+      },
+      {
+        "id": "pe_14",
+        "tier": 0,
+        "q": "You're about to float an idea you expect will get pushback, and you open with a story. What's the first line?",
+        "accept": [
+          "Let me tell you about one of our people",
+          "This is something that actually happened",
+          "There was an incident…"
+        ]
+      },
+      {
+        "id": "pe_15",
+        "tier": 0,
+        "q": "When the other person looks ready to decide on gut feel alone, what's the one line that buys a beat of reflection?",
+        "accept": [
+          "Why don't we check the numbers first?",
+          "Let's verify the facts before we commit",
+          "Mind if we pause and think it through?"
+        ]
+      },
+      {
+        "id": "pe_16",
+        "tier": 0,
+        "q": "When a negotiation looks close to breaking down, what's the one line that surfaces the alternative?",
+        "accept": [
+          "If this doesn't come together, what other options do we have?",
+          "Do you have a fallback if we can't agree?"
+        ]
+      },
+      {
+        "id": "pe_17",
+        "tier": 0,
+        "q": "In a price negotiation, you want to set the anchor first. What's your opening line?",
+        "accept": [
+          "It's normally in the range of one million",
+          "The list price is…, but…",
+          "The market rate elsewhere is…"
+        ]
+      },
+      {
+        "id": "pe_18",
+        "tier": 0,
+        "q": "For someone likely to keep deferring, what's the one line that forces a choice between A or B?",
+        "accept": [
+          "Would Tuesday or Thursday work better?",
+          "Plan A or Plan B — which do you want?",
+          "Let's not ask whether to do it; let's ask when"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-01",
+    "category": "finance",
+    "title": "Classifying Decisions — Lend, Invest, or Exit",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-01_01",
+        "tier": 0,
+        "q": "What is the name for the type of financing in which a fund borrows against the value of its portfolio assets?",
+        "accept": [
+          "NAV Facility",
+          "NAV financing",
+          "Net Asset Value Facility"
+        ]
+      },
+      {
+        "id": "ffdd-01_02",
+        "tier": 0,
+        "q": "What is the abbreviation for the cash-on-cash metric expressed as distributions actually returned divided by paid-in capital?",
+        "accept": [
+          "DPI",
+          "Distributions to Paid-In"
+        ]
+      },
+      {
+        "id": "ffdd-01_03",
+        "tier": 0,
+        "q": "What is the abbreviation for the valuation method that compares a fund's cash flows against what they would have generated in a public market index?",
+        "accept": [
+          "PME",
+          "Public Market Equivalent"
+        ]
+      },
+      {
+        "id": "ffdd-01_04",
+        "tier": 0,
+        "q": "What is the SEC registration disclosure filed by investment advisers describing their business activities and disciplinary history?",
+        "accept": [
+          "Form ADV",
+          "ADV"
+        ]
+      },
+      {
+        "id": "ffdd-01_05",
+        "tier": 0,
+        "q": "What term refers to value based on amounts a fund has actually disposed of and monetized from its investments, as distinct from unrealized appreciation?",
+        "accept": [
+          "Realized Value",
+          "Realized"
+        ]
+      },
+      {
+        "id": "ffdd-01_06",
+        "tier": 0,
+        "q": "In LBO enterprise valuation, what is the metric called that shows how many multiples of a company's earnings its price represents?",
+        "accept": [
+          "EBITDA Multiple",
+          "Earnings Before Interest Taxes Depreciation and Amortization Multiple",
+          "EBITDA Multiple"
+        ]
+      },
+      {
+        "id": "ffdd-01_07",
+        "tier": 0,
+        "q": "What is the name of the regulatory filing that U.S. investment advisers submit to the SEC on a quarterly basis, mentioned alongside Form ADV?",
+        "accept": [
+          "Form PF",
+          "PF"
+        ]
+      },
+      {
+        "id": "ffdd-01_08",
+        "tier": 0,
+        "q": "What is it called when a GP extends a fund's term with LP consent because unrealized investments remain at the end of the fund's life?",
+        "accept": [
+          "Term Extension",
+          "Fund Term Extension",
+          "Extension of Fund Term"
+        ]
+      },
+      {
+        "id": "ffdd-01_09",
+        "tier": 0,
+        "q": "What is the term for the cumulative amount of a fund's LP commitments that has actually been called and funded via capital calls?",
+        "accept": [
+          "Paid-In Capital",
+          "Paid in Capital",
+          "Contributed Capital"
+        ]
+      },
+      {
+        "id": "ffdd-01_10",
+        "tier": 0,
+        "q": "What is the abbreviation for the institutional LP association that develops industry-standard reporting templates and DDQs?",
+        "accept": [
+          "ILPA",
+          "Institutional Limited Partners Association"
+        ]
+      },
+      {
+        "id": "ffdd-01_11",
+        "tier": 0,
+        "q": "In a fund's life, what is the back-end period during which no new investments can be made and the focus shifts to managing the portfolio and exiting positions called?",
+        "accept": [
+          "Harvest Period",
+          "Harvest",
+          "Harvesting Period"
+        ]
+      },
+      {
+        "id": "ffdd-01_12",
+        "tier": 0,
+        "q": "What is the abbreviation for the metric of unrealized value level expressed as residual NAV divided by paid-in capital?",
+        "accept": [
+          "RVPI",
+          "Residual Value to Paid-In"
+        ]
+      },
+      {
+        "id": "ffdd-01_13",
+        "tier": 0,
+        "q": "What percentage of profits above a stated preferred return is carried interest set at, as exemplified in the text?",
+        "accept": [
+          "20%",
+          "20 percent",
+          "Twenty percent"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-02",
+    "category": "finance",
+    "title": "Evidence Grading and Missing Information",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-02_02",
+        "tier": 0,
+        "q": "What is the abbreviation for the U.S. accounting standard that listed companies' financial statements must comply with?",
+        "accept": [
+          "GAAP",
+          "Generally Accepted Accounting Principles",
+          "U.S. GAAP"
+        ]
+      },
+      {
+        "id": "ffdd-02_03",
+        "tier": 0,
+        "q": "What is the name of the disclosure document filed with the SEC by a registered investment adviser that sets out its registration status and disciplinary history?",
+        "accept": [
+          "Form ADV"
+        ]
+      },
+      {
+        "id": "ffdd-02_04",
+        "tier": 0,
+        "q": "What is the name of the private fund report filed with the SEC and the CFTC for the purpose of systemic risk monitoring?",
+        "accept": [
+          "Form PF"
+        ]
+      },
+      {
+        "id": "ffdd-02_05",
+        "tier": 0,
+        "q": "What is the name of the performance fee that the GP receives, generally set at 20% of fund profits?",
+        "accept": [
+          "Carried Interest",
+          "Carry"
+        ]
+      },
+      {
+        "id": "ffdd-02_06",
+        "tier": 0,
+        "q": "What is the short-term bridge facility secured by the LP's unpaid capital commitment called?",
+        "accept": [
+          "Subscription Line",
+          "Subscription Line of Credit",
+          "Subscription Facility",
+          "Sub-line"
+        ]
+      },
+      {
+        "id": "ffdd-02_07",
+        "tier": 0,
+        "q": "What is the abbreviation for the EU regulation that requires alternative investment fund managers to register, disclose, and report?",
+        "accept": [
+          "AIFMD",
+          "Alternative Investment Fund Managers Directive"
+        ]
+      },
+      {
+        "id": "ffdd-02_08",
+        "tier": 0,
+        "q": "According to Jefferies' 2025 secondary market review, what percentage of NAV is the average transaction price?",
+        "accept": [
+          "87%",
+          "eighty-seven percent"
+        ]
+      },
+      {
+        "id": "ffdd-02_13",
+        "tier": 0,
+        "q": "What is the record called that is kept when logging an information source's grade, so that it is possible to track who made the judgment, when, and on the basis of which document?",
+        "accept": [
+          "Audit Trail",
+          "Audit Trail / Source Trail"
+        ]
+      },
+      {
+        "id": "ffdd-02_14",
+        "tier": 0,
+        "q": "Under the fair value measurement hierarchy set out in ASC 820 and IFRS 13, what is the lowest category, in which the manager uses its own assumptions for illiquid assets?",
+        "accept": [
+          "Level 3",
+          "Level III"
+        ]
+      },
+      {
+        "id": "ffdd-02_16",
+        "tier": 0,
+        "q": "Under Article 24 of AIFMD, what is the template called for reporting leverage, liquidity, and other items to the supervisor on a quarterly and annual basis?",
+        "accept": [
+          "Annex IV",
+          "Annex IV Report",
+          "AIFMD Annex IV Reporting"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-03",
+    "category": "finance",
+    "title": "Structure of the LPA and Side Letters",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-03_02",
+        "tier": 0,
+        "q": "What is the term for the provision that gives an LP the right to demand the same terms granted to another LP that obtained more favorable conditions?",
+        "accept": [
+          "MFN",
+          "Most Favored Nation",
+          "Most Favored Nation clause"
+        ]
+      },
+      {
+        "id": "ffdd-03_03",
+        "tier": 0,
+        "q": "What is the term for the right of an LP to refuse participation in a capital call for a specific investment?",
+        "accept": [
+          "Excuse Rights",
+          "Excuse Right"
+        ]
+      },
+      {
+        "id": "ffdd-03_04",
+        "tier": 0,
+        "q": "What is the term for the LPA provision that obligates a halt to new investments and similar actions upon the departure of a designated investment principal?",
+        "accept": [
+          "Key-Person Clause",
+          "Key Person Clause",
+          "Key Person Provision"
+        ]
+      },
+      {
+        "id": "ffdd-03_05",
+        "tier": 0,
+        "q": "What is the term for the mechanism that allows removal of the GP by a simple LP majority vote, without requiring findings of misconduct or fault?",
+        "accept": [
+          "No-Fault Divorce",
+          "No-Fault Removal",
+          "No-Fault Termination"
+        ]
+      },
+      {
+        "id": "ffdd-03_06",
+        "tier": 0,
+        "q": "The GP wishes to have the fund incur borrowing, but the LPA is silent on borrowing and counsel can only say it is 'probably permitted.' Before the GP actually draws the borrowing, what should be obtained from the LPs?",
+        "accept": [
+          "LPA Amendment",
+          "LP Consent",
+          "Amendment"
+        ]
+      },
+      {
+        "id": "ffdd-03_07",
+        "tier": 0,
+        "q": "What is the term for the LPA provision that prohibits the transfer of an LP interest without the prior consent of the GP, affecting secondary sales and the granting of security interests?",
+        "accept": [
+          "Transfer Restrictions",
+          "Transfer Restriction"
+        ]
+      },
+      {
+        "id": "ffdd-03_09",
+        "tier": 0,
+        "q": "What is the term for an intermediating fund that aggregates capital from smaller investors and holds an LP interest in the main fund, using a pass-through structure?",
+        "accept": [
+          "Feeder Fund",
+          "Feeder"
+        ]
+      },
+      {
+        "id": "ffdd-03_10",
+        "tier": 0,
+        "q": "What is the term for the separate SPV that holds the preferred shares issued by the Preferred Issuer and pledges them as collateral to the lender?",
+        "accept": [
+          "Preferred Holder",
+          "Preferred HoldCo"
+        ]
+      },
+      {
+        "id": "ffdd-03_11",
+        "tier": 0,
+        "q": "What is the term for the provision that determines whether the side letter or the main body of the LPA prevails in the event of a conflict between provisions of the LPA?",
+        "accept": [
+          "Precedence Clause",
+          "Precedence Provision",
+          "Entire Agreement Clause"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-04",
+    "category": "finance",
+    "title": "Cash Flow Restructuring",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-04_01",
+        "tier": 0,
+        "q": "What is the name of the short-term credit facility that lets a GP defer capital calls by several months using LPs' unfunded commitments as collateral?",
+        "accept": [
+          "Subscription Line",
+          "Sub-line",
+          "Subscription Line facility"
+        ]
+      },
+      {
+        "id": "ffdd-04_02",
+        "tier": 0,
+        "q": "Which Excel function can calculate IRR from cash flows when dates are explicitly specified?",
+        "accept": [
+          "XIRR",
+          "XIRR function",
+          "X-IRR"
+        ]
+      },
+      {
+        "id": "ffdd-04_04",
+        "tier": 0,
+        "q": "What is the name of the type of distribution that allows a GP to require LPs to return capital that has already been distributed, under certain conditions?",
+        "accept": [
+          "Recallable Distribution",
+          "recallable distribution",
+          "returnable distribution"
+        ]
+      },
+      {
+        "id": "ffdd-04_05",
+        "tier": 0,
+        "q": "What is the LPA provision that allows realized gains to be retained within the fund and reinvested?",
+        "accept": [
+          "Recycling provision",
+          "recycling",
+          "recycling clause"
+        ]
+      },
+      {
+        "id": "ffdd-04_06",
+        "tier": 0,
+        "q": "What is the abbreviation for the metric that expresses the multiple of realized plus unrealized value relative to paid-in capital?",
+        "accept": [
+          "TVPI",
+          "Total Value to Paid-In",
+          "TVPI metric"
+        ]
+      },
+      {
+        "id": "ffdd-04_07",
+        "tier": 0,
+        "q": "How is RVPI expressed in terms of the relationship between TVPI and DPI?",
+        "accept": [
+          "RVPI = TVPI - DPI",
+          "TVPI minus DPI"
+        ]
+      },
+      {
+        "id": "ffdd-04_08",
+        "tier": 0,
+        "q": "What is the abbreviation for the metric that compounds each cash flow against a public-market benchmark and compares the results?",
+        "accept": [
+          "KS-PME",
+          "Kaplan-Schoar Public Market Equivalent",
+          "PME"
+        ]
+      },
+      {
+        "id": "ffdd-04_09",
+        "tier": 0,
+        "q": "When KS-PME exceeds 1.0, how would you describe the fund's performance versus the public market?",
+        "accept": [
+          "Outperformed",
+          "above the public market"
+        ]
+      },
+      {
+        "id": "ffdd-04_10",
+        "tier": 0,
+        "q": "Because subscription line usage delays a fund's early cash flows, which metric is artificially inflated as a result?",
+        "accept": [
+          "IRR",
+          "Internal Rate of Return",
+          "money-weighted return"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-05",
+    "category": "finance",
+    "title": "Interpreting Performance Metrics: Vintage and Peer Comparison",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-05_01",
+        "tier": 0,
+        "q": "What is the term for the year a fund made its first investment?",
+        "accept": [
+          "Vintage year",
+          "Vintage Year",
+          "Vintage"
+        ]
+      },
+      {
+        "id": "ffdd-05_02",
+        "tier": 0,
+        "q": "What is the term for the return pattern in which a private equity fund shows negative returns in its early years and then turns positive as exits occur?",
+        "accept": [
+          "J-curve",
+          "J curve",
+          "J-curve phenomenon"
+        ]
+      },
+      {
+        "id": "ffdd-05_06",
+        "tier": 0,
+        "q": "What is the term for the bias that arises when funds from defunct or wound-up managers are removed from the database, leaving only surviving funds?",
+        "accept": [
+          "Survivorship bias",
+          "Survivorship Bias"
+        ]
+      },
+      {
+        "id": "ffdd-05_07",
+        "tier": 0,
+        "q": "What is the term for the metric indicating which quartile a fund ranks in within its peer set?",
+        "accept": [
+          "Quartile rank",
+          "quartile rank",
+          "Quartile ranking"
+        ]
+      },
+      {
+        "id": "ffdd-05_08",
+        "tier": 0,
+        "q": "What is the term for the phenomenon in which NAV changes remain within a narrow band quarter after quarter despite normal market conditions, suggesting valuations are being deliberately smoothed?",
+        "accept": [
+          "Smoothing",
+          "smoothing",
+          "NAV smoothing"
+        ]
+      },
+      {
+        "id": "ffdd-05_09",
+        "tier": 0,
+        "q": "What is the term for the bias that arises because public pensions and university endowments disclose data under freedom-of-information regimes, and the funds selected by these institutional investors are not representative?",
+        "accept": [
+          "FOIA bias",
+          "FOIA Bias",
+          "Freedom of Information Act bias"
+        ]
+      },
+      {
+        "id": "ffdd-05_10",
+        "tier": 0,
+        "q": "What is the term for the GP increasing the valuation of a portfolio company?",
+        "accept": [
+          "Mark-up",
+          "mark-up",
+          "markup",
+          "Mark up",
+          "Valuation mark-up"
+        ]
+      },
+      {
+        "id": "ffdd-05_12",
+        "tier": 0,
+        "q": "In a strategy in which winners come from a small number of large wins that offset other losses, with a generally high loss rate, which strategy is this (in contrast to buyout)?",
+        "accept": [
+          "Venture capital",
+          "venture capital",
+          "VC",
+          "Venture"
+        ]
+      },
+      {
+        "id": "ffdd-05_13",
+        "tier": 0,
+        "q": "When a fund's PME falls below 1.0, which market is the fund underperforming against?",
+        "accept": [
+          "Public market",
+          "public market",
+          "the public market",
+          "Public markets"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-06",
+    "category": "finance",
+    "title": "NAV Stress Testing",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-06_01",
+        "tier": 0,
+        "q": "What is the FASB fair value measurement standard designated as number 820?",
+        "accept": [
+          "ASC 820",
+          "ASC820"
+        ]
+      },
+      {
+        "id": "ffdd-06_02",
+        "tier": 0,
+        "q": "Which IASB international fair value measurement standard became effective in 2013 and has been adopted by more than 140 countries?",
+        "accept": [
+          "IFRS 13",
+          "IFRS13"
+        ]
+      },
+      {
+        "id": "ffdd-06_03",
+        "tier": 0,
+        "q": "What is the ratio of 'sale proceeds ÷ book value' across historical exits called?",
+        "accept": [
+          "Realization Rate",
+          "Realization Ratio"
+        ]
+      },
+      {
+        "id": "ffdd-06_04",
+        "tier": 0,
+        "q": "What is the final NAV, derived by stepping down from reported NAV through illiquidity discounts, fund-level liabilities, stale marks, and similar adjustments?",
+        "accept": [
+          "Adjusted NAV",
+          "Adjusted Net Asset Value"
+        ]
+      },
+      {
+        "id": "ffdd-06_06",
+        "tier": 0,
+        "q": "What is the abbreviation for the international industry guidance on private capital valuation that is periodically updated by the organization whose secretariat is run by the European VC & PE association?",
+        "accept": [
+          "IPEV",
+          "International Private Equity and Venture Capital Valuation Guidelines",
+          "IPEV Guidelines"
+        ]
+      },
+      {
+        "id": "ffdd-06_09",
+        "tier": 0,
+        "q": "What is the abbreviation for the U.S. Financial Accounting Standards Board?",
+        "accept": [
+          "FASB",
+          "Financial Accounting Standards Board"
+        ]
+      },
+      {
+        "id": "ffdd-06_10",
+        "tier": 0,
+        "q": "What is the abbreviation for the International Accounting Standards Board?",
+        "accept": [
+          "IASB",
+          "International Accounting Standards Board"
+        ]
+      },
+      {
+        "id": "ffdd-06_11",
+        "tier": 0,
+        "q": "What is the observable input in the fair value hierarchy consisting of quoted prices in active markets called?",
+        "accept": [
+          "Level 1",
+          "Level 1 input"
+        ]
+      },
+      {
+        "id": "ffdd-06_13",
+        "tier": 0,
+        "q": "What is the abbreviation for earnings before interest, taxes, depreciation, and amortization?",
+        "accept": [
+          "EBITDA",
+          "Earnings Before Interest Taxes Depreciation and Amortization"
+        ]
+      },
+      {
+        "id": "ffdd-06_14",
+        "tier": 0,
+        "q": "What is the abbreviation for the discounted future cash flow method?",
+        "accept": [
+          "DCF",
+          "Discounted Cash Flow"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-07",
+    "category": "finance",
+    "title": "Sub-line Borrowing Criteria",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-07_01",
+        "tier": 0,
+        "q": "What is the test called that confirms the Borrowing Base can still cover the facility cap after the single largest LP defaults?",
+        "accept": [
+          "1-Minus Test",
+          "1-Minus Test"
+        ]
+      },
+      {
+        "id": "ffdd-07_02",
+        "tier": 0,
+        "q": "What is the certificate, regularly delivered by the GP to the lender, that sets out each LP's commitment balance, eligibility, and advance rate?",
+        "accept": [
+          "BBC",
+          "Borrowing Base Certificate",
+          "BBC"
+        ]
+      },
+      {
+        "id": "ffdd-07_03",
+        "tier": 0,
+        "q": "When more than a specified share of fund assets comes from ERISA-covered pension money, how is the fund treated for regulatory purposes?",
+        "accept": [
+          "Plan Assets",
+          "Plan Assets"
+        ]
+      },
+      {
+        "id": "ffdd-07_04",
+        "tier": 0,
+        "q": "Below what percentage of total LP commitments must ERISA-covered assets sit for the fund not to be treated as Plan Assets?",
+        "accept": [
+          "Less than 25%",
+          "25% rule"
+        ]
+      },
+      {
+        "id": "ffdd-07_05",
+        "tier": 0,
+        "q": "In a subscription line transaction, what does the lender take as collateral?",
+        "accept": [
+          "Capital call right",
+          "Capital call right"
+        ]
+      },
+      {
+        "id": "ffdd-07_08",
+        "tier": 0,
+        "q": "What is the doctrine that protects a state and its governmental agencies from being sued in foreign courts?",
+        "accept": [
+          "Sovereign Immunity",
+          "Sovereign Immunity"
+        ]
+      },
+      {
+        "id": "ffdd-07_09",
+        "tier": 0,
+        "q": "What is the position on sovereign immunity under which a state can be sued over its commercial activities?",
+        "accept": [
+          "Restrictive Sovereign Immunity",
+          "Restrictive Sovereign Immunity"
+        ]
+      },
+      {
+        "id": "ffdd-07_11",
+        "tier": 0,
+        "q": "What is the abbreviation for the U.S. Treasury office that administers the sanctions list?",
+        "accept": [
+          "OFAC",
+          "Office of Foreign Assets Control",
+          "OFAC"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-08",
+    "category": "finance",
+    "title": "LTV Modeling for NAV Facilities",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-08_01",
+        "tier": 0,
+        "q": "In a NAV facility, what is the holding company that sits between the portfolio and the lender called?",
+        "accept": [
+          "Holdco",
+          "Holding Company",
+          "holdco"
+        ]
+      },
+      {
+        "id": "ffdd-08_03",
+        "tier": 0,
+        "q": "What is the mechanism called that diverts dividends and sale proceeds from portfolio companies to facility repayment rather than LP distributions?",
+        "accept": [
+          "Cash Trap",
+          "cash trap"
+        ]
+      },
+      {
+        "id": "ffdd-08_04",
+        "tier": 0,
+        "q": "What is the acquisition method called that uses debt secured by the target company's cash flows?",
+        "accept": [
+          "LBO",
+          "Leveraged Buyout",
+          "leveraged buyout"
+        ]
+      },
+      {
+        "id": "ffdd-08_05",
+        "tier": 0,
+        "q": "What is the financial data and modeling platform for professionals provided by S&P Global in the US called?",
+        "accept": [
+          "S&P Capital IQ",
+          "Capital IQ",
+          "CapIQ",
+          "S&P Capital IQ Pro"
+        ]
+      },
+      {
+        "id": "ffdd-08_06",
+        "tier": 0,
+        "q": "What is the data provider of PE/VC/M&A market data used in independent valuations called?",
+        "accept": [
+          "PitchBook",
+          "Pitchbook",
+          "pitchbook"
+        ]
+      },
+      {
+        "id": "ffdd-08_07",
+        "tier": 0,
+        "q": "What is a loan called in which interest is added to principal rather than paid in cash?",
+        "accept": [
+          "PIK",
+          "Payment-in-Kind",
+          "Pay-in-Kind",
+          "PIK loan",
+          "Payment in Kind"
+        ]
+      },
+      {
+        "id": "ffdd-08_08",
+        "tier": 0,
+        "q": "In a scenario analysis with reported NAV of JPY 100 billion, an eligibility rate of 70%, and a facility size of JPY 20 billion, what is the initial LTV?",
+        "accept": [
+          "28.6%",
+          "approx. 28.6%",
+          "approximately 28.6%"
+        ]
+      },
+      {
+        "id": "ffdd-08_09",
+        "tier": 0,
+        "q": "In an LTV model for a NAV facility, what is the ratio used to conservatively estimate effective collateral value by excluding a portion of portfolio assets from eligible collateral?",
+        "accept": [
+          "Eligibility Rate",
+          "eligibility rate"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-09",
+    "category": "finance",
+    "title": "Full-Stack Leverage Structure",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-09_02",
+        "tier": 0,
+        "q": "If the fund-level LTV looks comfortable at 17%, but a portfolio company's EBITDA drops sharply and its equity is wiped out, what does the NAV facility effectively become?",
+        "accept": [
+          "Unsecured Lending",
+          "Unsecured Loan"
+        ]
+      },
+      {
+        "id": "ffdd-09_04",
+        "tier": 0,
+        "q": "What do you call a facility that combines the subscription tranche and the NAV tranche into a single agreement?",
+        "accept": [
+          "Hybrid Facility"
+        ]
+      },
+      {
+        "id": "ffdd-09_05",
+        "tier": 0,
+        "q": "With GAV of USD 1 billion and full-stack borrowing of USD 220 million, what is the simple LTV?",
+        "accept": [
+          "22%",
+          "22 percent"
+        ]
+      },
+      {
+        "id": "ffdd-09_06",
+        "tier": 0,
+        "q": "What is the generic term for the practice of a private credit fund obtaining bank borrowings secured by its loan receivables?",
+        "accept": [
+          "Back-leverage",
+          "Back leverage"
+        ]
+      },
+      {
+        "id": "ffdd-09_07",
+        "tier": 0,
+        "q": "What do you call a structure that pools LP interests and securitizes them?",
+        "accept": [
+          "CFO",
+          "Collateralized Fund Obligation"
+        ]
+      },
+      {
+        "id": "ffdd-09_08",
+        "tier": 0,
+        "q": "What do you call the short-term credit line a nascent fund draws from banks before it transfers assets into the fund?",
+        "accept": [
+          "Warehouse Facility",
+          "Warehouse"
+        ]
+      },
+      {
+        "id": "ffdd-09_09",
+        "tier": 0,
+        "q": "If full-stack borrowing of USD 220 million is divided by GAV of USD 700 million after a 30% haircut, what is the full-stack LTV?",
+        "accept": [
+          "31%",
+          "approximately 31%",
+          "31 percent"
+        ]
+      },
+      {
+        "id": "ffdd-09_10",
+        "tier": 0,
+        "q": "What is the term for the perspective of looking at the aggregate borrowings stacked across different layers of the fund structure — the subline, the NAV facility, and the portfolio company LBO debt?",
+        "accept": [
+          "Full-Stack Leverage"
+        ]
+      },
+      {
+        "id": "ffdd-09_11",
+        "tier": 0,
+        "q": "What do you call the issue where leverage looks conservative when each layer is viewed in isolation, but turns out higher than expected once they are aggregated?",
+        "accept": [
+          "Leverage Stacking",
+          "Double-Counting of Leverage"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-10",
+    "category": "finance",
+    "title": "FoF Look-Through",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-10_01",
+        "tier": 0,
+        "q": "What is the name of the index that measures market concentration as the sum of the squared shares of each player?",
+        "accept": [
+          "HHI",
+          "Herfindahl-Hirschman Index",
+          "Herfindahl Index"
+        ]
+      },
+      {
+        "id": "ffdd-10_03",
+        "tier": 0,
+        "q": "If the Unfunded Coverage Ratio falls below a certain value, the risk of capital call default is said to become real. What is that threshold?",
+        "accept": [
+          "1.0",
+          "below 1.0"
+        ]
+      },
+      {
+        "id": "ffdd-10_05",
+        "tier": 0,
+        "q": "What is the name for a transaction in which fund interests are purchased on the market from existing LPs?",
+        "accept": [
+          "Secondary Purchase",
+          "Secondary Purchases",
+          "LP-led Secondary"
+        ]
+      },
+      {
+        "id": "ffdd-10_06",
+        "tier": 0,
+        "q": "What is the abbreviation of the international legal entity identifier used in entity resolution by company ID?",
+        "accept": [
+          "LEI",
+          "Legal Entity Identifier"
+        ]
+      },
+      {
+        "id": "ffdd-10_09",
+        "tier": 0,
+        "q": "What is the abbreviation for the monetary easing tool in which a central bank purchases government bonds and other securities to inject funds into the market?",
+        "accept": [
+          "QE",
+          "Quantitative Easing"
+        ]
+      },
+      {
+        "id": "ffdd-10_10",
+        "tier": 0,
+        "q": "What is the abbreviation for the initial public offering of shares, which appears in the text as one of the exit channels?",
+        "accept": [
+          "IPO",
+          "Initial Public Offering"
+        ]
+      },
+      {
+        "id": "ffdd-10_11",
+        "tier": 0,
+        "q": "What is the analysis called in which a FoF traces its ownership relationships down through the underlying funds to the ultimate portfolio companies?",
+        "accept": [
+          "Look-Through Analysis",
+          "Look-through"
+        ]
+      },
+      {
+        "id": "ffdd-10_12",
+        "tier": 0,
+        "q": "What is the phenomenon in which a look-through reveals that multiple underlying funds have invested in the same portfolio company on an overlapping basis?",
+        "accept": [
+          "Overlapping Exposure",
+          "Overlap",
+          "Overlapping Holdings"
+        ]
+      },
+      {
+        "id": "ffdd-10_13",
+        "tier": 0,
+        "q": "What is the detailed report of holdings and valuations that a FoF receives from each underlying fund on a quarterly basis?",
+        "accept": [
+          "Portfolio Report",
+          "Portfolio Reporting",
+          "Holdings Report"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-11",
+    "category": "finance",
+    "title": "GP Evaluation Framework",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-11_02",
+        "tier": 0,
+        "q": "What is the LPA provision that halts the investment period (and similar mechanisms) once a designated individual is no longer able to dedicate substantial time to the fund?",
+        "accept": [
+          "Key Person clause",
+          "Key Person"
+        ]
+      },
+      {
+        "id": "ffdd-11_04",
+        "tier": 0,
+        "q": "What is the ILPA-provided questionnaire that includes questions on prior fund write-downs and restructurings?",
+        "accept": [
+          "DDQ 2.0",
+          "Due Diligence Questionnaire 2.0"
+        ]
+      },
+      {
+        "id": "ffdd-11_05",
+        "tier": 0,
+        "q": "What is the waterfall structure that calculates carry deal-by-deal?",
+        "accept": [
+          "Deal-by-deal",
+          "American-style waterfall"
+        ]
+      },
+      {
+        "id": "ffdd-11_06",
+        "tier": 0,
+        "q": "What is the term for the capital a GP contributes to its own fund?",
+        "accept": [
+          "GP commitment",
+          "GP Commitment"
+        ]
+      },
+      {
+        "id": "ffdd-11_07",
+        "tier": 0,
+        "q": "In what academic journal did Steven Kaplan and Antoinette Schoar publish their 2005 paper on performance persistence?",
+        "accept": [
+          "Journal of Finance"
+        ]
+      },
+      {
+        "id": "ffdd-11_08",
+        "tier": 0,
+        "q": "What is the process for detecting whether quarterly NAV fluctuations are excessively smoothed called?",
+        "accept": [
+          "De-smoothing",
+          "De-smoothing analysis"
+        ]
+      },
+      {
+        "id": "ffdd-11_09",
+        "tier": 0,
+        "q": "On which Part of the U.S. investment adviser registration document is the disciplinary and enforcement disclosure section found?",
+        "accept": [
+          "Part 1",
+          "Form ADV Part 1"
+        ]
+      },
+      {
+        "id": "ffdd-11_10",
+        "tier": 0,
+        "q": "What is the abbreviation for the portal on which the SEC's Form ADV is publicly available?",
+        "accept": [
+          "IAPD",
+          "Investment Adviser Public Disclosure",
+          "SEC IAPD"
+        ]
+      },
+      {
+        "id": "ffdd-11_11",
+        "tier": 0,
+        "q": "What is the waterfall structure that calculates carry only after aggregating P&L across all portfolio investments (rather than deal-by-deal)?",
+        "accept": [
+          "Whole-fund",
+          "European-style waterfall"
+        ]
+      },
+      {
+        "id": "ffdd-11_12",
+        "tier": 0,
+        "q": "What is the GP's obligation to return excess carry that may fail to function in the face of later-fund losses?",
+        "accept": [
+          "Clawback",
+          "GP clawback"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-12",
+    "category": "finance",
+    "title": "Detection of Manipulative Practices",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-12_02",
+        "tier": 0,
+        "q": "What is the practice of booking distributions funded by NAV facility or other borrowings as DPI called?",
+        "accept": [
+          "Synthetic DPI",
+          "synthetic DPI"
+        ]
+      },
+      {
+        "id": "ffdd-12_03",
+        "tier": 0,
+        "q": "What is the provision called that allows the GP to rapidly catch up on its profit share after LPs have received their preferred return?",
+        "accept": [
+          "GP Catch-Up",
+          "GP catch-up",
+          "catch-up",
+          "catchup"
+        ]
+      },
+      {
+        "id": "ffdd-12_05",
+        "tier": 0,
+        "q": "What is the transaction called in which a portfolio company from an existing fund is transferred into a new vehicle designed by the GP?",
+        "accept": [
+          "Continuation Fund",
+          "continuation fund",
+          "continuation vehicle"
+        ]
+      },
+      {
+        "id": "ffdd-12_06",
+        "tier": 0,
+        "q": "What is the committee composed of major LPs that reviews, among other things, GP conflict-of-interest matters called?",
+        "accept": [
+          "LPAC",
+          "Limited Partner Advisory Committee",
+          "LP Advisory Committee"
+        ]
+      },
+      {
+        "id": "ffdd-12_08",
+        "tier": 0,
+        "q": "In what journal was the Barber and Yasuda (2017) paper published showing that PE funds' reported NAVs exhibit significantly higher quarter-to-quarter autocorrelation than public-market returns?",
+        "accept": [
+          "Journal of Financial Economics",
+          "JFE"
+        ]
+      },
+      {
+        "id": "ffdd-12_09",
+        "tier": 0,
+        "q": "What is the problem called in which diligence costs on a failed M&A transaction are charged to the fund?",
+        "accept": [
+          "Broken-Deal Expense Allocation",
+          "Broken-deal expense allocation",
+          "broken deal expense allocation"
+        ]
+      },
+      {
+        "id": "ffdd-12_10",
+        "tier": 0,
+        "q": "What is the carry mechanic called in which the GP receives carry on a deal as soon as that deal generates a profit, with no obligation to return it if subsequent deals produce losses?",
+        "accept": [
+          "Deal-by-Deal",
+          "deal-by-deal",
+          "American-style carry",
+          "American waterfall"
+        ]
+      },
+      {
+        "id": "ffdd-12_11",
+        "tier": 0,
+        "q": "According to Lazard's 2025 secondary market report, what dollar level did GP-led transactions reach in 2025?",
+        "accept": [
+          "$116 billion",
+          "$116B",
+          "116 billion dollars",
+          "USD 116 billion"
+        ]
+      },
+      {
+        "id": "ffdd-12_12",
+        "tier": 0,
+        "q": "What is the pattern called in which, absent specific LPA language, the GP invites select LPs to profitable deals while exposing the fund as a whole to the difficult ones?",
+        "accept": [
+          "Cherry-Picking",
+          "cherry-picking",
+          "Co-Invest Cherry-Picking",
+          "cherry picking of co-investments"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-13",
+    "category": "finance",
+    "title": "Quantitative Forensics Methods",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-13_01",
+        "tier": 0,
+        "q": "In Benford's Law, what is the formula for the expected probability of leading digit d?",
+        "accept": [
+          "log₁₀(1+1/d)",
+          "log10(1+1/d)"
+        ]
+      },
+      {
+        "id": "ffdd-13_02",
+        "tier": 0,
+        "q": "What branching-process model, born from surname extinction analysis, is used to simulate contagion among FoFs?",
+        "accept": [
+          "Galton-Watson",
+          "Galton-Watson process"
+        ]
+      },
+      {
+        "id": "ffdd-13_03",
+        "tier": 0,
+        "q": "A GP has offered a 'sell now' price on a continuation vehicle. Which method should you run to stress-test the true economics of the GP catch-up and tail?",
+        "accept": [
+          "Monte Carlo waterfall",
+          "Monte Carlo",
+          "Monte Carlo simulation"
+        ]
+      },
+      {
+        "id": "ffdd-13_04",
+        "tier": 0,
+        "q": "What is the name of the deterministic PE cashflow projection model originally developed at the Yale endowment that is still the industry standard today?",
+        "accept": [
+          "Takahashi-Alexander model",
+          "Takahashi-Alexander Model",
+          "Takahashi Alexander"
+        ]
+      },
+      {
+        "id": "ffdd-13_05",
+        "tier": 0,
+        "q": "In a chi-squared test of Benford's Law, what is the critical value at the 5% significance level with 8 degrees of freedom?",
+        "accept": [
+          "15.507",
+          "fifteen point five zero seven"
+        ]
+      },
+      {
+        "id": "ffdd-13_06",
+        "tier": 0,
+        "q": "Which cash-tracing method assumes the most recently contributed funds are the first to be distributed?",
+        "accept": [
+          "LIFO",
+          "Last In First Out"
+        ]
+      },
+      {
+        "id": "ffdd-13_07",
+        "tier": 0,
+        "q": "Which cash-tracing method assumes the earliest contributed funds are the first to be distributed?",
+        "accept": [
+          "FIFO",
+          "First In First Out"
+        ]
+      },
+      {
+        "id": "ffdd-13_08",
+        "tier": 0,
+        "q": "What is the structure called in which two classes of node — FoF funds and portfolio companies — are joined by investment-relationship edges?",
+        "accept": [
+          "bipartite graph",
+          "bipartite"
+        ]
+      },
+      {
+        "id": "ffdd-13_09",
+        "tier": 0,
+        "q": "When a fund's expense schedule is built around deliberate amount ranges that defeat a standard Benford test, which alternative test do you use?",
+        "accept": [
+          "second-digit test",
+          "Second Digit Test"
+        ]
+      },
+      {
+        "id": "ffdd-13_10",
+        "tier": 0,
+        "q": "In the Takahashi-Alexander model, what is the parameter called that is applied to the cumulative paid-in capital NAV to correct distortion before and after distributions?",
+        "accept": [
+          "bow factor",
+          "Bow factor",
+          "Bow Factor"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-14",
+    "category": "finance",
+    "title": "Stress Testing and Hold-Sell Decisions",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-14_02",
+        "tier": 0,
+        "q": "When a facility's LTV touches a covenant threshold, what is the grace period called during which the borrower is required to cure by asset sale or partial repayment?",
+        "accept": [
+          "Cure",
+          "Cure period",
+          "Cure Period"
+        ]
+      },
+      {
+        "id": "ffdd-14_03",
+        "tier": 0,
+        "q": "What is the term for an LP's uncalled capital commitment, which is deducted as a future cash outflow even in Hold Value calculations?",
+        "accept": [
+          "Unfunded Commitment",
+          "Unfunded Commitments"
+        ]
+      },
+      {
+        "id": "ffdd-14_07",
+        "tier": 0,
+        "q": "What is it called when a NAV facility's LTV breaches the covenant threshold, the cure period fails, and the borrower loses the benefit of its original maturity?",
+        "accept": [
+          "Acceleration",
+          "Loss of benefit of maturity"
+        ]
+      },
+      {
+        "id": "ffdd-14_08",
+        "tier": 0,
+        "q": "What is the new fund called that is GP-led, into which assets are transferred and in which they continue to be held?",
+        "accept": [
+          "Continuation Vehicle",
+          "Continuation Vehicles",
+          "CV"
+        ]
+      },
+      {
+        "id": "ffdd-14_15",
+        "tier": 0,
+        "q": "What is the abbreviation for the senior investment officer of a fund?",
+        "accept": [
+          "CIO",
+          "Chief Investment Officer"
+        ]
+      },
+      {
+        "id": "ffdd-14_16",
+        "tier": 0,
+        "q": "What is the analytical framework called that compares the future value of continuing to hold an asset today with the net proceeds of selling it today?",
+        "accept": [
+          "Hold-Sell Analysis",
+          "Hold-Sell",
+          "Hold / Sell Analysis"
+        ]
+      },
+      {
+        "id": "ffdd-14_17",
+        "tier": 0,
+        "q": "What method sets a scenario in which a portfolio company's performance falls well short of expectations and tests in advance the impact on covenant compliance and liquidity?",
+        "accept": [
+          "Stress Test",
+          "Stress Testing"
+        ]
+      },
+      {
+        "id": "ffdd-14_18",
+        "tier": 0,
+        "q": "What is the more severe form of analysis than single-factor stress testing, in which multiple risk factors are worsened simultaneously?",
+        "accept": [
+          "Scenario Analysis",
+          "Scenario Testing"
+        ]
+      },
+      {
+        "id": "ffdd-14_19",
+        "tier": 0,
+        "q": "What is the internal management alert line set inside the actual covenant threshold to prevent a facility from breaching its covenants?",
+        "accept": [
+          "Early Warning Threshold",
+          "Early Warning Trigger",
+          "Early Warning Level"
+        ]
+      },
+      {
+        "id": "ffdd-14_20",
+        "tier": 0,
+        "q": "In a Hold-Sell analysis, what is the judgment the GP should make when the expected return from continuing to hold the asset falls below the net proceeds from selling it?",
+        "accept": [
+          "Sell",
+          "Sale"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-15",
+    "category": "finance",
+    "title": "Fitch's Subscription Facility Rating Criteria",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-15_01",
+        "tier": 0,
+        "q": "An account officer felt comfortable with the strong average credit quality of the LP pool, but then learned that Fitch's Portfolio Credit Model (PCM) is designed so that correlations rise as stress increases. What does this non-linear structure tend to eat into?",
+        "accept": [
+          "Diversification benefits in benign conditions",
+          "Diversification benefits"
+        ]
+      },
+      {
+        "id": "ffdd-15_02",
+        "tier": 0,
+        "q": "What iterative computational technique, based on stochastic random numbers, does Fitch's Portfolio Credit Model (PCM) use to generate joint default distributions under stress?",
+        "accept": [
+          "Monte Carlo method",
+          "Monte Carlo simulation",
+          "Monte Carlo"
+        ]
+      },
+      {
+        "id": "ffdd-15_03",
+        "tier": 0,
+        "q": "In Fitch's subscription line ratings, what is the assessment axis — considered the most important factor — that captures LPs' actual track record of continuing to meet capital calls?",
+        "accept": [
+          "Payment track record",
+          "Payment history",
+          "Capital call response history"
+        ]
+      },
+      {
+        "id": "ffdd-15_04",
+        "tier": 0,
+        "q": "In Fitch's rating model, what metric captures the concentration of capital commitments in a specific group of LPs, where diversification of the LP pool becomes less effective?",
+        "accept": [
+          "Concentration",
+          "LP concentration",
+          "Concentration risk"
+        ]
+      },
+      {
+        "id": "ffdd-15_05",
+        "tier": 0,
+        "q": "In Fitch's model, how does the advance rate applied to a lower-rated LP change?",
+        "accept": [
+          "It decreases",
+          "Advance rate decreases",
+          "Lower advance rate"
+        ]
+      },
+      {
+        "id": "ffdd-15_06",
+        "tier": 0,
+        "q": "At each rating update, what process does Fitch use to track whether the fund's LP composition has changed since origination?",
+        "accept": [
+          "LP pool monitoring",
+          "LP Pool Monitoring"
+        ]
+      },
+      {
+        "id": "ffdd-15_07",
+        "tier": 0,
+        "q": "In subline ratings, how does Fitch measure the overall credit quality of the LP pool, taking into account not just a simple average but also the loss severity at default?",
+        "accept": [
+          "Weighted average credit quality",
+          "Weighted Average Credit Quality"
+        ]
+      },
+      {
+        "id": "ffdd-15_08",
+        "tier": 0,
+        "q": "What assumption does Fitch make in its subline rating regarding how long after the fund's investment period ends the LPs' funding obligation is deemed to remain in place across the full commitment?",
+        "accept": [
+          "Remaining commitment period",
+          "Remaining Commitment Period"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-16",
+    "category": "finance",
+    "title": "Un-smoothing Returns via the GLM Model",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-16_01",
+        "tier": 0,
+        "q": "If the bias ratio follows a normal random distribution, approximately what value does it take?",
+        "accept": [
+          "approximately 1.0",
+          "1.0"
+        ]
+      },
+      {
+        "id": "ffdd-16_02",
+        "tier": 0,
+        "q": "What is the abbreviation for the statistical estimation method used to derive the GLM model parameters θ₀, θ₁, and θ₂?",
+        "accept": [
+          "MLE",
+          "Maximum Likelihood Estimation",
+          "Maximum Likelihood",
+          "Max Likelihood Estimation",
+          "ML estimation"
+        ]
+      },
+      {
+        "id": "ffdd-16_03",
+        "tier": 0,
+        "q": "In the MA(2) formulation of the GLM model, what sum must θ₀, θ₁, and θ₂ satisfy?",
+        "accept": [
+          "1",
+          "sum equals 1",
+          "Σθ=1"
+        ]
+      },
+      {
+        "id": "ffdd-16_05",
+        "tier": 0,
+        "q": "What is the formal name of the statistical method used for GLM model parameter estimation, which maximizes the probability of obtaining the observed data?",
+        "accept": [
+          "Maximum Likelihood Estimation",
+          "Maximum Likelihood",
+          "Max Likelihood",
+          "MLE"
+        ]
+      },
+      {
+        "id": "ffdd-16_06",
+        "tier": 0,
+        "q": "What is the order of the moving-average process assumed by the GLM model, in which reported NAV is expressed as a weighted average of the true asset value over multiple past periods?",
+        "accept": [
+          "order 2",
+          "second order",
+          "MA(2)",
+          "2nd order moving average"
+        ]
+      },
+      {
+        "id": "ffdd-16_07",
+        "tier": 0,
+        "q": "In the GLM model, the closer θ₀ is to 1, the _____ the degree to which the fund's valuation is smoothed.",
+        "accept": [
+          "lower",
+          "less",
+          "less smoothed",
+          "not smoothed",
+          "less smoothed"
+        ]
+      },
+      {
+        "id": "ffdd-16_08",
+        "tier": 0,
+        "q": "After un-smoothing via the GLM model, the recomputed true volatility tends to be _____ the reported value.",
+        "accept": [
+          "higher",
+          "higher than",
+          "increases",
+          "rises",
+          "goes up"
+        ]
+      },
+      {
+        "id": "ffdd-16_09",
+        "tier": 0,
+        "q": "After un-smoothing via the GLM model, risk-adjusted return metrics such as the Sharpe ratio tend to change how relative to the original reported value?",
+        "accept": [
+          "decrease",
+          "decline",
+          "worsen",
+          "deteriorate",
+          "drop",
+          "fall"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-17",
+    "category": "finance",
+    "title": "Direct Alpha and PME Benchmarks",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-17_02",
+        "tier": 0,
+        "q": "What is the simplest PME implementation, proposed by Long and Nickels in 1996, which buys and sells an equal notional amount of a public index every time a fund calls capital or makes a distribution?",
+        "accept": [
+          "LN-PME",
+          "Long-Nickels PME"
+        ]
+      },
+      {
+        "id": "ffdd-17_03",
+        "tier": 0,
+        "q": "What state does the notional portfolio in LN-PME tend to fall into when the fund makes large early distributions?",
+        "accept": [
+          "Short portfolio",
+          "Short position"
+        ]
+      },
+      {
+        "id": "ffdd-17_04",
+        "tier": 0,
+        "q": "What is the methodology published by Gredil, Griffiths, and Stucke in 2014 that expresses PME as an annualized return difference rather than a multiple?",
+        "accept": [
+          "Direct Alpha",
+          "Direct Alpha method"
+        ]
+      },
+      {
+        "id": "ffdd-17_05",
+        "tier": 0,
+        "q": "What is the coefficient that measures the sensitivity of an asset's return to a 1% move in the broader market, i.e., exposure to systematic risk?",
+        "accept": [
+          "β",
+          "Beta"
+        ]
+      },
+      {
+        "id": "ffdd-17_06",
+        "tier": 0,
+        "q": "What is the approach used by Cambridge Associates, which scales the notional portfolio in each period in proportion to the fund's NAV?",
+        "accept": [
+          "mPME",
+          "Modified PME"
+        ]
+      },
+      {
+        "id": "ffdd-17_08",
+        "tier": 0,
+        "q": "What is the modified PME methodology proposed by Rouvinez, which introduces a coefficient λ to prevent the notional portfolio from going short?",
+        "accept": [
+          "PME+",
+          "PME plus"
+        ]
+      },
+      {
+        "id": "ffdd-17_09",
+        "tier": 0,
+        "q": "Under which extended CAPM model did Sorensen and Jagannathan show KS-PME to be theoretically consistent?",
+        "accept": [
+          "Dynamic CAPM",
+          "Rubinstein's Dynamic CAPM"
+        ]
+      },
+      {
+        "id": "ffdd-17_10",
+        "tier": 0,
+        "q": "What index does the text cite as the benchmark for a small-cap buyout fund?",
+        "accept": [
+          "Russell 2000",
+          "Russell2000"
+        ]
+      },
+      {
+        "id": "ffdd-17_11",
+        "tier": 0,
+        "q": "Burgiss's cashflow data is notable for being based not on GP self-reporting but on what?",
+        "accept": [
+          "LP records",
+          "LP data"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-18",
+    "category": "finance",
+    "title": "ILPA Continuation Fund Disclosure Template",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-18_01",
+        "tier": 0,
+        "q": "What is the term for a third-party opinion stating that a transaction price is fair?",
+        "accept": [
+          "fairness opinion"
+        ]
+      },
+      {
+        "id": "ffdd-18_02",
+        "tier": 0,
+        "q": "What is the term for a transaction structure in which a GP transfers an existing fund's assets to a new vehicle and gives existing LPs the choice to sell or roll over?",
+        "accept": [
+          "continuation fund",
+          "Continuation Fund"
+        ]
+      },
+      {
+        "id": "ffdd-18_03",
+        "tier": 0,
+        "q": "What is the term for the fixing and settling of carry on an existing fund's unrealized gains at the point of transfer?",
+        "accept": [
+          "crystallization",
+          "crystallisation"
+        ]
+      },
+      {
+        "id": "ffdd-18_04",
+        "tier": 0,
+        "q": "What is the number of days cited in the market as the practical target for the election period?",
+        "accept": [
+          "45 days",
+          "45 calendar days"
+        ]
+      },
+      {
+        "id": "ffdd-18_05",
+        "tier": 0,
+        "q": "What is the term for a condition in which a secondary buyer offers a new commitment alongside the secondary transaction as a package?",
+        "accept": [
+          "stapled commitment"
+        ]
+      },
+      {
+        "id": "ffdd-18_09",
+        "tier": 0,
+        "q": "In June 2024, a U.S. court fully vacated the SEC's private fund adviser rules. Which court issued this decision?",
+        "accept": [
+          "Fifth Circuit",
+          "U.S. Court of Appeals for the Fifth Circuit",
+          "United States Court of Appeals for the Fifth Circuit"
+        ]
+      },
+      {
+        "id": "ffdd-18_10",
+        "tier": 0,
+        "q": "According to ILPA guidance, what is the minimum number of calendar days that should be given to LPs as the election period?",
+        "accept": [
+          "30 days",
+          "30 calendar days"
+        ]
+      },
+      {
+        "id": "ffdd-18_11",
+        "tier": 0,
+        "q": "In what year was ILPA Principles 3.0 published?",
+        "accept": [
+          "2019"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-19",
+    "category": "finance",
+    "title": "FSB's Private Credit Vulnerability Framework",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-19_01",
+        "tier": 0,
+        "q": "What is the abbreviation for the Financial Stability Board?",
+        "accept": [
+          "FSB",
+          "Financial Stability Board"
+        ]
+      },
+      {
+        "id": "ffdd-19_02",
+        "tier": 0,
+        "q": "What is the collective term for entities that perform financial intermediation functions other than banks?",
+        "accept": [
+          "NBFI",
+          "Non-Bank Financial Institution",
+          "Non-Bank Financial Intermediation"
+        ]
+      },
+      {
+        "id": "ffdd-19_03",
+        "tier": 0,
+        "q": "What term refers to loose financial covenant terms that lean toward borrower protection?",
+        "accept": [
+          "Covenant-Lite",
+          "Cov Lite"
+        ]
+      },
+      {
+        "id": "ffdd-19_04",
+        "tier": 0,
+        "q": "What is a legal entity established for the purpose of holding specific assets or incurring debt called?",
+        "accept": [
+          "SPV",
+          "Special Purpose Vehicle",
+          "Special Purpose Entity"
+        ]
+      },
+      {
+        "id": "ffdd-19_05",
+        "tier": 0,
+        "q": "In the FSB framework, private credit funds — unlike banks — are not exposed to the risk of bank runs on deposits, but instead face what concern, referring to a concentration of redemption requests from investors?",
+        "accept": [
+          "Redemption Run",
+          "Investor Run",
+          "Redemption Pressure"
+        ]
+      },
+      {
+        "id": "ffdd-19_06",
+        "tier": 0,
+        "q": "Approximately how much direct exposure did the FSB identify, combining drawn and undrawn bank credit lines?",
+        "accept": [
+          "$220 billion",
+          "approximately $220 billion",
+          "USD 220 billion"
+        ]
+      },
+      {
+        "id": "ffdd-19_07",
+        "tier": 0,
+        "q": "What is the abbreviation for the U.S. Treasury office that conducts research on risks to the financial system?",
+        "accept": [
+          "OFR",
+          "Office of Financial Research"
+        ]
+      },
+      {
+        "id": "ffdd-19_09",
+        "tier": 0,
+        "q": "What is the mechanism that separates and manages illiquid assets apart from liquid assets?",
+        "accept": [
+          "Side Pocket",
+          "Side-Pocket"
+        ]
+      },
+      {
+        "id": "ffdd-19_10",
+        "tier": 0,
+        "q": "Under the FSB's newly defined concept of private credit, how are the terms of these loans determined?",
+        "accept": [
+          "Bilaterally negotiated",
+          "Bilateral negotiation",
+          "Negotiated bilaterally"
+        ]
+      },
+      {
+        "id": "ffdd-19_11",
+        "tier": 0,
+        "q": "What term refers to the difference between the current value and the covenant breach threshold?",
+        "accept": [
+          "Covenant Headroom",
+          "Headroom",
+          "Covenant Cushion"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-20",
+    "category": "finance",
+    "title": "Solvency II and the Basel Capital Lens",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-20_01",
+        "tier": 0,
+        "q": "What is the name of the Solvency II quantitative requirement that sets the amount of capital an insurer needs to survive over one year at a 99.5% confidence level?",
+        "accept": [
+          "SCR",
+          "Solvency Capital Requirement"
+        ]
+      },
+      {
+        "id": "ffdd-20_02",
+        "tier": 0,
+        "q": "What is the third equity category introduced in the 2019 Solvency II review, which applies a lower equity charge of 22% to qualifying equity holdings?",
+        "accept": [
+          "LTE",
+          "Long-Term Equity"
+        ]
+      },
+      {
+        "id": "ffdd-20_03",
+        "tier": 0,
+        "q": "What is the phenomenon in which a drop in public equity markets shrinks total portfolio assets, unintentionally raising the relative share of private assets?",
+        "accept": [
+          "Denominator Effect"
+        ]
+      },
+      {
+        "id": "ffdd-20_04",
+        "tier": 0,
+        "q": "In Solvency II, what is the absolute floor below which the supervisor must intervene immediately?",
+        "accept": [
+          "MCR",
+          "Minimum Capital Requirement"
+        ]
+      },
+      {
+        "id": "ffdd-20_05",
+        "tier": 0,
+        "q": "What is the name of the Solvency II equity category applied to listed equities in developed markets?",
+        "accept": [
+          "Type 1 Equity",
+          "Type 1"
+        ]
+      },
+      {
+        "id": "ffdd-20_06",
+        "tier": 0,
+        "q": "Under the Solvency II standard formula, what is the base equity charge applied to Type 1 equity?",
+        "accept": [
+          "39%"
+        ]
+      },
+      {
+        "id": "ffdd-20_07",
+        "tier": 0,
+        "q": "In Solvency II, what is the base equity charge for Type 2 equity, the category into which private equity LP interests are classified?",
+        "accept": [
+          "49%"
+        ]
+      },
+      {
+        "id": "ffdd-20_08",
+        "tier": 0,
+        "q": "What is the name of the mechanism, published monthly by EIOPA, that adjusts the equity charge up or down with the market cycle?",
+        "accept": [
+          "Symmetric Adjustment",
+          "SA"
+        ]
+      },
+      {
+        "id": "ffdd-20_09",
+        "tier": 0,
+        "q": "Under the Basel III/IV capital framework (CRR3: Capital Requirements Regulation 3), what is the approach that, where a fund's investment mandate is explicitly defined, applies the risk weight of the highest-risk asset within the mandate on a conservative basis?",
+        "accept": [
+          "Mandate-Based Approach"
+        ]
+      },
+      {
+        "id": "ffdd-20_10",
+        "tier": 0,
+        "q": "What risk weight is applied to a private equity LP interest under the CRR3 Fallback Approach?",
+        "accept": [
+          "1250%"
+        ]
+      },
+      {
+        "id": "ffdd-20_11",
+        "tier": 0,
+        "q": "What is the name of the public document that EU insurers are required to publish, reporting their solvency and financial condition?",
+        "accept": [
+          "SFCR",
+          "Solvency and Financial Condition Report"
+        ]
+      },
+      {
+        "id": "ffdd-20_12",
+        "tier": 0,
+        "q": "What is the approach under which a bank looks through to the underlying assets of a fund, calculating risk-weighted assets (RWA: Risk-Weighted Assets) at the risk weight of each individual asset?",
+        "accept": [
+          "Look-Through Approach"
+        ]
+      },
+      {
+        "id": "ffdd-20_13",
+        "tier": 0,
+        "q": "What is the abbreviation for the body that sets regulatory and supervisory standards for EU banks and conducts the biennial EU-wide stress test?",
+        "accept": [
+          "EBA",
+          "European Banking Authority"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ffdd-21",
+    "category": "finance",
+    "title": "Performance Persistence and Return Manipulation: Academic Findings",
+    "credit": "Based on *Funds Finance Deep Dive*",
+    "questions": [
+      {
+        "id": "ffdd-21_04",
+        "tier": 0,
+        "q": "Which fair value measurement standard, now incorporated into ASC 820, requires assets and liabilities to be measured at exit price?",
+        "accept": [
+          "FAS 157",
+          "FAS157"
+        ]
+      },
+      {
+        "id": "ffdd-21_05",
+        "tier": 0,
+        "q": "What is the name of the database used in the 2019 study by Brown, Gredil, and Kaplan that analyzed reported NAV patterns in buyout and VC funds?",
+        "accept": [
+          "Burgiss"
+        ]
+      },
+      {
+        "id": "ffdd-21_06",
+        "tier": 0,
+        "q": "What is the hypothesis, repeatedly tested in GP performance persistence research, that a fund's early returns drive the fundraising success of subsequent funds?",
+        "accept": [
+          "Performance Persistence hypothesis",
+          "Performance Persistence"
+        ]
+      },
+      {
+        "id": "ffdd-21_07",
+        "tier": 0,
+        "q": "How has PE performance persistence changed over time, according to multiple empirical studies?",
+        "accept": [
+          "Weakened",
+          "Declined"
+        ]
+      },
+      {
+        "id": "ffdd-21_08",
+        "tier": 0,
+        "q": "What is the academic term for the practice in which a GP delays the realization of write-downs to keep reported NAVs higher than they actually are?",
+        "accept": [
+          "Valuation Manipulation"
+        ]
+      },
+      {
+        "id": "ffdd-21_09",
+        "tier": 0,
+        "q": "What is the field of study that examines the tendency of GPs to mark up portfolio valuations immediately before a fundraising period, focusing on the relationship between fundraising timing and valuation?",
+        "accept": [
+          "Fundraising-Period Markups"
+        ]
+      },
+      {
+        "id": "ffdd-21_10",
+        "tier": 0,
+        "q": "Because IRR depends heavily on the speed of capital recovery, what term describes the practice in which a GP makes selective early exits to make IRR appear higher than it is?",
+        "accept": [
+          "IRR Manipulation"
+        ]
+      }
+    ]
+  }
+]
