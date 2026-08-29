@@ -59,16 +59,6 @@ describe('SeriesScreen', () => {
     expect(screen.getByTestId('series-lag-persuasion')).toHaveTextContent('1-back');
   });
 
-  it('opens settings', async () => {
-    const onOpenSettings = jest.fn();
-    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={onOpenSettings} />);
-    await waitFor(() => {
-      expect(screen.getByText('設定')).toBeTruthy();
-    });
-    fireEvent.press(screen.getByText('設定'));
-    expect(onOpenSettings).toHaveBeenCalled();
-  });
-
   it('has no difficulty badge on a card', async () => {
     render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
     await waitFor(() => {

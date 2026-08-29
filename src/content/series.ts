@@ -66,6 +66,14 @@ export const FUNDS_FINANCE_CATEGORIES: FundsFinanceCategory[] = [
     description: 'LPA provisions, borrowing limits, event of default, clean-down provisions',
     sampleTerms: ['LPA Covenant', 'Borrowing Limit', 'Event of Default', 'Clean-down'],
   },
+  {
+    id: 'custom',
+    name: '自作',
+    nameEn: 'My Decks',
+    icon: '✏️',
+    description: 'User-authored decks',
+    sampleTerms: [],
+  },
 ];
 
 export interface FinancialRole {

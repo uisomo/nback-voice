@@ -7,8 +7,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { FUNDS_FINANCE_CATEGORIES } from '../content/series';
 import {
+  CUSTOM_DECK_CATEGORY,
   MAX_DECK_QUESTIONS,
   addCustomDeck,
   deleteCustomDeck,
@@ -36,7 +36,6 @@ export function QuestionsScreen({ onClose }: Props) {
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
   const [deckMode, setDeckMode] = useState(false);
   const [deckTitle, setDeckTitle] = useState('');
-  const [deckCategory, setDeckCategory] = useState(FUNDS_FINANCE_CATEGORIES[0].id);
   const [deckDrafts, setDeckDrafts] = useState<QuestionDraft[]>([emptyDraft()]);
   const [deckError, setDeckError] = useState<string | null>(null);
 
@@ -51,7 +50,6 @@ export function QuestionsScreen({ onClose }: Props) {
   const resetDeckForm = () => {
     setEditingDeckId(null);
     setDeckTitle('');
-    setDeckCategory(FUNDS_FINANCE_CATEGORIES[0].id);
     setDeckDrafts([emptyDraft()]);
     setDeckError(null);
   };
@@ -64,7 +62,6 @@ export function QuestionsScreen({ onClose }: Props) {
   const startEditingDeck = (deck: CustomDeck) => {
     setEditingDeckId(deck.id);
     setDeckTitle(deck.title);
-    setDeckCategory(deck.category);
     setDeckDrafts(
       deck.questions.map((question) => ({ q: question.q, answer: question.accept[0] ?? '' })),
     );
@@ -96,9 +93,9 @@ export function QuestionsScreen({ onClose }: Props) {
     if (!title || drafts.length === 0) return;
     try {
       if (editingDeckId) {
-        await updateCustomDeck(editingDeckId, title, deckCategory, drafts);
+        await updateCustomDeck(editingDeckId, title, CUSTOM_DECK_CATEGORY, drafts);
       } else {
-        await addCustomDeck(title, deckCategory, drafts);
+        await addCustomDeck(title, CUSTOM_DECK_CATEGORY, drafts);
       }
       resetDeckForm();
       setDeckMode(false);
@@ -130,21 +127,6 @@ export function QuestionsScreen({ onClose }: Props) {
           value={deckTitle}
           onChangeText={setDeckTitle}
         />
-
-        <View style={styles.categoryRow}>
-          {FUNDS_FINANCE_CATEGORIES.map((cat) => (
-            <Pressable
-              key={cat.id}
-              style={[
-                styles.categoryChip,
-                deckCategory === cat.id && styles.categoryChipActive,
-              ]}
-              onPress={() => setDeckCategory(cat.id)}
-            >
-              <Text style={styles.label}>{cat.name}</Text>
-            </Pressable>
-          ))}
-        </View>
 
         <ScrollView style={styles.list}>
           {deckDrafts.map((draft, index) => (
@@ -270,12 +252,4 @@ const styles = StyleSheet.create({
   },
   itemQ: { color: '#f4f1ea', fontSize: 16 },
   itemA: { color: '#8e8e93', fontSize: 14, marginTop: 2 },
-  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  categoryChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: '#1c1c1e',
-  },
-  categoryChipActive: { backgroundColor: '#c96f4a' },
 });

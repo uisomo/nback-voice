@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { FUNDS_FINANCE_CATEGORIES } from '../../content/series';
-import { addCustomDeck, loadCustomDecks } from '../../store/storage';
+import { addCustomDeck, loadCustomDecks, CUSTOM_DECK_CATEGORY } from '../../store/storage';
 import { QuestionsScreen } from '../QuestionsScreen';
 
 beforeEach(async () => {
@@ -41,19 +40,16 @@ describe('QuestionsScreen', () => {
 });
 
 describe('QuestionsScreen deck builder', () => {
-  it('lists only the fixed funds-finance categories, not a free-text field', async () => {
+  it('has no category picker', async () => {
     const { getByText, queryByPlaceholderText } = render(
       <QuestionsScreen onClose={() => {}} />,
     );
     await waitFor(() => {});
     fireEvent.press(getByText('新しいデッキ'));
-    for (const cat of FUNDS_FINANCE_CATEGORIES) {
-      expect(getByText(cat.name)).toBeTruthy();
-    }
     expect(queryByPlaceholderText('カテゴリー')).toBeNull();
   });
 
-  it('creates a deck with multiple questions under the chosen category', async () => {
+  it('creates a deck with multiple questions tagged under the custom-deck category', async () => {
     const { getByText, getByPlaceholderText, getAllByPlaceholderText } = render(
       <QuestionsScreen onClose={() => {}} />,
     );
@@ -61,7 +57,6 @@ describe('QuestionsScreen deck builder', () => {
     fireEvent.press(getByText('新しいデッキ'));
 
     fireEvent.changeText(getByPlaceholderText('デッキ名'), 'テストデッキ');
-    fireEvent.press(getByText(FUNDS_FINANCE_CATEGORIES[0].name));
 
     fireEvent.changeText(getAllByPlaceholderText('問題')[0], '問1');
     fireEvent.changeText(getAllByPlaceholderText('答え')[0], '答1');
@@ -76,7 +71,7 @@ describe('QuestionsScreen deck builder', () => {
       const decks = await loadCustomDecks();
       expect(decks).toHaveLength(1);
       expect(decks[0].title).toBe('テストデッキ');
-      expect(decks[0].category).toBe(FUNDS_FINANCE_CATEGORIES[0].id);
+      expect(decks[0].category).toBe(CUSTOM_DECK_CATEGORY);
       expect(decks[0].questions.map((q) => q.q)).toEqual(['問1', '問2']);
     });
   });

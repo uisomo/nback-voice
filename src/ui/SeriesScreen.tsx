@@ -174,11 +174,6 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
             Financial Professional Flashcard & Voice N-Back Decks
           </Text>
         </View>
-        <Pressable onPress={onOpenSettings} style={styles.settingsPressable}>
-          <Text style={[styles.settings, { color: theme.accentPrimary }]}>
-            {strings.common.settings}
-          </Text>
-        </Pressable>
       </View>
 
       {/* Series Cards List */}
@@ -308,8 +303,6 @@ const styles = StyleSheet.create({
   },
   heading: { fontSize: 24, fontWeight: 'bold' },
   subheading: { fontSize: 12, marginTop: 2 },
-  settingsPressable: { padding: 4 },
-  settings: { fontSize: 15, fontWeight: '600' },
   scrollContent: { padding: 20 },
   group: { marginBottom: 28 },
   categoryHeader: {

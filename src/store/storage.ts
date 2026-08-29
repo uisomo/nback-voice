@@ -265,6 +265,9 @@ export interface CustomDeck {
   questions: Question[];
 }
 
+/** Category id every user-authored deck is tagged with — shown as its own "自作" filter chip. */
+export const CUSTOM_DECK_CATEGORY = 'custom';
+
 /** A deck holds at most this many questions — kept small enough to review at a glance. */
 export const MAX_DECK_QUESTIONS = 10;
 /** A user can keep at most this many decks at once. */
