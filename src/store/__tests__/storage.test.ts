@@ -171,10 +171,10 @@ describe('phaseDurations', () => {
 });
 
 describe('settings defaults for the new fields', () => {
-  it('defaults to dual mode and the built-in bank', async () => {
+  it('defaults to dual mode and the custom series', async () => {
     const s = await loadSettings();
     expect(s.mode).toBe('dual');
-    expect(s.seriesId).toBe('standard');
+    expect(s.seriesId).toBe('custom');
   });
 
   it('still fills missing new keys from an older stored shape', async () => {
@@ -185,7 +185,7 @@ describe('settings defaults for the new fields', () => {
     const s = await loadSettings();
     expect(s.stepDurationMs).toBe(4000);
     expect(s.mode).toBe('dual');
-    expect(s.seriesId).toBe('standard');
+    expect(s.seriesId).toBe('custom');
   });
 });
 
@@ -268,8 +268,8 @@ describe('learned synonyms follow the question', () => {
 });
 
 describe('settings migration to seriesId', () => {
-  it('defaults to the standard series', async () => {
-    expect((await loadSettings()).seriesId).toBe('standard');
+  it('defaults to the custom series', async () => {
+    expect((await loadSettings()).seriesId).toBe('custom');
   });
 
   it('migrates questionSource "custom" to the custom series', async () => {

@@ -79,7 +79,6 @@ describe('parseTranslatedSeries', () => {
 describe('CATEGORIES_EN', () => {
   it('has an English label for every category id', () => {
     expect(CATEGORIES_EN.finance).toBe('Brain training for fluid intelligence, through funds finance');
-    expect(CATEGORIES_EN.delivery).toBe('Changing how you explain it');
     expect(CATEGORIES_EN.basics).toBe('Anyone can answer');
   });
 });

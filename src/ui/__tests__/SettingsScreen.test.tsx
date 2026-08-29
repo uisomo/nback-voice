@@ -11,7 +11,6 @@ import {
 } from '../../store/storage';
 import type { JudgeClient } from '../../judge/types';
 import { SettingsScreen } from '../SettingsScreen';
-import { STANDARD_SERIES_ID } from '../../content/series';
 
 beforeEach(async () => {
   await AsyncStorage.clear();
@@ -263,22 +262,22 @@ describe('SettingsScreen answer input', () => {
 });
 
 describe('SettingsScreen per-series N', () => {
-  it('shows the standard series starting at N=1', async () => {
+  it('shows an authored series starting at N=1', async () => {
     const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     await waitFor(() => {
-      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('1');
+      expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('1');
     });
   });
 
   it('shows a series lag already earned in a previous round', async () => {
-    await saveN(STANDARD_SERIES_ID, 4);
+    await saveN('capital-call', 4);
     const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     await waitFor(() => {
-      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('4');
+      expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('4');
     });
   });
 
@@ -286,11 +285,11 @@ describe('SettingsScreen per-series N', () => {
     const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
-    await waitFor(() => getByTestId(`series-n-up-${STANDARD_SERIES_ID}`));
-    fireEvent.press(getByTestId(`series-n-up-${STANDARD_SERIES_ID}`));
-    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('2');
+    await waitFor(() => getByTestId('series-n-up-capital-call'));
+    fireEvent.press(getByTestId('series-n-up-capital-call'));
+    expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('2');
     await waitFor(async () => {
-      expect(await loadN(STANDARD_SERIES_ID)).toBe(2);
+      expect(await loadN('capital-call')).toBe(2);
     });
   });
 
@@ -298,42 +297,42 @@ describe('SettingsScreen per-series N', () => {
     const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
-    await waitFor(() => getByTestId(`series-n-down-${STANDARD_SERIES_ID}`));
-    fireEvent.press(getByTestId(`series-n-down-${STANDARD_SERIES_ID}`));
-    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('1');
+    await waitFor(() => getByTestId('series-n-down-capital-call'));
+    fireEvent.press(getByTestId('series-n-down-capital-call'));
+    expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('1');
     await waitFor(async () => {
-      expect(await loadN(STANDARD_SERIES_ID)).toBe(1);
+      expect(await loadN('capital-call')).toBe(1);
     });
   });
 
   it('resets an earned series N back to 1', async () => {
-    await saveN(STANDARD_SERIES_ID, 5);
+    await saveN('capital-call', 5);
     const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     await waitFor(() => {
-      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('5');
+      expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('5');
     });
-    fireEvent.press(getByTestId(`series-n-reset-${STANDARD_SERIES_ID}`));
-    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('1');
+    fireEvent.press(getByTestId('series-n-reset-capital-call'));
+    expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('1');
     await waitFor(async () => {
-      expect(await loadN(STANDARD_SERIES_ID)).toBe(1);
+      expect(await loadN('capital-call')).toBe(1);
     });
   });
 
   it('keeps each series independent', async () => {
     await addCustom('自作', '答え');
-    await saveN(STANDARD_SERIES_ID, 3);
+    await saveN('capital-call', 3);
     const { getByTestId } = render(
       <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
     );
     await waitFor(() => {
-      expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('3');
+      expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('3');
       expect(getByTestId('series-n-value-custom')).toHaveTextContent('1');
     });
     fireEvent.press(getByTestId('series-n-up-custom'));
     expect(getByTestId('series-n-value-custom')).toHaveTextContent('2');
-    expect(getByTestId(`series-n-value-${STANDARD_SERIES_ID}`)).toHaveTextContent('3');
+    expect(getByTestId('series-n-value-capital-call')).toHaveTextContent('3');
   });
 });
 

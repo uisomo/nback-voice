@@ -97,7 +97,7 @@ describe('series.json data contract', () => {
 describe('listSeries language switch', () => {
   it('defaults to Japanese category labels and series titles', () => {
     const result = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2 });
-    expect(result.find((s) => s.id === STANDARD_SERIES_ID)!.title).toBe('標準問題');
+    expect(result.find((s) => s.id === CUSTOM_SERIES_ID)!.title).toBe('自分の問題');
   });
 
   it('serves English category labels and series titles when language is en', () => {
@@ -105,10 +105,10 @@ describe('listSeries language switch', () => {
     const en = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2, language: 'en' });
     // Same series ids in the same order — only titles/content differ.
     expect(en.map((s) => s.id)).toEqual(ja.map((s) => s.id));
-    expect(en.find((s) => s.id === STANDARD_SERIES_ID)!.title).toBe('Standard Questions');
+    expect(en.find((s) => s.id === CUSTOM_SERIES_ID)!.title).toBe('My Questions');
     // An authored series' title must differ between ja and en (proves the
     // English file, not the Japanese one, was actually loaded).
-    const authoredId = ja.find((s) => s.id !== STANDARD_SERIES_ID && s.id !== CUSTOM_SERIES_ID)!.id;
+    const authoredId = ja.find((s) => s.id !== CUSTOM_SERIES_ID)!.id;
     const jaTitle = ja.find((s) => s.id === authoredId)!.title;
     const enTitle = en.find((s) => s.id === authoredId)!.title;
     expect(enTitle).not.toBe(jaTitle);
@@ -119,31 +119,12 @@ describe('listSeries language switch', () => {
     const grouped = groupSeries(en, 'en');
     expect(grouped.map((g) => g.label)).toEqual([
       'Brain training for fluid intelligence, through funds finance',
-      'Changing how you explain it',
       'Anyone can answer',
     ]);
   });
 });
 
 describe('listSeries', () => {
-  it('synthesizes the standard series from the built-in bank', () => {
-    const standard = all().find((s) => s.id === STANDARD_SERIES_ID);
-    expect(standard).toBeDefined();
-    expect(standard!.questions.length).toBeGreaterThan(MIN_QUESTIONS);
-  });
-
-  it('tier-filters the standard series only', () => {
-    const atOne = listSeries({ custom: CUSTOM, learned: {}, maxTier: 1 });
-    const atTwo = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2 });
-    const count = (list: ReturnType<typeof listSeries>, id: string) =>
-      list.find((s) => s.id === id)!.questions.length;
-
-    expect(count(atOne, STANDARD_SERIES_ID)).toBeLessThan(
-      count(atTwo, STANDARD_SERIES_ID),
-    );
-    expect(count(atOne, 'capital-call')).toBe(count(atTwo, 'capital-call'));
-  });
-
   it('carries the custom questions through untouched', () => {
     const custom = all().find((s) => s.id === CUSTOM_SERIES_ID);
     expect(custom!.questions.map((q) => q.id)).toEqual(['user_1', 'user_2']);
@@ -233,15 +214,15 @@ describe('findSeries', () => {
     expect(findSeries(all(), 'capital-call').id).toBe('capital-call');
   });
 
-  it('falls back to standard for an unknown id', () => {
+  it('falls back to the custom series for an unknown id', () => {
     // Renaming or dropping a series must not brick the app on launch for
     // someone whose stored seriesId no longer exists.
-    expect(findSeries(all(), 'no-such-series').id).toBe(STANDARD_SERIES_ID);
+    expect(findSeries(all(), 'no-such-series').id).toBe(CUSTOM_SERIES_ID);
   });
 });
 
 describe('the shipped catalogue', () => {
-  it('offers the authored series across two purpose categories', () => {
+  it('offers the authored series under the finance category', () => {
     const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
     const ids = list.map((s) => s.id);
     expect(ids).toEqual([
@@ -269,8 +250,6 @@ describe('the shipped catalogue', () => {
       'ffdd-19',
       'ffdd-20',
       'ffdd-21',
-      'persuasion', // 'delivery' category, so it sorts after all 'finance' series
-      STANDARD_SERIES_ID,
       CUSTOM_SERIES_ID,
     ]);
   });
@@ -278,9 +257,7 @@ describe('the shipped catalogue', () => {
   it('credits every authored series to the manuscript it came from', () => {
     const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
     for (const series of list) {
-      const synthesized =
-        series.id === STANDARD_SERIES_ID || series.id === CUSTOM_SERIES_ID;
-      if (synthesized) {
+      if (series.id === CUSTOM_SERIES_ID) {
         expect(series.credit).toBeUndefined();
       } else {
         expect(series.credit).toMatch(/より$/);
@@ -296,11 +273,6 @@ describe('the shipped catalogue', () => {
         /^(sub-finance|nav-finance|hybrid-pref|gp-facility|fund-covenants)$/,
       );
     }
-  });
-
-  it('leaves the delivery-category series without a funds-finance tag', () => {
-    const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
-    expect(list.find((s) => s.id === 'persuasion')!.fundsCategory).toBeUndefined();
   });
 });
 

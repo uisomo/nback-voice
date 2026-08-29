@@ -14,7 +14,6 @@ describe('SeriesScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('ファンドファイナンスでFluid Intelligenceを鍛える脳トレ')).toBeTruthy();
     });
-    expect(screen.getByText('伝え方を変える')).toBeTruthy();
     expect(screen.getByText('だれでも答えられる')).toBeTruthy();
   });
 
@@ -33,10 +32,10 @@ describe('SeriesScreen', () => {
     const onSelect = jest.fn();
     render(<SeriesScreen onSelect={onSelect} onOpenSettings={jest.fn()} />);
     await waitFor(() => {
-      expect(screen.getByTestId('series-persuasion')).toBeTruthy();
+      expect(screen.getByTestId('series-capital-call')).toBeTruthy();
     });
-    fireEvent.press(screen.getByTestId('series-persuasion'));
-    expect(onSelect).toHaveBeenCalledWith('persuasion');
+    fireEvent.press(screen.getByTestId('series-capital-call'));
+    expect(onSelect).toHaveBeenCalledWith('capital-call');
   });
 
   it('allows a series with fewer than nine questions, since a round repeats to fill nine', async () => {
@@ -56,7 +55,7 @@ describe('SeriesScreen', () => {
     await waitFor(() => {
       expect(screen.getByTestId('series-lag-capital-call')).toHaveTextContent('2-back');
     });
-    expect(screen.getByTestId('series-lag-persuasion')).toHaveTextContent('1-back');
+    expect(screen.getByTestId('series-lag-nav-finance')).toHaveTextContent('1-back');
   });
 
   it('has no difficulty badge on a card', async () => {

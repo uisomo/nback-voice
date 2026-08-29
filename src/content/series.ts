@@ -1,5 +1,5 @@
 import type { Question } from '../engine/types';
-import { loadBank, mergeLearned } from './bank';
+import { mergeLearned } from './bank';
 import { CATEGORIES_EN } from './translate';
 import rawJa from './series.json';
 import rawEn from './series.en.json';
@@ -11,7 +11,6 @@ import rawEn from './series.en.json';
  */
 export const CATEGORIES = [
   { id: 'finance', label: 'ファンドファイナンスでFluid Intelligenceを鍛える脳トレ' },
-  { id: 'delivery', label: '伝え方を変える' },
   { id: 'basics', label: 'だれでも答えられる' },
   { id: 'custom-decks', label: '自分のデッキ' },
 ] as const;
@@ -214,10 +213,6 @@ interface AuthoredSeries {
 const AUTHORED_JA = rawJa as AuthoredSeries[];
 const AUTHORED_EN = rawEn as AuthoredSeries[];
 
-const STANDARD_TITLE: Record<'ja' | 'en', string> = {
-  ja: '標準問題',
-  en: 'Standard Questions',
-};
 const CUSTOM_TITLE: Record<'ja' | 'en', string> = {
   ja: '自分の問題',
   en: 'My Questions',
@@ -267,12 +262,6 @@ export function listSeries({
 
   const synthesized: Series[] = [
     {
-      id: STANDARD_SERIES_ID,
-      category: 'basics',
-      title: STANDARD_TITLE[language],
-      questions: loadBank(learned).filter((q) => q.tier <= maxTier),
-    },
-    {
       id: CUSTOM_SERIES_ID,
       category: 'basics',
       title: CUSTOM_TITLE[language],
@@ -305,12 +294,15 @@ export function groupSeries(all: Series[], language: 'ja' | 'en' = 'ja'): Catego
 }
 
 /**
- * Resolve a stored id. Falls back to the standard series rather than throwing:
- * a renamed or removed series must not make the app unlaunchable.
+ * Resolve a stored id. Falls back to the custom series rather than
+ * throwing: a renamed or removed series must not make the app unlaunchable.
+ * `all[0]` is a last-resort guard against an empty list, which should never
+ * happen in practice since `custom` is always synthesized.
  */
 export function findSeries(all: Series[], id: string): Series {
   return (
     all.find((series) => series.id === id) ??
-    all.find((series) => series.id === STANDARD_SERIES_ID)!
+    all.find((series) => series.id === CUSTOM_SERIES_ID) ??
+    all[0]
   );
 }

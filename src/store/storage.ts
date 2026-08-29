@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STANDARD_SERIES_ID } from '../content/series';
+import { CUSTOM_SERIES_ID, STANDARD_SERIES_ID } from '../content/series';
 import { DEFAULT_BUDGET_BASE_MS } from '../engine/budget';
 import type { Question, RoundMode } from '../engine/types';
 
@@ -56,7 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fixedN: 1,
   maxTier: 2,
   mode: 'dual',
-  seriesId: STANDARD_SERIES_ID,
+  seriesId: CUSTOM_SERIES_ID,
   answerInput: 'typed',
   budgetBaseMs: DEFAULT_BUDGET_BASE_MS,
   language: 'ja',
