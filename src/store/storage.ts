@@ -274,10 +274,13 @@ export interface CustomDeck {
 /** Category id every user-authored deck is tagged with — shown as its own "自作" filter chip. */
 export const CUSTOM_DECK_CATEGORY = 'custom';
 
-/** A deck holds at most this many questions — kept small enough to review at a glance. */
+/**
+ * A deck holds at most this many questions — kept small enough to review at
+ * a glance. Still used by QuestionsScreen.tsx's draft-count guard; the
+ * per-tier ceiling enforced in addCustomDeck/updateCustomDeck is separate
+ * and tracked via tierLimits().
+ */
 export const MAX_DECK_QUESTIONS = 10;
-/** A user can keep at most this many decks at once. */
-export const MAX_CUSTOM_DECKS = 10;
 
 export interface TierLimits {
   maxDecks: number;
@@ -312,17 +315,19 @@ export async function loadCustomDecks(): Promise<CustomDeck[]> {
  * them, their learned synonyms.
  */
 export async function addCustomDeck(
+  tier: SubscriptionTier,
   title: string,
   category: string,
   drafts: { q: string; accept: string[] }[],
 ): Promise<CustomDeck> {
-  if (drafts.length > MAX_DECK_QUESTIONS) {
-    throw new Error(`A deck holds at most ${MAX_DECK_QUESTIONS} questions.`);
+  const limits = tierLimits(tier);
+  if (drafts.length > limits.maxQuestionsPerDeck) {
+    throw new Error(`Your plan allows at most ${limits.maxQuestionsPerDeck} questions per deck. Upgrade for more.`);
   }
 
   const decks = await loadCustomDecks();
-  if (decks.length >= MAX_CUSTOM_DECKS) {
-    throw new Error(`You can keep at most ${MAX_CUSTOM_DECKS} decks.`);
+  if (decks.length >= limits.maxDecks) {
+    throw new Error(`Your plan allows at most ${limits.maxDecks} decks. Upgrade for more.`);
   }
 
   let seq = await readJson<number>(KEY_CUSTOM_DECK_SEQ, 0);
@@ -356,13 +361,15 @@ export async function deleteCustomDeck(id: string): Promise<void> {
  * dropped rather than carried over under an unchanged id.
  */
 export async function updateCustomDeck(
+  tier: SubscriptionTier,
   id: string,
   title: string,
   category: string,
   drafts: { q: string; accept: string[] }[],
 ): Promise<CustomDeck> {
-  if (drafts.length > MAX_DECK_QUESTIONS) {
-    throw new Error(`A deck holds at most ${MAX_DECK_QUESTIONS} questions.`);
+  const limits = tierLimits(tier);
+  if (drafts.length > limits.maxQuestionsPerDeck) {
+    throw new Error(`Your plan allows at most ${limits.maxQuestionsPerDeck} questions per deck. Upgrade for more.`);
   }
 
   const decks = await loadCustomDecks();

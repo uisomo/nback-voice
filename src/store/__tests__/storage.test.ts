@@ -387,7 +387,7 @@ describe('custom decks', () => {
   });
 
   it('creates a deck with a title, category, and questions', async () => {
-    const created = await addCustomDeck('サブスク基礎', 'sub-finance', [
+    const created = await addCustomDeck('god', 'サブスク基礎', 'sub-finance', [
       { q: 'キャピタルコールとは？', accept: ['出資請求'] },
       { q: 'アドバンスレートとは？', accept: ['前貸し率'] },
     ]);
@@ -405,11 +405,11 @@ describe('custom decks', () => {
   });
 
   it('gives every question in every deck a globally unique id', async () => {
-    const deckA = await addCustomDeck('デッキA', 'sub-finance', [
+    const deckA = await addCustomDeck('god', 'デッキA', 'sub-finance', [
       { q: 'Q1', accept: ['A1'] },
       { q: 'Q2', accept: ['A2'] },
     ]);
-    const deckB = await addCustomDeck('デッキB', 'nav-finance', [
+    const deckB = await addCustomDeck('god', 'デッキB', 'nav-finance', [
       { q: 'Q3', accept: ['A3'] },
     ]);
     const ids = [...deckA.questions, ...deckB.questions].map((q) => q.id);
@@ -417,54 +417,34 @@ describe('custom decks', () => {
   });
 
   it('never reuses an id, even after a delete', async () => {
-    const first = await addCustomDeck('一つ目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const first = await addCustomDeck('god', '一つ目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     await deleteCustomDeck(first.id);
-    const second = await addCustomDeck('二つ目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const second = await addCustomDeck('god', '二つ目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     expect(second.questions[0].id).not.toBe(first.questions[0].id);
   });
 
   it('deletes only the named deck', async () => {
-    const a = await addCustomDeck('残る', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
-    const b = await addCustomDeck('消える', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
+    const a = await addCustomDeck('god', '残る', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const b = await addCustomDeck('god', '消える', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
     await deleteCustomDeck(b.id);
     expect((await loadCustomDecks()).map((d) => d.id)).toEqual([a.id]);
   });
 
   it('rejects a deck with more than 10 questions', async () => {
     const drafts = Array.from({ length: 11 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
-    await expect(addCustomDeck('多すぎ', 'sub-finance', drafts)).rejects.toThrow();
+    await expect(addCustomDeck('god', '多すぎ', 'sub-finance', drafts)).rejects.toThrow();
     expect(await loadCustomDecks()).toEqual([]);
   });
 
   it('accepts a deck with exactly 10 questions', async () => {
     const drafts = Array.from({ length: 10 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
-    const created = await addCustomDeck('ちょうど10', 'sub-finance', drafts);
+    const created = await addCustomDeck('god', 'ちょうど10', 'sub-finance', drafts);
     expect(created.questions).toHaveLength(10);
   });
 
-  it('rejects an 11th deck', async () => {
-    for (let i = 0; i < 10; i++) {
-      await addCustomDeck(`デッキ${i}`, 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
-    }
-    await expect(
-      addCustomDeck('11個目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]),
-    ).rejects.toThrow();
-    expect(await loadCustomDecks()).toHaveLength(10);
-  });
-
-  it('allows an 11th deck after one is deleted', async () => {
-    const ids: string[] = [];
-    for (let i = 0; i < 10; i++) {
-      ids.push((await addCustomDeck(`デッキ${i}`, 'sub-finance', [{ q: 'Q', accept: ['A'] }])).id);
-    }
-    await deleteCustomDeck(ids[0]);
-    await addCustomDeck('新しい11個目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
-    expect(await loadCustomDecks()).toHaveLength(10);
-  });
-
   it('updates title, category, and questions in place', async () => {
-    const created = await addCustomDeck('元の名前', 'sub-finance', [{ q: 'Q1', accept: ['A1'] }]);
-    const updated = await updateCustomDeck(created.id, '新しい名前', 'nav-finance', [
+    const created = await addCustomDeck('god', '元の名前', 'sub-finance', [{ q: 'Q1', accept: ['A1'] }]);
+    const updated = await updateCustomDeck('god', created.id, '新しい名前', 'nav-finance', [
       { q: 'Q2', accept: ['A2'] },
       { q: 'Q3', accept: ['A3'] },
     ]);
@@ -476,27 +456,78 @@ describe('custom decks', () => {
   });
 
   it('rejects updating a deck to more than 10 questions', async () => {
-    const created = await addCustomDeck('デッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const created = await addCustomDeck('god', 'デッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     const drafts = Array.from({ length: 11 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
-    await expect(updateCustomDeck(created.id, 'デッキ', 'sub-finance', drafts)).rejects.toThrow();
+    await expect(updateCustomDeck('god', created.id, 'デッキ', 'sub-finance', drafts)).rejects.toThrow();
     const [stored] = await loadCustomDecks();
     expect(stored.questions).toHaveLength(1);
   });
 
   it('drops learned synonyms for questions removed by the edit', async () => {
-    const created = await addCustomDeck('デッキ', 'sub-finance', [{ q: 'Q1', accept: ['A1'] }]);
+    const created = await addCustomDeck('god', 'デッキ', 'sub-finance', [{ q: 'Q1', accept: ['A1'] }]);
     const oldQuestionId = created.questions[0].id;
     await addLearned(oldQuestionId, 'べつのこたえ');
-    await updateCustomDeck(created.id, 'デッキ', 'sub-finance', [{ q: 'Q2', accept: ['A2'] }]);
+    await updateCustomDeck('god', created.id, 'デッキ', 'sub-finance', [{ q: 'Q2', accept: ['A2'] }]);
     expect(await loadLearned()).toEqual({});
   });
 
   it('leaves other decks untouched', async () => {
-    const a = await addCustomDeck('A', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
-    const b = await addCustomDeck('B', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
-    await updateCustomDeck(a.id, 'A改', 'sub-finance', [{ q: 'Q改', accept: ['A改'] }]);
+    const a = await addCustomDeck('god', 'A', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const b = await addCustomDeck('god', 'B', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
+    await updateCustomDeck('god', a.id, 'A改', 'sub-finance', [{ q: 'Q改', accept: ['A改'] }]);
     const decks = await loadCustomDecks();
     expect(decks.find((d) => d.id === b.id)!.title).toBe('B');
+  });
+
+  it('rejects any deck at all on the free tier', async () => {
+    await expect(
+      addCustomDeck('free', 'デッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]),
+    ).rejects.toThrow();
+    expect(await loadCustomDecks()).toEqual([]);
+  });
+
+  it('rejects a pro-tier deck with more than three questions', async () => {
+    const drafts = Array.from({ length: 4 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
+    await expect(
+      addCustomDeck('pro', '多すぎ', 'sub-finance', drafts),
+    ).rejects.toThrow();
+    expect(await loadCustomDecks()).toEqual([]);
+  });
+
+  it('accepts a pro-tier deck with exactly three questions', async () => {
+    const drafts = Array.from({ length: 3 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
+    const created = await addCustomDeck('pro', 'ちょうど3', 'sub-finance', drafts);
+    expect(created.questions).toHaveLength(3);
+  });
+
+  it('rejects a pro tier user creating a sixth deck', async () => {
+    for (let i = 0; i < 5; i++) {
+      await addCustomDeck('pro', `デッキ${i}`, 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    }
+    await expect(
+      addCustomDeck('pro', '6個目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]),
+    ).rejects.toThrow();
+    expect(await loadCustomDecks()).toHaveLength(5);
+  });
+
+  it('rejects a god tier user creating a 21st deck', async () => {
+    for (let i = 0; i < 20; i++) {
+      await addCustomDeck('god', `デッキ${i}`, 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    }
+    await expect(
+      addCustomDeck('god', '21個目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]),
+    ).rejects.toThrow();
+    expect(await loadCustomDecks()).toHaveLength(20);
+  });
+
+  it('rejects updating a pro-tier deck to more than three questions', async () => {
+    const created = await addCustomDeck('pro', 'デッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const drafts = Array.from({ length: 4 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
+    await expect(
+      updateCustomDeck('pro', created.id, 'デッキ', 'sub-finance', drafts),
+    ).rejects.toThrow();
+    const [stored] = await loadCustomDecks();
+    expect(stored.questions).toHaveLength(1);
   });
 });
 
