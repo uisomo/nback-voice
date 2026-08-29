@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STANDARD_SERIES_ID } from '../content/series';
+import { CUSTOM_SERIES_ID, STANDARD_SERIES_ID } from '../content/series';
 import { DEFAULT_BUDGET_BASE_MS } from '../engine/budget';
 import type { Question, RoundMode } from '../engine/types';
 
@@ -8,7 +8,7 @@ import type { Question, RoundMode } from '../engine/types';
  * scored: all four combinations are meaningful.
  */
 export type AnswerInput = 'voice' | 'typed';
-export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
+export type SubscriptionTier = 'free' | 'pro' | 'god';
 export type ThemeVariety = 'terminal' | 'executive' | 'quant';
 
 export interface Settings {
@@ -56,11 +56,11 @@ export const DEFAULT_SETTINGS: Settings = {
   fixedN: 1,
   maxTier: 2,
   mode: 'dual',
-  seriesId: STANDARD_SERIES_ID,
+  seriesId: CUSTOM_SERIES_ID,
   answerInput: 'typed',
   budgetBaseMs: DEFAULT_BUDGET_BASE_MS,
   language: 'ja',
-  subscriptionTier: 'pro',
+  subscriptionTier: 'free',
   themeVariety: 'terminal',
   selectedCategory: 'all',
 };
@@ -161,6 +161,12 @@ export async function appendHistory(record: RoundRecord): Promise<void> {
   const history = await loadHistory();
   history.push(record);
   await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(history));
+}
+
+/** How many rounds have been recorded under today's local date. */
+export function roundsPlayedToday(history: RoundRecord[]): number {
+  const today = localDate();
+  return history.filter((record) => record.date === today).length;
 }
 
 export async function loadLearned(): Promise<Record<string, string[]>> {
@@ -268,10 +274,36 @@ export interface CustomDeck {
 /** Category id every user-authored deck is tagged with — shown as its own "自作" filter chip. */
 export const CUSTOM_DECK_CATEGORY = 'custom';
 
-/** A deck holds at most this many questions — kept small enough to review at a glance. */
+/**
+ * A deck holds at most this many questions — kept small enough to review at
+ * a glance. Still used by QuestionsScreen.tsx's draft-count guard; the
+ * per-tier ceiling enforced in addCustomDeck/updateCustomDeck is separate
+ * and tracked via tierLimits().
+ */
 export const MAX_DECK_QUESTIONS = 10;
-/** A user can keep at most this many decks at once. */
-export const MAX_CUSTOM_DECKS = 10;
+
+export interface TierLimits {
+  maxDecks: number;
+  maxQuestionsPerDeck: number;
+  /** Rounds playable per local calendar day. Infinity means no cap. */
+  maxRoundsPerDay: number;
+}
+
+export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
+  free: { maxDecks: 0, maxQuestionsPerDeck: 0, maxRoundsPerDay: 3 },
+  pro: { maxDecks: 5, maxQuestionsPerDeck: 3, maxRoundsPerDay: Infinity },
+  god: { maxDecks: 20, maxQuestionsPerDeck: 10, maxRoundsPerDay: Infinity },
+};
+
+/**
+ * The only way limits should be read. A settings blob saved before a tier
+ * value was removed (e.g. the old 'enterprise') must not crash the app —
+ * it is treated as free rather than migrated, since the stored value is
+ * otherwise harmless.
+ */
+export function tierLimits(tier: SubscriptionTier): TierLimits {
+  return TIER_LIMITS[tier] ?? TIER_LIMITS.free;
+}
 
 export async function loadCustomDecks(): Promise<CustomDeck[]> {
   return readJson<CustomDeck[]>(KEY_CUSTOM_DECKS, []);
@@ -283,17 +315,19 @@ export async function loadCustomDecks(): Promise<CustomDeck[]> {
  * them, their learned synonyms.
  */
 export async function addCustomDeck(
+  tier: SubscriptionTier,
   title: string,
   category: string,
   drafts: { q: string; accept: string[] }[],
 ): Promise<CustomDeck> {
-  if (drafts.length > MAX_DECK_QUESTIONS) {
-    throw new Error(`A deck holds at most ${MAX_DECK_QUESTIONS} questions.`);
+  const limits = tierLimits(tier);
+  if (drafts.length > limits.maxQuestionsPerDeck) {
+    throw new Error(`Your plan allows at most ${limits.maxQuestionsPerDeck} questions per deck. Upgrade for more.`);
   }
 
   const decks = await loadCustomDecks();
-  if (decks.length >= MAX_CUSTOM_DECKS) {
-    throw new Error(`You can keep at most ${MAX_CUSTOM_DECKS} decks.`);
+  if (decks.length >= limits.maxDecks) {
+    throw new Error(`Your plan allows at most ${limits.maxDecks} decks. Upgrade for more.`);
   }
 
   let seq = await readJson<number>(KEY_CUSTOM_DECK_SEQ, 0);
@@ -327,13 +361,15 @@ export async function deleteCustomDeck(id: string): Promise<void> {
  * dropped rather than carried over under an unchanged id.
  */
 export async function updateCustomDeck(
+  tier: SubscriptionTier,
   id: string,
   title: string,
   category: string,
   drafts: { q: string; accept: string[] }[],
 ): Promise<CustomDeck> {
-  if (drafts.length > MAX_DECK_QUESTIONS) {
-    throw new Error(`A deck holds at most ${MAX_DECK_QUESTIONS} questions.`);
+  const limits = tierLimits(tier);
+  if (drafts.length > limits.maxQuestionsPerDeck) {
+    throw new Error(`Your plan allows at most ${limits.maxQuestionsPerDeck} questions per deck. Upgrade for more.`);
   }
 
   const decks = await loadCustomDecks();

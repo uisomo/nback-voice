@@ -15,9 +15,11 @@ import {
 import type { JudgeClient, Verdict } from '../../judge/types';
 import {
   addCustom,
+  appendHistory,
   DEFAULT_SETTINGS,
   loadHistory,
   loadN,
+  localDate,
   saveSettings,
 } from '../../store/storage';
 import { GameScreen } from '../GameScreen';
@@ -150,7 +152,7 @@ describe('GameScreen', () => {
   it('speaks 9 questions and finishes the round', async () => {
     const onFinished = jest.fn();
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
@@ -166,7 +168,7 @@ describe('GameScreen', () => {
   it('renders the grid at its original size, unaffected by the typed layout', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     expect(styleOf(getByTestId('cell-0'))?.width).toBe(96);
@@ -174,7 +176,7 @@ describe('GameScreen', () => {
 
   it('opens the mic once per step, including the trailing recall steps', async () => {
     const { deps, listener } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
@@ -184,7 +186,7 @@ describe('GameScreen', () => {
   it('grades every answer through the judge and reports a full answer score', async () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
@@ -201,7 +203,7 @@ describe('GameScreen', () => {
     };
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(offline);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
@@ -218,7 +220,7 @@ describe('GameScreen', () => {
     };
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(stalled);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
@@ -230,7 +232,7 @@ describe('GameScreen', () => {
 
   it('writes a history record for the round', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
@@ -241,20 +243,20 @@ describe('GameScreen', () => {
 
   it('lowers N after a round with no taps', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
     // Position 0/9, answers 9/9 → round score 0.5 → N would drop, but 1 is
     // the floor: there is no shorter lag than the question just asked.
-    expect(await loadN('standard')).toBe(1);
+    expect(await loadN('capital-call')).toBe(1);
   });
 
   it('stops with a message when permission is refused', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByText } = render(
       <GameScreen
-        seriesId="standard"
+        seriesId="capital-call"
         onFinished={jest.fn()}
         deps={{ ...deps, requestPermissions: async () => false }}
       />,
@@ -264,7 +266,7 @@ describe('GameScreen', () => {
 
   it('stops the listener on unmount mid-round', async () => {
     const { deps, listener } = makeDefaultDeps(alwaysCorrect);
-    const { unmount } = render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    const { unmount } = render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     // Land inside phase B of the first step (A=2000ms, B=3000ms at the
@@ -281,14 +283,13 @@ describe('GameScreen', () => {
     expect(listener.stopped).toBe(1);
   });
 
-  it('shows 問題が足りません when the difficulty filter empties the bank', async () => {
-    // maxTier: 0 filters out every question in the bank (tiers are 1 and 2).
-    // An empty pool is a handled state, not a crash: the owner is told what
-    // is wrong rather than being sent to the generic failure message.
-    await saveSettings({ ...DEFAULT_SETTINGS, maxTier: 0 });
+  it('shows 問題が足りません when the chosen series has no questions', async () => {
+    // The custom series starts empty until the owner adds a question. An
+    // empty pool is a handled state, not a crash: the owner is told what is
+    // wrong rather than being sent to the generic failure message.
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />,
     );
     expect(await findByText(/問題が足りません/)).toBeTruthy();
   });
@@ -304,7 +305,7 @@ describe('GameScreen', () => {
         new CannedListener('ぶぶぶ'),
       );
       const { findByText } = render(
-        <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+        <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
       );
       await beginRound();
       expect(await findByText(/準備に失敗しました/)).toBeTruthy();
@@ -324,7 +325,7 @@ describe('GameScreen paints during the utterance, not after it', () => {
     const speaker = new SlowFakeSpeaker();
     const { deps } = makeDeps(alwaysCorrect, speaker, new CannedListener('ぶぶぶ'));
     const { queryByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
 
@@ -351,7 +352,7 @@ describe('GameScreen paints during the utterance, not after it', () => {
     const speaker = new SlowFakeSpeaker();
     const { deps } = makeDeps(alwaysCorrect, speaker, new CannedListener('ぶぶぶ'));
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
 
@@ -379,7 +380,7 @@ describe('GameScreen phase A pacing', () => {
     const listener = new CannedListener('ぶぶぶ');
     const { deps } = makeDeps(alwaysCorrect, speaker, listener);
     const { queryByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
 
@@ -405,7 +406,7 @@ describe('GameScreen phase A pacing', () => {
     const speaker = new SlowFakeSpeaker();
     const listener = new CannedListener('ぶぶぶ');
     const { deps } = makeDeps(alwaysCorrect, speaker, listener);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     await act(async () => {
@@ -425,7 +426,7 @@ describe('GameScreen phase A pacing', () => {
     const speaker = new SlowFakeSpeaker();
     const listener = new CannedListener('ぶぶぶ');
     const { deps } = makeDeps(alwaysCorrect, speaker, listener);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     // The watchdog scales with the question's own length (see
@@ -454,7 +455,7 @@ describe('GameScreen question-only mode', () => {
     await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { queryByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await runWholeRound();
@@ -465,7 +466,7 @@ describe('GameScreen question-only mode', () => {
     await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const onFinished = jest.fn();
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
     await runWholeRound();
     expect(speaker.spoken).toHaveLength(9);
@@ -476,14 +477,14 @@ describe('GameScreen question-only mode', () => {
     await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
     await runWholeRound();
     const engine: RoundEngine = onFinished.mock.calls[0][0];
     expect(engine.positionScore).toBeNull();
     expect(engine.answerScore).toBe(1);
     // Answer channel alone is 1.0, so N rises even with no taps.
-    expect(await loadN('standard')).toBe(2);
+    expect(await loadN('capital-call')).toBe(2);
   });
 
   it('holds N when the judge is unreachable in question mode', async () => {
@@ -494,11 +495,11 @@ describe('GameScreen question-only mode', () => {
       },
     };
     const { deps } = makeDefaultDeps(offline);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await runWholeRound();
     // Both channels absent: nothing to adapt on, so N must not move.
-    expect(await loadN('standard')).toBe(1);
+    expect(await loadN('capital-call')).toBe(1);
   });
 });
 
@@ -518,7 +519,7 @@ describe('GameScreen series', () => {
   it('draws from an authored series without any settings change', async () => {
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(
-      <GameScreen seriesId="persuasion" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await runWholeRound();
@@ -540,7 +541,8 @@ describe('GameScreen series', () => {
     }
   });
 
-  it('falls back to the standard series for an unknown id', async () => {
+  it('falls back to the custom series for an unknown id', async () => {
+    await addCustom('一問だけ', 'あ');
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     render(
       <GameScreen seriesId="deleted-series" onFinished={jest.fn()} deps={deps} />,
@@ -553,10 +555,10 @@ describe('GameScreen series', () => {
   it('names the series on the warm-up screen before the mic opens', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(
-      <GameScreen seriesId="persuasion" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     expect(await screen.findByTestId('warmup-series')).toHaveTextContent(
-      '説得のデザイン ／ 18問',
+      'コミットメントとキャピタルコール ／ 14問',
     );
   });
 
@@ -566,11 +568,11 @@ describe('GameScreen series', () => {
     await saveSettings({ ...DEFAULT_SETTINGS, mode: 'question', answerInput: 'voice' });
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(
-      <GameScreen seriesId="persuasion" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await runWholeRound();
-    expect(await loadN('persuasion')).toBe(2);
+    expect(await loadN('capital-call')).toBe(2);
     // The standard series must not inherit a lag earned elsewhere.
     expect(await loadN('standard')).toBe(1);
   });
@@ -578,11 +580,47 @@ describe('GameScreen series', () => {
   it('stamps the series onto the history record', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(
-      <GameScreen seriesId="persuasion" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await runWholeRound();
-    expect((await loadHistory())[0].seriesId).toBe('persuasion');
+    expect((await loadHistory())[0].seriesId).toBe('capital-call');
+  });
+});
+
+describe('GameScreen daily round limit', () => {
+  it('blocks a free-tier player after three rounds today', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'free' });
+    const today = localDate();
+    for (let i = 0; i < 3; i++) {
+      await appendHistory({
+        date: today,
+        n: 1,
+        positionScore: 1,
+        answerScore: 1,
+        unresolved: 0,
+      });
+    }
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
+    expect(await screen.findByText(/上限|limit/)).toBeTruthy();
+  });
+
+  it('does not block a pro-tier player regardless of rounds played today', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'pro' });
+    const today = localDate();
+    for (let i = 0; i < 5; i++) {
+      await appendHistory({
+        date: today,
+        n: 1,
+        positionScore: 1,
+        answerScore: 1,
+        unresolved: 0,
+      });
+    }
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
+    expect(await screen.findByTestId('warmup-series')).toBeTruthy();
   });
 });
 
@@ -597,7 +635,7 @@ describe('GameScreen transcript capture', () => {
     };
     // A real listener, so push()/stop() do their actual work.
     const { deps } = makeDeps(recording, new FakeSpeaker(), new FakeListener());
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     // Step 2 is the first scored step at N=2. With a=2000/b=3000 its answer
@@ -622,7 +660,7 @@ describe('GameScreen live transcript', () => {
   it('shows what the recognizer is hearing while the mic is open', async () => {
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     // Step 0 phase B (a=2000, b=3000 at the 5s default).
@@ -643,7 +681,7 @@ describe('GameScreen live transcript', () => {
     // has to still be there to be coloured.
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { queryByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -664,7 +702,7 @@ describe('GameScreen live transcript', () => {
   it('clears the answer when the mic opens for the next step', async () => {
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { queryByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -685,7 +723,7 @@ describe('GameScreen live transcript', () => {
   it('keeps the live text neutral — the verdict is not known yet', async () => {
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -729,7 +767,7 @@ describe('GameScreen late final results', () => {
       // would resolve the answer without ever calling the judge.
       new LateFinalListener('てすとおんせい'),
     );
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await runWholeRound();
 
@@ -740,7 +778,7 @@ describe('GameScreen late final results', () => {
   it('forwards the recognizer session end so a silent step cannot stall the round', async () => {
     const listener = new LateFinalListener(null); // never delivers by itself
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), listener);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     await act(async () => {
@@ -761,7 +799,7 @@ describe('GameScreen late final results', () => {
   it('marks a result final so the wait ends with the last word, not the bound', async () => {
     const listener = new LateFinalListener(null);
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), listener);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     await act(async () => {
@@ -808,7 +846,7 @@ describe('GameScreen live tap colour', () => {
   it('rings the tapped square green when it matches the step N back', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -832,7 +870,7 @@ describe('GameScreen live tap colour', () => {
   it('rings it red when it does not', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -853,7 +891,7 @@ describe('GameScreen live tap colour', () => {
   it('drops the colour when the next step starts', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -879,7 +917,7 @@ describe('GameScreen live answer colour', () => {
   it('is neutral while the verdict is still out', async () => {
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -895,7 +933,7 @@ describe('GameScreen live answer colour', () => {
   it('turns green when the judge accepts the answer', async () => {
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     // Step 2 is the first scored step at N=2.
@@ -920,7 +958,7 @@ describe('GameScreen live answer colour', () => {
     };
     const { deps } = makeDeps(rejecting, new FakeSpeaker(), new FakeListener());
     const { getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -943,7 +981,7 @@ describe('GameScreen recognizer failures', () => {
     // no way to tell a refused microphone from their own silence.
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -964,7 +1002,7 @@ describe('GameScreen recognizer failures', () => {
   it('clears the error once the recognizer produces a result again', async () => {
     const { deps } = makeDeps(alwaysCorrect, new FakeSpeaker(), new FakeListener());
     const { queryByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -984,7 +1022,7 @@ describe('GameScreen recognizer failures', () => {
     // Saying nothing on one step is ordinary; it is 聞き取れず, not an error.
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { queryByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await beginRound();
     await act(async () => {
@@ -1003,7 +1041,7 @@ describe('GameScreen warm-up gate', () => {
     // iOS drops utterances that did not come from a gesture, so a round that
     // starts on its own is silent for its first questions.
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await act(async () => {
       await jest.advanceTimersByTimeAsync(30_000);
     });
@@ -1014,7 +1052,7 @@ describe('GameScreen warm-up gate', () => {
   it('shows an arithmetic item to tap while the round loads', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
 
     expect(await findByTestId('warmup-n-select')).toBeTruthy();
@@ -1024,7 +1062,7 @@ describe('GameScreen warm-up gate', () => {
   it('unlocks the synthesizer inside the tap', async () => {
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     const { findByTestId, getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await findByTestId('warmup-start');
 
@@ -1039,7 +1077,7 @@ describe('GameScreen warm-up gate', () => {
     const onFinished = jest.fn();
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
     const { findByTestId, getByTestId } = render(
-      <GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />,
     );
     await findByTestId('warmup-start');
     await act(async () => {
@@ -1054,7 +1092,7 @@ describe('GameScreen warm-up gate', () => {
   it('starts the round at the N chosen in the dropdown', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByTestId, getByTestId, findAllByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await findByTestId('warmup-start');
     await act(async () => {
@@ -1070,7 +1108,7 @@ describe('GameScreen warm-up gate', () => {
   it('shows which lag this round is, before it starts', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     expect(await findByText(/1-back/)).toBeTruthy();
     expect(await findByText(/1つ前の質問/)).toBeTruthy();
@@ -1079,7 +1117,7 @@ describe('GameScreen warm-up gate', () => {
   it('keeps the lag on screen during the round', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const { findByTestId, getByTestId, findByText } = render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />,
     );
     await findByTestId('warmup-start');
     await act(async () => {
@@ -1102,7 +1140,7 @@ describe('GameScreen typed mode', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const listener = new FakeListener();
     render(
-      <GameScreen seriesId="standard" onFinished={jest.fn()} deps={{ ...deps, listener }} />,
+      <GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={{ ...deps, listener }} />,
     );
     await beginRound();
     expect(screen.getByTestId('typed-answer-input')).toBeTruthy();
@@ -1117,7 +1155,7 @@ describe('GameScreen typed mode', () => {
   it('never finishes on its own, however long it waits', async () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
     await runWholeRound();
     expect(onFinished).not.toHaveBeenCalled();
@@ -1126,7 +1164,7 @@ describe('GameScreen typed mode', () => {
   it('finishes once every answer is submitted', async () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
 
     // 9 scored steps plus the observe-only ones; each pass advances phase A
@@ -1152,7 +1190,7 @@ describe('GameScreen typed mode', () => {
   /** Nothing is owed on the first N steps, so nothing should be asked for. */
   it('does not ask for an answer on steps with nothing to recall', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
 
@@ -1183,7 +1221,7 @@ describe('GameScreen typed mode', () => {
    */
   it('advances an answer window on submit with no timer advance', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     // Step 0 (observe-only) self-closes after its own 5000; step 1 is the
@@ -1209,7 +1247,7 @@ describe('GameScreen typed mode', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     const listener = new CannedListener('こたえ');
     render(
-      <GameScreen seriesId="standard" onFinished={onFinished} deps={{ ...deps, listener }} />,
+      <GameScreen seriesId="capital-call" onFinished={onFinished} deps={{ ...deps, listener }} />,
     );
     await beginRound();
     await runWholeRound();
@@ -1231,7 +1269,7 @@ describe('GameScreen typed answer feedback', () => {
    */
   it('paints neither layout until the settings say which one', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
 
     expect(screen.queryByTestId('cell-0')).toBeNull();
 
@@ -1247,7 +1285,7 @@ describe('GameScreen typed answer feedback', () => {
    */
   it('shows the sent answer, and marks it once the judge has spoken', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     // Step 1 is the first window that owes an answer at N=1; step 0 is a
@@ -1285,7 +1323,7 @@ describe('GameScreen typed answer feedback', () => {
   it('ignores a 送る tap once the answer window has closed', async () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
 
     for (let i = 0; i < 24; i++) {
@@ -1319,7 +1357,7 @@ describe('GameScreen typed answer feedback', () => {
    */
   it('opens the field at the same moment as the question', async () => {
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     // Step 1 is the first step that owes an answer at N=1. Its window opens
@@ -1344,7 +1382,7 @@ describe('GameScreen typed answer feedback', () => {
    */
   it('keeps the previous verdict on screen briefly into the next step', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(5000);
@@ -1370,7 +1408,7 @@ describe('GameScreen typed answer feedback', () => {
    */
   it('clears the verdict on its own a short while after it lands', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(5000);
@@ -1390,7 +1428,7 @@ describe('GameScreen typed answer feedback', () => {
   /** Sending nothing is 聞き取れず, not the previous step's verdict again. */
   it('takes the previous verdict down when nothing is sent', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(5000);
@@ -1412,7 +1450,7 @@ describe('GameScreen typed answer feedback', () => {
 
   it('shows the question being memorised, never the one being answered', async () => {
     const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(0);
@@ -1434,7 +1472,7 @@ describe('GameScreen typed answer feedback', () => {
 
   it('empties the question block on the trailing steps', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
     expect(screen.getByTestId('current-question').props.children).not.toBe('');
 
@@ -1532,7 +1570,7 @@ describe('GameScreen answer clock', () => {
   it('is gone once the round is over', async () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
 
     for (let i = 0; i < 24; i++) {
@@ -1561,7 +1599,7 @@ describe('language-driven locale', () => {
   it('constructs the real ExpoSpeaker/ExpoListener with the settings locale, not the ja-JP default', async () => {
     await saveSettings({ ...DEFAULT_SETTINGS, language: 'en' });
     const Speech = require('expo-speech');
-    render(<GameScreen seriesId="standard" onFinished={() => {}} />);
+    render(<GameScreen seriesId="capital-call" onFinished={() => {}} />);
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -1596,7 +1634,7 @@ describe('GameScreen double-press guard', () => {
    */
   it('accepts a fast genuine answer to the next question without delay', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
     await act(async () => {
@@ -1622,7 +1660,7 @@ describe('GameScreen double-press guard', () => {
   it('still ignores a press once the round is over', async () => {
     const onFinished = jest.fn();
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    render(<GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />);
+    render(<GameScreen seriesId="capital-call" onFinished={onFinished} deps={deps} />);
     await beginRound();
 
     for (let i = 0; i < 24; i++) {

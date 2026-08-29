@@ -31,12 +31,15 @@ import {
   appendHistory,
   loadApiKey,
   loadCustom,
+  loadHistory,
   loadLearned,
   loadN,
   loadSettings,
   localDate,
   phaseDurations,
+  roundsPlayedToday,
   saveN,
+  tierLimits,
 } from '../store/storage';
 import { Grid } from './Grid';
 
@@ -285,6 +288,14 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         // here rather than trusting the settings screen's guard alone.
         if (pool.length < MIN_QUESTIONS) {
           setLabel(strings.game.notEnoughQuestions);
+          return;
+        }
+
+        const history = await loadHistory();
+        if (cancelled) return;
+        const limit = tierLimits(settings.subscriptionTier).maxRoundsPerDay;
+        if (roundsPlayedToday(history) >= limit) {
+          setLabel(strings.game.dailyLimitReached);
           return;
         }
 

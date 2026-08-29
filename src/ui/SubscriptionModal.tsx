@@ -11,14 +11,63 @@ interface Props {
   onTierChanged?: (newTier: SubscriptionTier) => void;
 }
 
+interface TierCopy {
+  tier: SubscriptionTier;
+  tabLabel: string;
+  title: string;
+  monthlyPrice: string;
+  annualPrice: string;
+  annualNote: string;
+  description: string;
+  selectLabel: string;
+  activeLabel: string;
+}
+
+const TIERS: TierCopy[] = [
+  {
+    tier: 'free',
+    tabLabel: 'Starter',
+    title: 'Starter',
+    monthlyPrice: '$0',
+    annualPrice: '$0',
+    annualNote: '',
+    description: '自作問題不可・教材は1日3回まで。',
+    selectLabel: 'このプランにする',
+    activeLabel: '現在のプラン',
+  },
+  {
+    tier: 'pro',
+    tabLabel: 'Funds Finance Pro',
+    title: 'Funds Finance Pro',
+    monthlyPrice: '$10',
+    annualPrice: '$5',
+    annualNote: 'コーヒー一杯分',
+    description: '解回数無制限・自作問題は最大5デッキ×3問まで。',
+    selectLabel: 'このプランにする',
+    activeLabel: '現在のプラン',
+  },
+  {
+    tier: 'god',
+    tabLabel: 'Funds Finance God',
+    title: 'Funds Finance God',
+    monthlyPrice: '$20',
+    annualPrice: '$10',
+    annualNote: '昼食一回分',
+    description: '解回数無制限・自作問題は最大20デッキ×10問まで。',
+    selectLabel: 'このプランにする',
+    activeLabel: '現在のプラン',
+  },
+];
+
 export function SubscriptionModal({
   visible,
   onClose,
-  currentTier = 'pro',
+  currentTier = 'free',
   themeVariety = 'terminal',
   onTierChanged,
 }: Props) {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
+  const [activeTab, setActiveTab] = useState<SubscriptionTier>(currentTier);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(currentTier);
   const theme = getTheme(themeVariety);
 
@@ -31,6 +80,10 @@ export function SubscriptionModal({
 
   if (!visible) return null;
 
+  const active = TIERS.find((t) => t.tier === activeTab)!;
+  const price =
+    active.tier === 'free' ? active.monthlyPrice : billingCycle === 'annual' ? active.annualPrice : active.monthlyPrice;
+
   return (
     <View style={[styles.overlay, { backgroundColor: 'rgba(5, 8, 17, 0.85)' }]}>
       <View
@@ -39,16 +92,10 @@ export function SubscriptionModal({
           { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
         ]}
       >
-        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerTextGroup}>
-            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
-              Financial Pro Membership
-            </Text>
-            <Text style={[styles.headerSub, { color: theme.textSecondary }]}>
-              Unlock all specialized financial flashcard tracks & Voice N-Back AI
-            </Text>
-          </View>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+            Financial Pro Membership
+          </Text>
           <Pressable
             onPress={onClose}
             style={({ pressed }) => [
@@ -61,202 +108,108 @@ export function SubscriptionModal({
           </Pressable>
         </View>
 
-        {/* Billing Cycle Toggle */}
-        <View style={[styles.cycleContainer, { backgroundColor: theme.bg }]}>
-          <Pressable
-            onPress={() => setBillingCycle('monthly')}
-            style={[
-              styles.cycleTab,
-              billingCycle === 'monthly' && { backgroundColor: theme.cardBg },
-            ]}
-          >
-            <Text
+        <View style={styles.tabRow}>
+          {TIERS.map((t) => (
+            <Pressable
+              key={t.tier}
+              onPress={() => setActiveTab(t.tier)}
               style={[
-                styles.cycleText,
+                styles.tab,
                 {
-                  color:
-                    billingCycle === 'monthly' ? theme.accentPrimary : theme.textMuted,
+                  backgroundColor: activeTab === t.tier ? theme.accentGold : theme.bg,
+                  borderColor: theme.cardBorder,
                 },
               ]}
             >
-              Monthly Billing
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setBillingCycle('annual')}
-            style={[
-              styles.cycleTab,
-              billingCycle === 'annual' && { backgroundColor: theme.cardBg },
-            ]}
-          >
-            <Text
-              style={[
-                styles.cycleText,
-                {
-                  color:
-                    billingCycle === 'annual' ? theme.accentGold : theme.textMuted,
-                },
-              ]}
-            >
-              Annual Billing 🔥 (Save 20%)
-            </Text>
-          </Pressable>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: activeTab === t.tier ? '#000' : theme.textPrimary },
+                ]}
+              >
+                {t.tabLabel}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         <ScrollView style={styles.content}>
-          {/* Tier Cards Grid */}
-          <View style={styles.tiersGrid}>
-            {/* Free Starter Tier */}
-            <View
-              style={[
-                styles.tierCard,
-                { backgroundColor: theme.bg, borderColor: theme.cardBorder },
-                selectedTier === 'free' && { borderColor: theme.textMuted, borderWidth: 2 },
-              ]}
-            >
-              <Text style={[styles.tierBadge, { color: theme.textMuted }]}>
-                BASIC ACCESS
-              </Text>
-              <Text style={[styles.tierTitle, { color: theme.textPrimary }]}>
-                Starter Desk
-              </Text>
-              <View style={styles.priceRow}>
-                <Text style={[styles.price, { color: theme.textPrimary }]}>$0</Text>
-                <Text style={[styles.priceUnit, { color: theme.textMuted }]}>/ forever</Text>
+          <View
+            style={[
+              styles.tierCard,
+              { backgroundColor: theme.bg, borderColor: theme.cardBorder },
+            ]}
+          >
+            <Text style={[styles.tierTitle, { color: theme.textPrimary }]}>{active.title}</Text>
+
+            {active.tier !== 'free' && (
+              <View style={[styles.cycleContainer, { backgroundColor: theme.cardBg }]}>
+                <Pressable
+                  onPress={() => setBillingCycle('annual')}
+                  style={[
+                    styles.cycleTab,
+                    billingCycle === 'annual' && { backgroundColor: theme.badgeBg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.cycleText,
+                      { color: billingCycle === 'annual' ? theme.accentGold : theme.textMuted },
+                    ]}
+                  >
+                    年間
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setBillingCycle('monthly')}
+                  style={[
+                    styles.cycleTab,
+                    billingCycle === 'monthly' && { backgroundColor: theme.badgeBg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.cycleText,
+                      { color: billingCycle === 'monthly' ? theme.accentGold : theme.textMuted },
+                    ]}
+                  >
+                    月額
+                  </Text>
+                </Pressable>
               </View>
-              <Text style={[styles.tierDesc, { color: theme.textSecondary }]}>
-                Essential financial flashcards & 1-back N-Back practice.
-              </Text>
-              <Pressable
-                onPress={() => void handleSelectPlan('free')}
-                style={[
-                  styles.planButton,
-                  {
-                    backgroundColor:
-                      selectedTier === 'free' ? theme.cardBorder : 'transparent',
-                    borderColor: theme.cardBorder,
-                    borderWidth: 1,
-                  },
-                ]}
-              >
-                <Text style={[styles.planButtonText, { color: theme.textPrimary }]}>
-                  {selectedTier === 'free' ? 'Current Plan' : 'Select Free'}
-                </Text>
-              </Pressable>
+            )}
+
+            <View style={styles.priceRow}>
+              <Text style={[styles.price, { color: theme.accentGold }]}>{price}</Text>
+              <Text style={[styles.priceUnit, { color: theme.textSecondary }]}>/ month</Text>
             </View>
-
-            {/* Wall Street Pro Tier (Featured) */}
-            <View
-              style={[
-                styles.tierCard,
-                styles.featuredCard,
-                { backgroundColor: theme.badgeBg, borderColor: theme.accentGold },
-              ]}
-            >
-              <View style={[styles.popularTag, { backgroundColor: theme.accentGold }]}>
-                <Text style={styles.popularTagText}>MOST POPULAR FOR PROS</Text>
-              </View>
-              <Text style={[styles.tierTitle, { color: theme.textPrimary }]}>
-                Wall Street Pro
+            {active.tier !== 'free' && billingCycle === 'annual' && (
+              <Text style={[styles.annualNote, { color: theme.textMuted }]}>
+                {active.annualNote}
               </Text>
-              <View style={styles.priceRow}>
-                <Text style={[styles.price, { color: theme.accentGold }]}>
-                  {billingCycle === 'annual' ? '$19.99' : '$29.99'}
-                </Text>
-                <Text style={[styles.priceUnit, { color: theme.textSecondary }]}>/ month</Text>
-              </View>
-              <Text style={[styles.tierDesc, { color: theme.textSecondary }]}>
-                Full access to all 7 Financial Persona tracks, Unlimited Voice N-Back AI & Speech Judge.
-              </Text>
+            )}
 
-              <View style={styles.featureList}>
-                <Text style={[styles.featureItem, { color: theme.textPrimary }]}>
-                  ✓ All 7 Financial Persona Decks
-                </Text>
-                <Text style={[styles.featureItem, { color: theme.textPrimary }]}>
-                  ✓ Unlimited AI Speech Recognition
-                </Text>
-                <Text style={[styles.featureItem, { color: theme.textPrimary }]}>
-                  ✓ Adaptive N-Back Lag (Up to 5-back)
-                </Text>
-                <Text style={[styles.featureItem, { color: theme.textPrimary }]}>
-                  ✓ Custom Flashcard Importer & Editor
-                </Text>
-                <Text style={[styles.featureItem, { color: theme.textPrimary }]}>
-                  ✓ Real-time Speech AI Judge (Claude)
-                </Text>
-              </View>
+            <Text style={[styles.tierDesc, { color: theme.textSecondary }]}>
+              {active.description}
+            </Text>
 
-              <Pressable
-                onPress={() => void handleSelectPlan('pro')}
-                style={[
-                  styles.planButton,
-                  { backgroundColor: theme.accentGold },
-                ]}
-              >
-                <Text style={[styles.planButtonText, { color: '#000', fontWeight: 'bold' }]}>
-                  {selectedTier === 'pro' ? 'Active Subscription ✓' : 'Upgrade to Pro'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Enterprise Desk */}
-            <View
+            <Pressable
+              onPress={() => void handleSelectPlan(active.tier)}
               style={[
-                styles.tierCard,
-                { backgroundColor: theme.bg, borderColor: theme.cardBorder },
-                selectedTier === 'enterprise' && {
-                  borderColor: theme.accentPrimary,
-                  borderWidth: 2,
+                styles.planButton,
+                {
+                  backgroundColor:
+                    selectedTier === active.tier ? theme.cardBorder : theme.accentGold,
                 },
               ]}
             >
-              <Text style={[styles.tierBadge, { color: theme.accentPrimary }]}>
-                INSTITUTIONAL
+              <Text style={[styles.planButtonText, { color: '#000', fontWeight: 'bold' }]}>
+                {selectedTier === active.tier ? active.activeLabel : active.selectLabel}
               </Text>
-              <Text style={[styles.tierTitle, { color: theme.textPrimary }]}>
-                Enterprise Desk
-              </Text>
-              <View style={styles.priceRow}>
-                <Text style={[styles.price, { color: theme.accentPrimary }]}>
-                  {billingCycle === 'annual' ? '$79' : '$99'}
-                </Text>
-                <Text style={[styles.priceUnit, { color: theme.textMuted }]}>/ seat / mo</Text>
-              </View>
-              <Text style={[styles.tierDesc, { color: theme.textSecondary }]}>
-                For hedge funds, bank desks, and investment teams with team analytics & custom compliance.
-              </Text>
-              <Pressable
-                onPress={() => void handleSelectPlan('enterprise')}
-                style={[
-                  styles.planButton,
-                  {
-                    backgroundColor:
-                      selectedTier === 'enterprise' ? theme.accentPrimary : 'transparent',
-                    borderColor: theme.accentPrimary,
-                    borderWidth: 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.planButtonText,
-                    {
-                      color:
-                        selectedTier === 'enterprise' ? '#000' : theme.accentPrimary,
-                      fontWeight: '600',
-                    },
-                  ]}
-                >
-                  {selectedTier === 'enterprise' ? 'Active Enterprise ✓' : 'Select Enterprise'}
-                </Text>
-              </Pressable>
-            </View>
+            </Pressable>
           </View>
         </ScrollView>
 
-        {/* Footer Action */}
         <View style={[styles.footer, { borderTopColor: theme.cardBorder }]}>
           <Text style={[styles.footerNote, { color: theme.textMuted }]}>
             🔒 Secure SSL Encrypted. Cancel or modify subscription anytime.
@@ -284,7 +237,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '100%',
-    maxWidth: 680,
+    maxWidth: 480,
     maxHeight: '90%',
     borderRadius: 16,
     borderWidth: 1,
@@ -296,119 +249,99 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.08)',
   },
-  headerTextGroup: {
-    flex: 1,
-    flexShrink: 1,
-    marginRight: 12,
-  },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: 'bold',
   },
-  headerSub: {
-    fontSize: 13,
-    marginTop: 4,
-  },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
-  cycleContainer: {
+  tabRow: {
     flexDirection: 'row',
-    margin: 16,
-    padding: 4,
-    borderRadius: 10,
+    gap: 6,
+    padding: 12,
   },
-  cycleTab: {
+  tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
   },
-  cycleText: {
-    fontSize: 14,
-    fontWeight: '600',
+  tabText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   content: {
     paddingHorizontal: 16,
-  },
-  tiersGrid: {
-    gap: 16,
-    paddingBottom: 20,
   },
   tierCard: {
     borderRadius: 12,
     borderWidth: 1,
     padding: 18,
-    position: 'relative',
-  },
-  featuredCard: {
-    borderWidth: 2,
-  },
-  popularTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    marginBottom: 10,
-  },
-  popularTagText: {
-    color: '#000',
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  tierBadge: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    marginBottom: 4,
+    marginBottom: 16,
   },
   tierTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  cycleContainer: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 3,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  cycleTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+  },
+  cycleText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginVertical: 8,
   },
   price: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 'bold',
   },
   priceUnit: {
     fontSize: 13,
     marginLeft: 6,
   },
+  annualNote: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   tierDesc: {
     fontSize: 13,
     lineHeight: 18,
+    marginTop: 10,
     marginBottom: 14,
-  },
-  featureList: {
-    gap: 6,
-    marginBottom: 16,
-  },
-  featureItem: {
-    fontSize: 13,
   },
   planButton: {
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 4,
   },
   planButtonText: {
     fontSize: 14,
