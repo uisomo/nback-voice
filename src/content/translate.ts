@@ -25,6 +25,7 @@ export const CATEGORIES_EN: Record<string, string> = {
   finance: 'Building financial vocabulary',
   delivery: 'Changing how you explain it',
   basics: 'Anyone can answer',
+  'custom-decks': 'My decks',
 };
 
 /**

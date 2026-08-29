@@ -7,6 +7,7 @@ import {
   findSeries,
   groupSeries,
   listSeries,
+  type CustomDeck,
 } from '../series';
 import { normalizeTranscript } from '../normalize';
 import { MIN_QUESTIONS } from '../pool';
@@ -18,6 +19,13 @@ const CUSTOM: Question[] = [
 ];
 
 const all = () => listSeries({ custom: CUSTOM, learned: {}, maxTier: 2 });
+
+const DECK: CustomDeck = {
+  id: 'deck_1',
+  title: '自作デッキ',
+  category: 'sub-finance',
+  questions: [{ id: 'deck_2', tier: 0, q: '自作問1', accept: ['う'] }],
+};
 
 describe('series.json data contract', () => {
   const authored = JSON.parse(
@@ -167,6 +175,39 @@ describe('listSeries', () => {
     const rank = (c: string) => CATEGORIES.findIndex((x) => x.id === c);
     const ranks = categories.map(rank);
     expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
+  });
+});
+
+describe('listSeries with custom decks', () => {
+  it('turns each custom deck into its own series under the custom-decks category', () => {
+    const list = listSeries({ custom: [], learned: {}, maxTier: 2, customDecks: [DECK] });
+    const series = list.find((s) => s.id === DECK.id)!;
+    expect(series).toBeDefined();
+    expect(series.title).toBe(DECK.title);
+    expect(series.category).toBe('custom-decks');
+    expect(series.questions.map((q) => q.id)).toEqual(['deck_2']);
+  });
+
+  it('carries the funds-finance category id through for filtering', () => {
+    const list = listSeries({ custom: [], learned: {}, maxTier: 2, customDecks: [DECK] });
+    const series = list.find((s) => s.id === DECK.id)!;
+    expect(series.fundsCategory).toBe('sub-finance');
+  });
+
+  it('merges learned synonyms onto custom deck questions', () => {
+    const list = listSeries({
+      custom: [],
+      learned: { deck_2: ['ええ'] },
+      maxTier: 2,
+      customDecks: [DECK],
+    });
+    const series = list.find((s) => s.id === DECK.id)!;
+    expect(series.questions[0].accept).toEqual(['う', 'ええ']);
+  });
+
+  it('omits the custom-decks category when there are no custom decks', () => {
+    const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
+    expect(list.some((s) => s.category === 'custom-decks')).toBe(false);
   });
 });
 

@@ -200,6 +200,40 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           half was clipped away with no way to reach it. 閉じる stays outside,
           below, so the way out is never the thing you have to scroll for. */}
       <ScrollView testID="settings-scroll" style={styles.body}>
+        <Text style={styles.label}>🎨 Theme Variety (3 Designs)</Text>
+        <View style={styles.row}>
+          {[
+            { id: 'terminal', label: 'Bloomberg Terminal' },
+            { id: 'executive', label: 'Wall St Executive' },
+            { id: 'quant', label: 'Quant Cyber Neon' },
+          ].map((item) => (
+            <Pressable
+              key={item.id}
+              onPress={() => update({ themeVariety: item.id as any })}
+              style={[styles.chip, settings.themeVariety === item.id && styles.chipOn]}
+            >
+              <Text style={styles.chipLabel}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.label}>💳 Pro Subscription Plan</Text>
+        <View style={styles.row}>
+          {[
+            { id: 'free', label: 'Free Starter' },
+            { id: 'pro', label: 'Wall St Pro ($29/mo)' },
+            { id: 'enterprise', label: 'Enterprise Desk' },
+          ].map((item) => (
+            <Pressable
+              key={item.id}
+              onPress={() => update({ subscriptionTier: item.id as any })}
+              style={[styles.chip, settings.subscriptionTier === item.id && styles.chipOn]}
+            >
+              <Text style={styles.chipLabel}>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         <Text style={styles.label}>{strings.settings.sectionMode}</Text>
         <View style={styles.row}>
           {MODE_CHOICES.map(({ mode, labelKey }) => (

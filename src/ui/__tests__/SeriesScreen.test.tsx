@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { addCustom, saveN } from '../../store/storage';
+import { FUNDS_FINANCE_CATEGORIES } from '../../content/series';
+import { addCustom, addCustomDeck, saveN } from '../../store/storage';
 import { SeriesScreen } from '../SeriesScreen';
 
 beforeEach(async () => {
@@ -66,5 +67,34 @@ describe('SeriesScreen', () => {
     });
     fireEvent.press(screen.getByText('設定'));
     expect(onOpenSettings).toHaveBeenCalled();
+  });
+});
+
+describe('SeriesScreen custom decks', () => {
+  it('shows a created deck under its own 自分のデッキ section', async () => {
+    await addCustomDeck('サブスク基礎', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('自分のデッキ')).toBeTruthy();
+    });
+    expect(screen.getByText('サブスク基礎')).toBeTruthy();
+  });
+
+  it('filters the picker to the selected funds-finance category', async () => {
+    await addCustomDeck('サブスクデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    await addCustomDeck('NAVデッキ', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
+    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('サブスクデッキ')).toBeTruthy();
+    });
+    expect(screen.getByText('NAVデッキ')).toBeTruthy();
+
+    const subCategory = FUNDS_FINANCE_CATEGORIES.find((c) => c.id === 'sub-finance')!;
+    fireEvent.press(screen.getByText(subCategory.nameEn.split('&')[0].trim()));
+
+    await waitFor(() => {
+      expect(screen.queryByText('NAVデッキ')).toBeNull();
+    });
+    expect(screen.getByText('サブスクデッキ')).toBeTruthy();
   });
 });

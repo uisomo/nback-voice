@@ -91,6 +91,12 @@ export interface Strings {
     add: string;
     delete: string;
     cancel: string;
+    newDeck: string;
+    singleMode: string;
+    deckNamePlaceholder: string;
+    addQuestion: string;
+    saveDeck: string;
+    removeQuestion: string;
   };
 }
 
@@ -185,6 +191,12 @@ export const ja: Strings = {
     add: '追加',
     delete: '削除',
     cancel: '取消',
+    newDeck: '新しいデッキ',
+    singleMode: '1問だけ追加',
+    deckNamePlaceholder: 'デッキ名',
+    addQuestion: '質問を追加',
+    saveDeck: 'デッキを保存',
+    removeQuestion: '削除',
   },
 };
 
@@ -279,6 +291,12 @@ export const en: Strings = {
     add: 'Add',
     delete: 'Delete',
     cancel: 'Cancel',
+    newDeck: 'New Deck',
+    singleMode: 'Add one question',
+    deckNamePlaceholder: 'Deck name',
+    addQuestion: 'Add Question',
+    saveDeck: 'Save Deck',
+    removeQuestion: 'Remove',
   },
 };
 

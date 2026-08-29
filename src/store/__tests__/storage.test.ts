@@ -2,11 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DEFAULT_SETTINGS,
   addCustom,
+  addCustomDeck,
   addLearned,
   appendHistory,
   clearLearned,
   deleteCustom,
+  deleteCustomDeck,
   loadCustom,
+  loadCustomDecks,
   loadApiKey,
   loadHistory,
   loadLearned,
@@ -370,6 +373,88 @@ describe('judge API key', () => {
     // must not ride along.
     await saveApiKey('sk-ant-secret');
     expect(JSON.stringify(await loadSettings())).not.toContain('sk-ant-secret');
+  });
+});
+
+describe('custom decks', () => {
+  it('starts empty', async () => {
+    expect(await loadCustomDecks()).toEqual([]);
+  });
+
+  it('creates a deck with a title, category, and questions', async () => {
+    const created = await addCustomDeck('サブスク基礎', 'sub-finance', [
+      { q: 'キャピタルコールとは？', accept: ['出資請求'] },
+      { q: 'アドバンスレートとは？', accept: ['前貸し率'] },
+    ]);
+    expect(created).toMatchObject({
+      title: 'サブスク基礎',
+      category: 'sub-finance',
+    });
+    expect(created.questions).toHaveLength(2);
+    expect(created.questions[0]).toMatchObject({
+      tier: 0,
+      q: 'キャピタルコールとは？',
+      accept: ['出資請求'],
+    });
+    expect(await loadCustomDecks()).toHaveLength(1);
+  });
+
+  it('gives every question in every deck a globally unique id', async () => {
+    const deckA = await addCustomDeck('デッキA', 'sub-finance', [
+      { q: 'Q1', accept: ['A1'] },
+      { q: 'Q2', accept: ['A2'] },
+    ]);
+    const deckB = await addCustomDeck('デッキB', 'nav-finance', [
+      { q: 'Q3', accept: ['A3'] },
+    ]);
+    const ids = [...deckA.questions, ...deckB.questions].map((q) => q.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('never reuses an id, even after a delete', async () => {
+    const first = await addCustomDeck('一つ目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    await deleteCustomDeck(first.id);
+    const second = await addCustomDeck('二つ目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    expect(second.questions[0].id).not.toBe(first.questions[0].id);
+  });
+
+  it('deletes only the named deck', async () => {
+    const a = await addCustomDeck('残る', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const b = await addCustomDeck('消える', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
+    await deleteCustomDeck(b.id);
+    expect((await loadCustomDecks()).map((d) => d.id)).toEqual([a.id]);
+  });
+
+  it('rejects a deck with more than 10 questions', async () => {
+    const drafts = Array.from({ length: 11 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
+    await expect(addCustomDeck('多すぎ', 'sub-finance', drafts)).rejects.toThrow();
+    expect(await loadCustomDecks()).toEqual([]);
+  });
+
+  it('accepts a deck with exactly 10 questions', async () => {
+    const drafts = Array.from({ length: 10 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
+    const created = await addCustomDeck('ちょうど10', 'sub-finance', drafts);
+    expect(created.questions).toHaveLength(10);
+  });
+
+  it('rejects an 11th deck', async () => {
+    for (let i = 0; i < 10; i++) {
+      await addCustomDeck(`デッキ${i}`, 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    }
+    await expect(
+      addCustomDeck('11個目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]),
+    ).rejects.toThrow();
+    expect(await loadCustomDecks()).toHaveLength(10);
+  });
+
+  it('allows an 11th deck after one is deleted', async () => {
+    const ids: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      ids.push((await addCustomDeck(`デッキ${i}`, 'sub-finance', [{ q: 'Q', accept: ['A'] }])).id);
+    }
+    await deleteCustomDeck(ids[0]);
+    await addCustomDeck('新しい11個目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    expect(await loadCustomDecks()).toHaveLength(10);
   });
 });
 

@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIN-NBACK PRO — iPhone Bloomberg Terminal Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-terminal: #050810;
+      --card-bg: #0e1422;
+      --card-border: #232d42;
+      --gold-primary: #d4af37;
+      --amber-accent: #f59e0b;
+      --green-success: #10b981;
+      --red-danger: #ef4444;
+      --cyan-quant: #00f2fe;
+      --text-main: #f1f5f9;
+      --text-sub: #94a3b8;
+      --text-muted: #475569;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #000000;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* iPhone 16 Pro Hardware Shell */
+    .iphone-wrapper {
+      width: 410px;
+      height: 850px;
+      background: #1c1c1e;
+      border-radius: 54px;
+      padding: 12px;
+      box-shadow: 
+        0 0 0 2px #2c2c2e,
+        0 25px 60px rgba(0, 0, 0, 0.8),
+        0 0 40px rgba(212, 175, 55, 0.15);
+      position: relative;
+      overflow: hidden;
+      border: 4px solid #3a3a3c;
+    }
+
+    /* Screen Inside iPhone */
+    .iphone-screen {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-terminal);
+      border-radius: 44px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* iOS Top Status Bar */
+    .status-bar {
+      height: 48px;
+      padding: 12px 24px 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 700;
+      z-index: 100;
+    }
+
+    .time {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: -0.5px;
+    }
+
+    /* Dynamic Island */
+    .dynamic-island {
+      width: 120px;
+      height: 32px;
+      background: #000;
+      border-radius: 20px;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 200;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+    }
+
+    .di-icon {
+      font-size: 10px;
+      color: var(--gold-primary);
+      animation: pulse 1.5s infinite;
+    }
+
+    .di-text {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--amber-accent);
+      letter-spacing: 0.5px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* Mini Terminal Ticker */
+    .terminal-ticker {
+      background: #000;
+      border-bottom: 1px solid var(--card-border);
+      padding: 6px 16px;
+      font-size: 10px;
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      white-space: nowrap;
+      color: var(--text-sub);
+    }
+
+    .t-gold { color: var(--gold-primary); font-weight: 700; }
+    .t-green { color: var(--green-success); }
+
+    /* App Top Bar */
+    .app-header {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-name {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--gold-primary);
+      letter-spacing: 1px;
+    }
+
+    .pro-tag {
+      background: var(--gold-primary);
+      color: #000;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+
+    .pro-pill-btn {
+      background: #1a1608;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Category Carousel Chips */
+    .role-carousel {
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--card-border);
+      background: #090e18;
+    }
+
+    .role-chip {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .role-chip.active {
+      background: var(--gold-primary);
+      color: #000;
+      border-color: var(--gold-primary);
+    }
+
+    /* Main Scrollable Content Area */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Decks Stack */
+    .deck-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+
+    .deck-card:active {
+      border-color: var(--gold-primary);
+      transform: scale(0.98);
+    }
+
+    .deck-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .deck-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .diff-tag {
+      background: var(--bg-terminal);
+      border: 1px solid var(--card-border);
+      color: var(--amber-accent);
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .deck-source {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .mastery-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mastery-bar {
+      flex: 1;
+      height: 5px;
+      background: var(--bg-terminal);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .mastery-fill {
+      height: 100%;
+      background: var(--green-success);
+    }
+
+    .mastery-text {
+      font-size: 10px;
+      color: var(--text-sub);
+    }
+
+    .deck-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .count-text {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .lag-badge {
+      background: #1a1608;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .play-btn {
+      background: var(--gold-primary);
+      color: #000;
+      border: none;
+      padding: 8px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    /* Voice Studio Mobile View */
+    .studio-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .studio-view.active {
+      display: flex;
+    }
+
+    .card-box {
+      background: var(--card-bg);
+      border: 1px solid var(--gold-primary);
+      border-radius: 16px;
+      padding: 20px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(212, 175, 55, 0.1);
+    }
+
+    .card-label {
+      font-size: 10px;
+      color: var(--gold-primary);
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .card-q {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+
+    .card-ans {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    /* 3x3 Grid */
+    .grid-3x3 {
+      display: grid;
+      grid-template-columns: repeat(3, 70px);
+      grid-template-rows: repeat(3, 70px);
+      gap: 8px;
+    }
+
+    .cell {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+    }
+
+    .cell.active {
+      background: var(--amber-accent);
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 14px var(--amber-accent);
+    }
+
+    .mic-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #000;
+      border: 1px solid var(--green-success);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--green-success);
+      font-weight: 700;
+    }
+
+    /* iOS Bottom Tab Bar */
+    .tab-bar {
+      height: 72px;
+      background: #03050a;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding-bottom: 14px;
+      z-index: 100;
+    }
+
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab-item.active {
+      color: var(--gold-primary);
+    }
+
+    .tab-icon {
+      font-size: 18px;
+    }
+
+    /* iOS Home Indicator Bar */
+    .home-indicator {
+      width: 134px;
+      height: 5px;
+      background: #ffffff;
+      opacity: 0.8;
+      border-radius: 3px;
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 300;
+    }
+
+    /* iOS Pro Upgrade Bottom Sheet */
+    .sheet-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .sheet-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sheet-card {
+      background: #0d121d;
+      border-top: 1px solid var(--gold-primary);
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .sheet-overlay.open .sheet-card {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--card-border);
+      border-radius: 2px;
+      align-self: center;
+      margin-bottom: 4px;
+    }
+
+    .sheet-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--gold-primary);
+      text-align: center;
+    }
+
+    .pro-plan-box {
+      background: #161c2b;
+      border: 2px solid var(--gold-primary);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .plan-price {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--gold-primary);
+    }
+
+    .apple-pay-btn {
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-family: -apple-system, sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- iPhone Device Frame -->
+  <div class="iphone-wrapper">
+    <div class="iphone-screen">
+
+      <!-- Dynamic Island Notch -->
+      <div class="dynamic-island">
+        <span class="di-icon">🎙️</span>
+        <span class="di-text">N-BACK AI</span>
+      </div>
+
+      <!-- iOS Status Bar -->
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span style="font-size: 12px;">5G 🔋100%</span>
+      </div>
+
+      <!-- Bloomberg Terminal Ticker Bar -->
+      <div class="terminal-ticker">
+        <span><span class="t-gold">SPX</span> 5,892.40 <span class="t-green">+0.42%</span></span>
+        <span><span class="t-gold">NDX</span> 20,410.15 <span class="t-green">+0.68%</span></span>
+        <span><span class="t-gold">FUNDS FIN SUBLINE</span> SOFR+175</span>
+        <span><span class="t-gold">CFA PREP</span> 94.2%</span>
+      </div>
+
+      <!-- App Header -->
+      <div class="app-header">
+        <div class="app-brand">
+          <span class="app-name">FIN-NBACK</span>
+          <span class="pro-tag">PRO</span>
+        </div>
+        <button class="pro-pill-btn" onclick="openSheet()">👑 WALL ST PRO</button>
+      </div>
+
+      <!-- Role Chips Carousel -->
+      <div class="role-carousel">
+        <div class="role-chip active" onclick="setRole('all', this)">All Tracks</div>
+        <div class="role-chip" onclick="setRole('funds', this)">🏢 Funds Finance</div>
+        <div class="role-chip" onclick="setRole('trader', this)">📈 Hedge Fund Trader</div>
+        <div class="role-chip" onclick="setRole('banker', this)">💼 Banker (M&A)</div>
+        <div class="role-chip" onclick="setRole('risk', this)">🛡️ Risk Manager</div>
+        <div class="role-chip" onclick="setRole('cfa', this)">📜 CFA Track</div>
+      </div>
+
+      <!-- Content Views -->
+      <div class="content-area">
+
+        <!-- Decks View -->
+        <div id="view-decks" style="display: flex; flex-direction: column; gap: 12px;">
+
+          <div class="deck-card" data-role="funds">
+            <div class="deck-header">
+              <span class="deck-title">Commitments & Capital Calls</span>
+              <span class="diff-tag">Executive L3</span>
+            </div>
+            <div class="deck-source">Based on *Fund Finance Handbook*</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 88%"></div></div>
+              <span class="mastery-text">88% Mastered</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">14 Questions</span>
+              <span class="lag-badge">2-back</span>
+            </div>
+            <button class="play-btn" onclick="launchStudio('Commitments & Capital Calls')">Start Flashcards ➔</button>
+          </div>
+
+          <div class="deck-card" data-role="trader">
+            <div class="deck-header">
+              <span class="deck-title">Options Greeks & Volatility</span>
+              <span class="diff-tag">Quant L2</span>
+            </div>
+            <div class="deck-source">Based on *Option Volatility & Pricing*</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 92%"></div></div>
+              <span class="mastery-text">92% Mastered</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">24 Questions</span>
+              <span class="lag-badge">3-back</span>
+            </div>
+            <button class="play-btn" onclick="launchStudio('Options Greeks')">Start Flashcards ➔</button>
+          </div>
+
+          <div class="deck-card" data-role="banker">
+            <div class="deck-header">
+              <span class="deck-title">LBO Sizing & Debt Waterfalls</span>
+              <span class="diff-tag">Wall St L1</span>
+            </div>
+            <div class="deck-source">Based on *Investment Banking M&A*</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 78%"></div></div>
+              <span class="mastery-text">78% Mastered</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">18 Questions</span>
+              <span class="lag-badge">1-back</span>
+            </div>
+            <button class="play-btn" onclick="launchStudio('LBO Sizing')">Start Flashcards ➔</button>
+          </div>
+
+        </div>
+
+        <!-- Voice Studio View -->
+        <div id="view-studio" class="studio-view">
+          <div style="font-size: 13px; color: var(--gold-primary); font-weight: 700;" id="studio-title">
+            Commitments & Capital Calls
+          </div>
+          <div style="font-size: 11px; color: var(--text-sub);">2-Back Mode • Step 4 / 9 • Clock 4.2s</div>
+
+          <div class="card-box">
+            <div class="card-label">FLASHCARD PROMPT</div>
+            <div class="card-q">"What is the term for a GP demanding a capital contribution from an LP?"</div>
+            <div class="card-ans">Accepted: <strong>Capital Call, Drawdown</strong></div>
+          </div>
+
+          <div class="grid-3x3">
+            <div class="cell"></div>
+            <div class="cell active"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+          </div>
+
+          <div class="mic-indicator">
+            🎙️ Voice AI Listening... "Capital Call" ✓
+          </div>
+        </div>
+
+      </div>
+
+      <!-- iOS Bottom Tab Bar -->
+      <div class="tab-bar">
+        <div class="tab-item active" onclick="switchNav('decks', this)">
+          <span class="tab-icon">🗂️</span>
+          <span>Decks</span>
+        </div>
+        <div class="tab-item" onclick="switchNav('studio', this)">
+          <span class="tab-icon">🎙️</span>
+          <span>Voice Studio</span>
+        </div>
+        <div class="tab-item" onclick="openSheet()">
+          <span class="tab-icon">👑</span>
+          <span>Pro Upgrade</span>
+        </div>
+        <div class="tab-item" onclick="switchNav('analytics', this)">
+          <span class="tab-icon">📊</span>
+          <span>Analytics</span>
+        </div>
+      </div>
+
+      <!-- iOS Home Indicator -->
+      <div class="home-indicator"></div>
+
+      <!-- iOS Subscription Bottom Sheet -->
+      <div class="sheet-overlay" id="sheet">
+        <div class="sheet-card">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">FIN-NBACK PRO</div>
+          <div style="font-size: 12px; color: var(--text-sub); text-align: center;">
+            Unlock all specialized Financial Persona tracks, Unlimited Speech Recognition AI & Claude Judge.
+          </div>
+
+          <div class="pro-plan-box">
+            <div style="font-size: 10px; color: var(--gold-primary); font-weight: 800;">WALL STREET PRO DESK</div>
+            <div class="plan-price">$29.99 <span style="font-size: 12px; color: var(--text-sub);">/ month</span></div>
+            <div style="font-size: 11px; color: var(--text-sub); margin-top: 6px;">
+              ✓ All 7 Financial Persona Tracks<br>
+              ✓ Unlimited Speech Recognition AI<br>
+              ✓ Adaptive N-Back (Up to 5-back)
+            </div>
+          </div>
+
+          <button class="apple-pay-btn" onclick="closeSheet()">
+            <span>Pay</span> Subscribe with Apple Pay
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function switchNav(navId, el) {
+      document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+
+      if (navId === 'studio') {
+        document.getElementById('view-decks').style.display = 'none';
+        document.getElementById('view-studio').classList.add('active');
+      } else {
+        document.getElementById('view-studio').classList.remove('active');
+        document.getElementById('view-decks').style.display = 'flex';
+      }
+    }
+
+    function launchStudio(title) {
+      document.getElementById('studio-title').innerText = title;
+      switchNav('studio', document.querySelectorAll('.tab-item')[1]);
+    }
+
+    function setRole(roleKey, el) {
+      document.querySelectorAll('.role-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+
+      const cards = document.querySelectorAll('.deck-card');
+      cards.forEach(card => {
+        if (roleKey === 'all' || card.dataset.role === roleKey) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function openSheet() {
+      document.getElementById('sheet').classList.add('open');
+    }
+
+    function closeSheet() {
+      document.getElementById('sheet').classList.remove('open');
+    }
+  </script>
+</body>
+</html>

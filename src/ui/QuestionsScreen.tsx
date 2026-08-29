@@ -7,9 +7,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FUNDS_FINANCE_CATEGORIES } from '../content/series';
 import type { Question } from '../engine/types';
 import {
+  MAX_DECK_QUESTIONS,
   addCustom,
+  addCustomDeck,
   deleteCustom,
   loadCustom,
   updateCustom,
@@ -20,12 +23,25 @@ interface Props {
   onClose: () => void;
 }
 
+interface QuestionDraft {
+  q: string;
+  answer: string;
+}
+
+const emptyDraft = (): QuestionDraft => ({ q: '', answer: '' });
+
 export function QuestionsScreen({ onClose }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftQ, setDraftQ] = useState('');
   const [draftAnswer, setDraftAnswer] = useState('');
   const strings = useStrings();
+
+  const [deckMode, setDeckMode] = useState(false);
+  const [deckTitle, setDeckTitle] = useState('');
+  const [deckCategory, setDeckCategory] = useState(FUNDS_FINANCE_CATEGORIES[0].id);
+  const [deckDrafts, setDeckDrafts] = useState<QuestionDraft[]>([emptyDraft()]);
+  const [deckError, setDeckError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setQuestions(await loadCustom());
@@ -67,6 +83,124 @@ export function QuestionsScreen({ onClose }: Props) {
     await refresh();
   };
 
+  const resetDeckForm = () => {
+    setDeckTitle('');
+    setDeckCategory(FUNDS_FINANCE_CATEGORIES[0].id);
+    setDeckDrafts([emptyDraft()]);
+    setDeckError(null);
+  };
+
+  const updateDeckDraft = (index: number, field: keyof QuestionDraft, value: string) => {
+    setDeckDrafts((prev) =>
+      prev.map((draft, i) => (i === index ? { ...draft, [field]: value } : draft)),
+    );
+  };
+
+  const addDeckQuestion = () => {
+    setDeckDrafts((prev) =>
+      prev.length >= MAX_DECK_QUESTIONS ? prev : [...prev, emptyDraft()],
+    );
+  };
+
+  const removeDeckQuestion = (index: number) => {
+    setDeckDrafts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const submitDeck = async () => {
+    const title = deckTitle.trim();
+    const drafts = deckDrafts
+      .map((d) => ({ q: d.q.trim(), accept: [d.answer.trim()] }))
+      .filter((d) => d.q && d.accept[0]);
+    if (!title || drafts.length === 0) return;
+    try {
+      await addCustomDeck(title, deckCategory, drafts);
+      resetDeckForm();
+      setDeckMode(false);
+    } catch (e) {
+      setDeckError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  if (deckMode) {
+    return (
+      <View style={styles.screen}>
+        <Text style={styles.heading}>{strings.questions.newDeck}</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder={strings.questions.deckNamePlaceholder}
+          placeholderTextColor="#8e8e93"
+          value={deckTitle}
+          onChangeText={setDeckTitle}
+        />
+
+        <View style={styles.categoryRow}>
+          {FUNDS_FINANCE_CATEGORIES.map((cat) => (
+            <Pressable
+              key={cat.id}
+              style={[
+                styles.categoryChip,
+                deckCategory === cat.id && styles.categoryChipActive,
+              ]}
+              onPress={() => setDeckCategory(cat.id)}
+            >
+              <Text style={styles.label}>{cat.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <ScrollView style={styles.list}>
+          {deckDrafts.map((draft, index) => (
+            <View key={index} style={styles.item}>
+              <TextInput
+                style={styles.input}
+                placeholder={strings.questions.placeholderQuestion}
+                placeholderTextColor="#8e8e93"
+                value={draft.q}
+                onChangeText={(text) => updateDeckDraft(index, 'q', text)}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder={strings.questions.placeholderAnswer}
+                placeholderTextColor="#8e8e93"
+                value={draft.answer}
+                onChangeText={(text) => updateDeckDraft(index, 'answer', text)}
+              />
+              {deckDrafts.length > 1 && (
+                <Pressable onPress={() => removeDeckQuestion(index)}>
+                  <Text style={styles.itemA}>{strings.questions.removeQuestion}</Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+
+        {deckDrafts.length < MAX_DECK_QUESTIONS && (
+          <Pressable style={styles.secondary} onPress={addDeckQuestion}>
+            <Text style={styles.label}>{strings.questions.addQuestion}</Text>
+          </Pressable>
+        )}
+
+        {deckError && <Text style={styles.itemA}>{deckError}</Text>}
+
+        <View style={styles.formRow}>
+          <Pressable style={styles.primary} onPress={() => void submitDeck()}>
+            <Text style={styles.label}>{strings.questions.saveDeck}</Text>
+          </Pressable>
+          <Pressable
+            style={styles.secondary}
+            onPress={() => {
+              resetDeckForm();
+              setDeckMode(false);
+            }}
+          >
+            <Text style={styles.label}>{strings.questions.cancel}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <Text style={styles.heading}>{strings.questions.heading}</Text>
@@ -100,6 +234,11 @@ export function QuestionsScreen({ onClose }: Props) {
               <Text style={styles.label}>{strings.questions.cancel}</Text>
             </Pressable>
           </>
+        )}
+        {!editingId && (
+          <Pressable style={styles.secondary} onPress={() => setDeckMode(true)}>
+            <Text style={styles.label}>{strings.questions.newDeck}</Text>
+          </Pressable>
         )}
       </View>
 
@@ -158,4 +297,12 @@ const styles = StyleSheet.create({
   },
   itemQ: { color: '#f4f1ea', fontSize: 16 },
   itemA: { color: '#8e8e93', fontSize: 14, marginTop: 2 },
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  categoryChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: '#1c1c1e',
+  },
+  categoryChipActive: { backgroundColor: '#c96f4a' },
 });

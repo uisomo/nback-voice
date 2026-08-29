@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="terminal">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIN-NBACK PRO — Professional Financial Flashcards & Voice N-Back</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Theme 1: Bloomberg Terminal (Default) */
+      --bg-primary: #0a0e17;
+      --bg-secondary: #121824;
+      --card-bg: #121824;
+      --card-border: #2a3447;
+      --header-bg: #070a10;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-gold: #d4af37;
+      --accent-primary: #f59e0b;
+      --accent-secondary: #3b82f6;
+      --accent-success: #10b981;
+      --accent-danger: #ef4444;
+      --badge-bg: #2a2008;
+      --font-main: 'JetBrains Mono', monospace;
+      --card-glow: rgba(212, 175, 55, 0.15);
+    }
+
+    [data-theme="executive"] {
+      /* Theme 2: Wall St Executive */
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --header-bg: #0b1120;
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+      --accent-gold: #eab308;
+      --accent-primary: #2563eb;
+      --accent-secondary: #6366f1;
+      --accent-success: #10b981;
+      --accent-danger: #f43f5e;
+      --badge-bg: #1e3a8a;
+      --font-main: 'Inter', sans-serif;
+      --card-glow: rgba(37, 99, 235, 0.15);
+    }
+
+    [data-theme="quant"] {
+      /* Theme 3: Quant Cyber Neon */
+      --bg-primary: #050811;
+      --bg-secondary: #0d1322;
+      --card-bg: #0d1322;
+      --card-border: #1e2945;
+      --header-bg: #03050b;
+      --text-primary: #ffffff;
+      --text-secondary: #a5b4fc;
+      --text-muted: #475569;
+      --accent-gold: #f59e0b;
+      --accent-primary: #00f2fe;
+      --accent-secondary: #8b5cf6;
+      --accent-success: #00ff9d;
+      --accent-danger: #ff0055;
+      --badge-bg: #1e1b4b;
+      --font-main: 'Outfit', sans-serif;
+      --card-glow: rgba(0, 242, 254, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Live Ticker Bar */
+    .ticker-bar {
+      background: #000;
+      border-bottom: 1px solid var(--card-border);
+      padding: 6px 16px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      overflow-x: auto;
+      white-space: nowrap;
+      color: var(--text-secondary);
+    }
+
+    .ticker-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ticker-symbol {
+      color: var(--accent-gold);
+      font-weight: 700;
+    }
+
+    .ticker-up {
+      color: var(--accent-success);
+    }
+
+    .ticker-down {
+      color: var(--accent-danger);
+    }
+
+    /* Main Navigation Bar */
+    header {
+      background-color: var(--header-bg);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: var(--accent-gold);
+    }
+
+    .pro-badge {
+      background: var(--accent-gold);
+      color: #000;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Variety Switcher Control */
+    .variety-switcher {
+      display: flex;
+      align-items: center;
+      background: var(--bg-secondary);
+      border: 1px solid var(--card-border);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+
+    .variety-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-right: 6px;
+      margin-left: 8px;
+      font-weight: 600;
+    }
+
+    .variety-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .variety-btn.active {
+      background: var(--accent-primary);
+      color: #000;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Header Actions */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sub-status-btn {
+      background: var(--badge-bg);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sub-status-btn:hover {
+      box-shadow: 0 0 12px var(--card-glow);
+    }
+
+    .streak-pill {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+
+    /* Role Tracks Selector Bar */
+    .role-bar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--card-border);
+      padding: 10px 24px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .role-chip {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-chip.active {
+      background: var(--accent-primary);
+      color: #000;
+      border-color: var(--accent-primary);
+      font-weight: 700;
+    }
+
+    .role-chip:hover:not(.active) {
+      border-color: var(--accent-gold);
+    }
+
+    .lock-icon {
+      font-size: 10px;
+    }
+
+    /* Main Container Layout */
+    .container {
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      flex: 1;
+    }
+
+    /* Section Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 16px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px 4px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn.active {
+      color: var(--accent-gold);
+      border-bottom-color: var(--accent-gold);
+    }
+
+    /* Views */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Deck Cards Grid */
+    .decks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    .deck-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .deck-card:hover {
+      border-color: var(--accent-gold);
+      box-shadow: 0 4px 20px var(--card-glow);
+      transform: translateY(-2px);
+    }
+
+    .deck-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .deck-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .diff-badge {
+      background: var(--bg-primary);
+      border: 1px solid var(--card-border);
+      color: var(--accent-primary);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .deck-credit {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .progress-bar-wrap {
+      margin-bottom: 16px;
+    }
+
+    .progress-track {
+      background: var(--bg-primary);
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .progress-fill {
+      background: var(--accent-success);
+      height: 100%;
+    }
+
+    .progress-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    .deck-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--card-border);
+    }
+
+    .card-count {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .lag-pill {
+      background: var(--badge-bg);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .start-btn {
+      background: var(--accent-gold);
+      color: #000;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .start-btn:hover {
+      filter: brightness(1.1);
+    }
+
+    /* Live Studio Section */
+    .studio-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .studio-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .studio-lag-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-gold);
+    }
+
+    .studio-timer {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent-success);
+    }
+
+    .audio-waveform {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 40px;
+      margin: 20px 0;
+    }
+
+    .wave-bar {
+      width: 4px;
+      height: 10px;
+      background: var(--accent-primary);
+      border-radius: 2px;
+      animation: wave 1.2s infinite ease-in-out;
+    }
+
+    .wave-bar:nth-child(2) { animation-delay: 0.2s; }
+    .wave-bar:nth-child(3) { animation-delay: 0.4s; }
+    .wave-bar:nth-child(4) { animation-delay: 0.1s; }
+    .wave-bar:nth-child(5) { animation-delay: 0.5s; }
+
+    @keyframes wave {
+      0%, 100% { height: 8px; }
+      50% { height: 36px; }
+    }
+
+    .flashcard-box {
+      background: var(--bg-primary);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .card-q-tag {
+      font-size: 11px;
+      color: var(--accent-primary);
+      letter-spacing: 1px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .card-question {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .card-answer-hint {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* N-Back 3x3 Grid */
+    .nback-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .grid-cell {
+      background: var(--bg-primary);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .grid-cell.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 16px var(--accent-primary);
+    }
+
+    /* Subscription Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 8, 17, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      width: 90%;
+      max-width: 780px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 30px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .close-modal {
+      background: var(--bg-primary);
+      border: 1px solid var(--card-border);
+      color: var(--text-primary);
+      width: 36px;
+      height: 36px;
+      border-radius: 18px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .price-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .price-card.featured {
+      border: 2px solid var(--accent-gold);
+      background: var(--badge-bg);
+    }
+
+    .price-num {
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--accent-gold);
+      margin: 10px 0;
+    }
+
+    .plan-select-btn {
+      background: var(--accent-gold);
+      color: #000;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 16px;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--accent-gold);
+      color: #000;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 2000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Live Financial Ticker Bar -->
+  <div class="ticker-bar">
+    <div class="ticker-item"><span class="ticker-symbol">SPX</span> 5,892.40 <span class="ticker-up">+0.42%</span></div>
+    <div class="ticker-item"><span class="ticker-symbol">NDX</span> 20,410.15 <span class="ticker-up">+0.68%</span></div>
+    <div class="ticker-item"><span class="ticker-symbol">US10Y</span> 4.182% <span class="ticker-down">-0.04</span></div>
+    <div class="ticker-item"><span class="ticker-symbol">SOFR</span> 5.31%</div>
+    <div class="ticker-item"><span class="ticker-symbol">FUNDS FIN SUBLINE APR</span> SOFR + 175 bps</div>
+    <div class="ticker-item"><span class="ticker-symbol">CFA PREP MASTERY</span> 94.2%</div>
+  </div>
+
+  <!-- Header Bar -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">FIN-NBACK</div>
+      <div class="pro-badge">PRO</div>
+    </div>
+
+    <!-- Theme Variety Switcher -->
+    <div class="variety-switcher">
+      <span class="variety-label">🎨 Variety Theme:</span>
+      <button class="variety-btn active" onclick="setTheme('terminal')">1. Bloomberg Terminal</button>
+      <button class="variety-btn" onclick="setTheme('executive')">2. Wall St Executive</button>
+      <button class="variety-btn" onclick="setTheme('quant')">3. Quant Cyber Neon</button>
+    </div>
+
+    <div class="header-actions">
+      <button class="sub-status-btn" onclick="openSubscriptionModal()">
+        <span>👑</span> <span id="user-tier-badge">WALL STREET PRO</span>
+      </button>
+      <div class="streak-pill">🔥 14-Day Streak</div>
+    </div>
+  </header>
+
+  <!-- Role Track Filter Bar -->
+  <div class="role-bar">
+    <div class="role-chip active" onclick="filterRole('all', this)">All Financial Desks</div>
+    <div class="role-chip" onclick="filterRole('funds-finance', this)">🏢 Funds Finance & Sublines</div>
+    <div class="role-chip" onclick="filterRole('hedge-funds', this)">📈 Hedge Funds & Trader</div>
+    <div class="role-chip" onclick="filterRole('banking', this)">💼 Investment Banking (M&A)</div>
+    <div class="role-chip" onclick="filterRole('risk-management', this)">🛡️ Risk & Credit Analysis</div>
+    <div class="role-chip" onclick="filterRole('cfa-prep', this)">📜 CFA Charterholder Track</div>
+    <div class="role-chip" onclick="filterRole('private-equity', this)">🏛️ Private Equity & VC</div>
+    <div class="role-chip" onclick="filterRole('wealth-management', this)">💰 Wealth Management</div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="container">
+
+    <!-- Section Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('decks', this)">🗂️ Financial Decks</button>
+      <button class="tab-btn" onclick="switchTab('studio', this)">🎙️ Voice N-Back Flashcard Studio</button>
+      <button class="tab-btn" onclick="openSubscriptionModal()">💳 Subscription & Desk Pricing</button>
+      <button class="tab-btn" onclick="switchTab('analytics', this)">📊 Mastery Analytics</button>
+    </div>
+
+    <!-- Tab 1: Financial Decks -->
+    <div id="tab-decks" class="tab-content active">
+      <div class="decks-grid">
+
+        <!-- Card 1 -->
+        <div class="deck-card" data-category="funds-finance">
+          <div>
+            <div class="deck-card-header">
+              <div class="deck-title">Commitments & Capital Calls</div>
+              <span class="diff-badge">Executive L3</span>
+            </div>
+            <div class="deck-credit">Based on *Fund Finance Handbook*</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-track"><div class="progress-fill" style="width: 88%"></div></div>
+              <div class="progress-text">88% Mastered</div>
+            </div>
+          </div>
+          <div>
+            <div class="deck-meta">
+              <span class="card-count">14 Terms</span>
+              <span class="lag-pill">2-back</span>
+            </div>
+            <button class="start-btn" onclick="startStudio('Commitments & Capital Calls')">Start Flashcards ➔</button>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="deck-card" data-category="hedge-funds">
+          <div>
+            <div class="deck-card-header">
+              <div class="deck-title">Options Greeks & Volatility Arbitrage</div>
+              <span class="diff-badge">Quant L2</span>
+            </div>
+            <div class="deck-credit">Based on *Option Volatility & Pricing*</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-track"><div class="progress-fill" style="width: 92%"></div></div>
+              <div class="progress-text">92% Mastered</div>
+            </div>
+          </div>
+          <div>
+            <div class="deck-meta">
+              <span class="card-count">24 Terms</span>
+              <span class="lag-pill">3-back</span>
+            </div>
+            <button class="start-btn" onclick="startStudio('Options Greeks & Volatility')">Start Flashcards ➔</button>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="deck-card" data-category="banking">
+          <div>
+            <div class="deck-card-header">
+              <div class="deck-title">LBO Sizing & Debt Waterfalls</div>
+              <span class="diff-badge">Wall St L1</span>
+            </div>
+            <div class="deck-credit">Based on *Investment Banking M&A*</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-track"><div class="progress-fill" style="width: 78%"></div></div>
+              <div class="progress-text">78% Mastered</div>
+            </div>
+          </div>
+          <div>
+            <div class="deck-meta">
+              <span class="card-count">18 Terms</span>
+              <span class="lag-pill">1-back</span>
+            </div>
+            <button class="start-btn" onclick="startStudio('LBO Sizing & Debt Waterfalls')">Start Flashcards ➔</button>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="deck-card" data-category="risk-management">
+          <div>
+            <div class="deck-card-header">
+              <div class="deck-title">CDS & Basel III RWA Credit Risk</div>
+              <span class="diff-badge">Quant L2</span>
+            </div>
+            <div class="deck-credit">Based on *Risk Management & Financial Institutions*</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-track"><div class="progress-fill" style="width: 82%"></div></div>
+              <div class="progress-text">82% Mastered</div>
+            </div>
+          </div>
+          <div>
+            <div class="deck-meta">
+              <span class="card-count">20 Terms</span>
+              <span class="lag-pill">2-back</span>
+            </div>
+            <button class="start-btn" onclick="startStudio('CDS & Basel III Credit Risk')">Start Flashcards ➔</button>
+          </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="deck-card" data-category="cfa-prep">
+          <div>
+            <div class="deck-card-header">
+              <div class="deck-title">CFA Level 1 Ethics & Standards</div>
+              <span class="diff-badge">Wall St L1</span>
+            </div>
+            <div class="deck-credit">Based on *CFA Institute Curriculum*</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-track"><div class="progress-fill" style="width: 95%"></div></div>
+              <div class="progress-text">95% Mastered</div>
+            </div>
+          </div>
+          <div>
+            <div class="deck-meta">
+              <span class="card-count">30 Terms</span>
+              <span class="lag-pill">2-back</span>
+            </div>
+            <button class="start-btn" onclick="startStudio('CFA Level 1 Ethics')">Start Flashcards ➔</button>
+          </div>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="deck-card" data-category="private-equity">
+          <div>
+            <div class="deck-card-header">
+              <div class="deck-title">PE Waterfall & Carried Interest</div>
+              <span class="diff-badge">Executive L3</span>
+            </div>
+            <div class="deck-credit">Based on *Private Equity Structuring*</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-track"><div class="progress-fill" style="width: 85%"></div></div>
+              <div class="progress-text">85% Mastered</div>
+            </div>
+          </div>
+          <div>
+            <div class="deck-meta">
+              <span class="card-count">16 Terms</span>
+              <span class="lag-pill">2-back</span>
+            </div>
+            <button class="start-btn" onclick="startStudio('PE Waterfall & Carried Interest')">Start Flashcards ➔</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tab 2: Voice N-Back Flashcard Studio -->
+    <div id="tab-studio" class="tab-content">
+      <div class="studio-container">
+
+        <div class="studio-header">
+          <div>
+            <div class="studio-lag-title" id="active-deck-name">Commitments & Capital Calls</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Step 4 / 9 • 2-Back Mode</div>
+          </div>
+          <div class="studio-timer" id="studio-clock">4.2s</div>
+        </div>
+
+        <div class="flashcard-box">
+          <div class="card-q-tag">FINANCIAL TERM FLASHCARD</div>
+          <div class="card-question" id="flash-q">"What is the term for a GP demanding a capital contribution from an LP?"</div>
+          <div class="card-answer-hint">Accepted Answers: <strong>Capital Call, Drawdown</strong></div>
+        </div>
+
+        <!-- Audio Spectrum Waveform Animation -->
+        <div class="audio-waveform">
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <span style="font-size: 12px; margin-left: 8px; color: var(--accent-primary); font-weight: 700;">
+            🎙️ Speech AI Listening... (Say your answer aloud)
+          </span>
+        </div>
+
+        <!-- 3x3 Grid -->
+        <div class="nback-grid">
+          <div class="grid-cell"></div>
+          <div class="grid-cell active"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+
+        <div style="font-size: 14px; color: var(--accent-success); font-weight: 700;">
+          Speech AI Heard: "Capital Call" ✓ (Match Score 99%)
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Analytics -->
+    <div id="tab-analytics" class="tab-content">
+      <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 30px; text-align: center;">
+        <h3 style="font-size: 20px; color: var(--accent-gold); margin-bottom: 12px;">Financial Retention Heatmap & Metrics</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 20px;">Daily auditory memory accuracy across all financial professional tracks.</p>
+        <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+          <div style="background: var(--bg-primary); padding: 20px; border-radius: 12px; min-width: 180px;">
+            <div style="font-size: 28px; font-weight: 900; color: var(--accent-gold);">94.2%</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Overall Recall Accuracy</div>
+          </div>
+          <div style="background: var(--bg-primary); padding: 20px; border-radius: 12px; min-width: 180px;">
+            <div style="font-size: 28px; font-weight: 900; color: var(--accent-primary);">1,240</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Financial Terms Mastered</div>
+          </div>
+          <div style="background: var(--bg-primary); padding: 20px; border-radius: 12px; min-width: 180px;">
+            <div style="font-size: 28px; font-weight: 900; color: var(--accent-success);">N=3</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Average N-Back Lag Peak</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Subscription Modal -->
+  <div class="modal-overlay" id="sub-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Financial Pro Membership</div>
+          <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+            Unlock all specialized financial flashcard tracks & Voice N-Back AI
+          </div>
+        </div>
+        <button class="close-modal" onclick="closeSubscriptionModal()">✕</button>
+      </div>
+
+      <div class="pricing-grid">
+
+        <!-- Starter -->
+        <div class="price-card">
+          <div>
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 700;">FREE STARTER</div>
+            <div class="price-num">$0</div>
+            <div style="font-size: 13px; color: var(--text-secondary);">Standard flashcards & 1-back practice.</div>
+          </div>
+          <button class="plan-select-btn" style="background: var(--card-border); color: #fff;" onclick="selectPlan('FREE STARTER')">Select Free</button>
+        </div>
+
+        <!-- Wall St Pro (Featured) -->
+        <div class="price-card featured">
+          <div>
+            <div style="background: var(--accent-gold); color: #000; font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block;">MOST POPULAR</div>
+            <div class="price-num">$29.99<span style="font-size: 13px; color: var(--text-secondary);">/mo</span></div>
+            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.4;">
+              ✓ All 7 Financial Persona Tracks<br>
+              ✓ Unlimited Speech Recognition AI<br>
+              ✓ Adaptive Lag (Up to 5-back)<br>
+              ✓ Speech AI Judge (Claude Integration)
+            </div>
+          </div>
+          <button class="plan-select-btn" onclick="selectPlan('WALL STREET PRO')">Upgrade to Pro ✓</button>
+        </div>
+
+        <!-- Enterprise Desk -->
+        <div class="price-card">
+          <div>
+            <div style="font-size: 11px; color: var(--accent-primary); font-weight: 700;">INSTITUTIONAL</div>
+            <div class="price-num" style="color: var(--accent-primary);">$99<span style="font-size: 13px; color: var(--text-secondary);">/seat</span></div>
+            <div style="font-size: 13px; color: var(--text-secondary);">Team analytics, custom compliance decks & dedicated desk support.</div>
+          </div>
+          <button class="plan-select-btn" style="background: var(--accent-primary); color: #000;" onclick="selectPlan('ENTERPRISE DESK')">Select Enterprise</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">Plan Updated to Wall Street Pro!</div>
+
+  <script>
+    // Theme Variety Switcher Logic
+    function setTheme(variety) {
+      document.documentElement.setAttribute('data-theme', variety);
+      document.querySelectorAll('.variety-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      showToast('Switched to Theme Variety: ' + variety.toUpperCase());
+    }
+
+    // Role Filtering Logic
+    function filterRole(roleId, el) {
+      document.querySelectorAll('.role-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+
+      const cards = document.querySelectorAll('.deck-card');
+      cards.forEach(card => {
+        if (roleId === 'all' || card.dataset.category === roleId) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    // Tab Navigation Logic
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    function startStudio(deckName) {
+      document.getElementById('active-deck-name').innerText = deckName;
+      switchTab('studio', document.querySelectorAll('.tab-btn')[1]);
+      showToast('Started Voice N-Back Flashcards: ' + deckName);
+    }
+
+    // Modal Control
+    function openSubscriptionModal() {
+      document.getElementById('sub-modal').classList.add('open');
+    }
+
+    function closeSubscriptionModal() {
+      document.getElementById('sub-modal').classList.remove('open');
+    }
+
+    function selectPlan(planName) {
+      document.getElementById('user-tier-badge').innerText = planName;
+      closeSubscriptionModal();
+      showToast('Subscription Updated: ' + planName + ' Active!');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>

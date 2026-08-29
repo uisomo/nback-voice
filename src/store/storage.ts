@@ -8,6 +8,8 @@ import type { Question, RoundMode } from '../engine/types';
  * scored: all four combinations are meaningful.
  */
 export type AnswerInput = 'voice' | 'typed';
+export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
+export type ThemeVariety = 'terminal' | 'executive' | 'quant';
 
 export interface Settings {
   /** Total step length in ms; split 40% phase A / 60% phase B. */
@@ -27,6 +29,12 @@ export interface Settings {
   budgetBaseMs: number;
   /** UI/content/speech/judge language. Switching requires series.en.json etc. */
   language: 'ja' | 'en';
+  /** Subscription plan level for professional financial features. */
+  subscriptionTier: SubscriptionTier;
+  /** UI Theme Variety: terminal (Bloomberg), executive (Wall St Luxury), quant (Cyberpunk Neon). */
+  themeVariety: ThemeVariety;
+  /** Active category filter tab selected by financial professional. */
+  selectedCategory: string;
 }
 
 export interface RoundRecord {
@@ -52,6 +60,9 @@ export const DEFAULT_SETTINGS: Settings = {
   answerInput: 'typed',
   budgetBaseMs: DEFAULT_BUDGET_BASE_MS,
   language: 'ja',
+  subscriptionTier: 'pro',
+  themeVariety: 'terminal',
+  selectedCategory: 'all',
 };
 
 const KEY_SETTINGS = 'nback.settings';
@@ -61,6 +72,8 @@ const KEY_HISTORY = 'nback.history';
 const KEY_LEARNED = 'nback.learned';
 const KEY_CUSTOM = 'nback.custom';
 const KEY_CUSTOM_SEQ = 'nback.customSeq';
+const KEY_CUSTOM_DECKS = 'nback.customDecks';
+const KEY_CUSTOM_DECK_SEQ = 'nback.customDeckSeq';
 const KEY_API_KEY = 'nback.apiKey';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -241,6 +254,67 @@ export async function deleteCustom(id: string): Promise<void> {
     JSON.stringify(custom.filter((item) => item.id !== id)),
   );
   await clearLearned(id);
+}
+
+/** A user-authored deck: a title, a funds-finance category, and its own questions. */
+export interface CustomDeck {
+  id: string;
+  title: string;
+  /** A FundsFinanceCategory id. */
+  category: string;
+  questions: Question[];
+}
+
+/** A deck holds at most this many questions — kept small enough to review at a glance. */
+export const MAX_DECK_QUESTIONS = 10;
+/** A user can keep at most this many decks at once. */
+export const MAX_CUSTOM_DECKS = 10;
+
+export async function loadCustomDecks(): Promise<CustomDeck[]> {
+  return readJson<CustomDeck[]>(KEY_CUSTOM_DECKS, []);
+}
+
+/**
+ * Ids come from a monotonic counter shared across decks and questions, so a
+ * deleted deck's question ids can never be reused by a later deck — and with
+ * them, their learned synonyms.
+ */
+export async function addCustomDeck(
+  title: string,
+  category: string,
+  drafts: { q: string; accept: string[] }[],
+): Promise<CustomDeck> {
+  if (drafts.length > MAX_DECK_QUESTIONS) {
+    throw new Error(`A deck holds at most ${MAX_DECK_QUESTIONS} questions.`);
+  }
+
+  const decks = await loadCustomDecks();
+  if (decks.length >= MAX_CUSTOM_DECKS) {
+    throw new Error(`You can keep at most ${MAX_CUSTOM_DECKS} decks.`);
+  }
+
+  let seq = await readJson<number>(KEY_CUSTOM_DECK_SEQ, 0);
+  const questions: Question[] = drafts.map((draft) => {
+    seq += 1;
+    return { id: `deck_${seq}`, tier: 0, q: draft.q, accept: draft.accept };
+  });
+  const deck: CustomDeck = { id: `deck_${++seq}`, title, category, questions };
+
+  await AsyncStorage.setItem(KEY_CUSTOM_DECKS, JSON.stringify([...decks, deck]));
+  await AsyncStorage.setItem(KEY_CUSTOM_DECK_SEQ, JSON.stringify(seq));
+  return deck;
+}
+
+export async function deleteCustomDeck(id: string): Promise<void> {
+  const decks = await loadCustomDecks();
+  const removed = decks.find((deck) => deck.id === id);
+  await AsyncStorage.setItem(
+    KEY_CUSTOM_DECKS,
+    JSON.stringify(decks.filter((deck) => deck.id !== id)),
+  );
+  for (const question of removed?.questions ?? []) {
+    await clearLearned(question.id);
+  }
 }
 
 /**

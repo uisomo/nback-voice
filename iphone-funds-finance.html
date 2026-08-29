@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funds Finance N-Back Pro — iPhone App Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-terminal: #050810;
+      --card-bg: #0e1422;
+      --card-border: #232d42;
+      --gold-primary: #d4af37;
+      --amber-accent: #f59e0b;
+      --green-success: #10b981;
+      --red-danger: #ef4444;
+      --text-main: #f1f5f9;
+      --text-sub: #94a3b8;
+      --text-muted: #475569;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #000000;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* iPhone 16 Pro Device Frame */
+    .iphone-wrapper {
+      width: 410px;
+      height: 850px;
+      background: #1c1c1e;
+      border-radius: 54px;
+      padding: 12px;
+      box-shadow: 
+        0 0 0 2px #2c2c2e,
+        0 25px 60px rgba(0, 0, 0, 0.9),
+        0 0 40px rgba(212, 175, 55, 0.2);
+      position: relative;
+      overflow: hidden;
+      border: 4px solid #3a3a3c;
+    }
+
+    .iphone-screen {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-terminal);
+      border-radius: 44px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* iOS Status Bar */
+    .status-bar {
+      height: 48px;
+      padding: 12px 24px 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 700;
+      z-index: 100;
+    }
+
+    .time {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Dynamic Island Notch */
+    .dynamic-island {
+      width: 120px;
+      height: 32px;
+      background: #000;
+      border-radius: 20px;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 200;
+    }
+
+    .di-icon {
+      font-size: 10px;
+      color: var(--gold-primary);
+    }
+
+    .di-text {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--amber-accent);
+    }
+
+    /* Dedicated Funds Finance Header (NO top market ticker bar) */
+    .app-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      background: #070a10;
+    }
+
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-name {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--gold-primary);
+      letter-spacing: 0.5px;
+    }
+
+    .pro-badge {
+      background: var(--gold-primary);
+      color: #000;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+
+    .pro-btn {
+      background: #1a1608;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      padding: 5px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Category Grid Selector (Clean Touch Grid, NO finger side slider) */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--card-border);
+      background: #080c16;
+    }
+
+    .cat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .cat-card.active {
+      background: var(--gold-primary);
+      color: #000;
+      border-color: var(--gold-primary);
+    }
+
+    /* Content Area */
+    .content-area {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      touch-action: pan-y;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scrollbar-width: none;
+    }
+
+    .content-area::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Views */
+    .view-pane {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .view-pane.active {
+      display: flex;
+    }
+
+    /* Deck Card */
+    .deck-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .deck-card:active {
+      border-color: var(--gold-primary);
+    }
+
+    .deck-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .deck-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .diff-tag {
+      background: var(--bg-terminal);
+      border: 1px solid var(--card-border);
+      color: var(--amber-accent);
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .deck-credit {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .mastery-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mastery-bar {
+      flex: 1;
+      height: 5px;
+      background: var(--bg-terminal);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .mastery-fill {
+      height: 100%;
+      background: var(--green-success);
+    }
+
+    .mastery-text {
+      font-size: 10px;
+      color: var(--text-sub);
+    }
+
+    .deck-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .count-text {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .lag-badge {
+      background: #1a1608;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .start-btn {
+      background: var(--gold-primary);
+      color: #000;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    /* Custom Question Form (作成 Screen) */
+    .create-form {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold-primary);
+    }
+
+    .form-input {
+      background: var(--bg-terminal);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    .submit-btn {
+      background: var(--gold-primary);
+      color: #000;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    /* Bottom Navigation Bar (3 EXACT BUTTONS: 教材, 作成, 設定) */
+    .bottom-nav {
+      height: 72px;
+      background: #03050a;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding-bottom: 14px;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+    }
+
+    .nav-btn.active {
+      color: var(--gold-primary);
+    }
+
+    .nav-icon {
+      font-size: 20px;
+    }
+
+    /* iOS Home Bar */
+    .home-indicator {
+      width: 134px;
+      height: 5px;
+      background: #ffffff;
+      opacity: 0.8;
+      border-radius: 3px;
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 300;
+    }
+
+    /* Subscription Sheet */
+    .sheet-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .sheet-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sheet-card {
+      background: #0d121d;
+      border-top: 2px solid var(--gold-primary);
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .sheet-overlay.open .sheet-card {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--card-border);
+      border-radius: 2px;
+      align-self: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- iPhone Frame Shell -->
+  <div class="iphone-wrapper">
+    <div class="iphone-screen">
+
+      <!-- Dynamic Island Notch -->
+      <div class="dynamic-island">
+        <span class="di-icon">🏢</span>
+        <span class="di-text">FUNDS FIN</span>
+      </div>
+
+      <!-- iOS Status Bar -->
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <span style="font-size: 12px;">5G 🔋100%</span>
+      </div>
+
+      <!-- App Header (NO top market ticker bar) -->
+      <div class="app-header">
+        <div class="app-brand">
+          <span class="app-name">FUNDS FINANCE</span>
+          <span class="pro-badge">PRO</span>
+        </div>
+        <button class="pro-btn" onclick="openSheet()">👑 PRO MEMBER</button>
+      </div>
+
+      <!-- Dedicated Funds Finance Categories Grid (NO finger side slider) -->
+      <div class="category-grid">
+        <div class="cat-card active" onclick="filterCat('all', this)"><span>🏢</span> 全てのファンド問題</div>
+        <div class="cat-card" onclick="filterCat('sub', this)"><span>💳</span> サブスク・ライン</div>
+        <div class="cat-card" onclick="filterCat('nav', this)"><span>📊</span> NAV ファイナンス</div>
+        <div class="cat-card" onclick="filterCat('hybrid', this)"><span>⚖️</span> ハイブリッド & 優先株</div>
+        <div class="cat-card" onclick="filterCat('gp', this)"><span>🏛️</span> GPファシリティ</div>
+        <div class="cat-card" onclick="filterCat('cov', this)"><span>📜</span> LPA & コベナンツ</div>
+      </div>
+
+      <!-- Main Content Views -->
+      <div class="content-area">
+
+        <!-- View 1: 教材 (Flashcards / Decks) -->
+        <div id="view-decks" class="view-pane active">
+
+          <!-- Deck 1 -->
+          <div class="deck-card" data-cat="sub">
+            <div class="deck-header">
+              <span class="deck-title">コミットメントとキャピタルコール</span>
+              <span class="diff-tag">Executive L3</span>
+            </div>
+            <div class="deck-credit">出典: 『ファンドファイナンスの教科書』</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 88%"></div></div>
+              <span class="mastery-text">88% 習得</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">14問</span>
+              <span class="lag-badge">2-back</span>
+            </div>
+            <button class="start-btn" onclick="alert('ボイスN-Backフラッシュカードを開始します！')">フラッシュカード開始 ➔</button>
+          </div>
+
+          <!-- Deck 2 -->
+          <div class="deck-card" data-cat="sub">
+            <div class="deck-header">
+              <span class="deck-title">Borrowing Base と Advance Rate</span>
+              <span class="diff-tag">Executive L3</span>
+            </div>
+            <div class="deck-credit">出典: 『ファンドファイナンスの教科書』</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 92%"></div></div>
+              <span class="mastery-text">92% 習得</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">18問</span>
+              <span class="lag-badge">2-back</span>
+            </div>
+            <button class="start-btn" onclick="alert('ボイスN-Backフラッシュカードを開始します！')">フラッシュカード開始 ➔</button>
+          </div>
+
+          <!-- Deck 3 -->
+          <div class="deck-card" data-cat="nav">
+            <div class="deck-header">
+              <span class="deck-title">NAV ファイナンスと LTV コベナンツ</span>
+              <span class="diff-tag">Quant L2</span>
+            </div>
+            <div class="deck-credit">出典: 『PE/NAV Structured Lending』</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 84%"></div></div>
+              <span class="mastery-text">84% 習得</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">16問</span>
+              <span class="lag-badge">3-back</span>
+            </div>
+            <button class="start-btn" onclick="alert('ボイスN-Backフラッシュカードを開始します！')">フラッシュカード開始 ➔</button>
+          </div>
+
+          <!-- Deck 4 -->
+          <div class="deck-card" data-cat="sub">
+            <div class="deck-header">
+              <span class="deck-title">サイドレターと LP 集中リスク</span>
+              <span class="diff-tag">Executive L3</span>
+            </div>
+            <div class="deck-credit">出典: 『ファンドファイナンスの実務』</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 90%"></div></div>
+              <span class="mastery-text">90% 習得</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">12問</span>
+              <span class="lag-badge">1-back</span>
+            </div>
+            <button class="start-btn" onclick="alert('ボイスN-Backフラッシュカードを開始します！')">フラッシュカード開始 ➔</button>
+          </div>
+
+          <!-- Deck 5 -->
+          <div class="deck-card" data-cat="hybrid">
+            <div class="deck-header">
+              <span class="deck-title">優先株ストラクチャーと IRR ブースト</span>
+              <span class="diff-tag">Quant L2</span>
+            </div>
+            <div class="deck-credit">出典: 『Hybrid Capital Solutions』</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 76%"></div></div>
+              <span class="mastery-text">76% 習得</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">10問</span>
+              <span class="lag-badge">2-back</span>
+            </div>
+            <button class="start-btn" onclick="alert('ボイスN-Backフラッシュカードを開始します！')">フラッシュカード開始 ➔</button>
+          </div>
+
+          <!-- Deck 6 -->
+          <div class="deck-card" data-cat="gp">
+            <div class="deck-header">
+              <span class="deck-title">GPファシリティと管理報酬の担保化</span>
+              <span class="diff-tag">Executive L3</span>
+            </div>
+            <div class="deck-credit">出典: 『GP Financing Handbook』</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 81%"></div></div>
+              <span class="mastery-text">81% 習得</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">13問</span>
+              <span class="lag-badge">1-back</span>
+            </div>
+            <button class="start-btn" onclick="alert('ボイスN-Backフラッシュカードを開始します！')">フラッシュカード開始 ➔</button>
+          </div>
+
+          <!-- Deck 7 -->
+          <div class="deck-card" data-cat="cov">
+            <div class="deck-header">
+              <span class="deck-title">LPAコベナンツと除外事由 (Excuse)</span>
+              <span class="diff-tag">Executive L3</span>
+            </div>
+            <div class="deck-credit">出典: 『ファンドファイナンスの実務』</div>
+            <div class="mastery-row">
+              <div class="mastery-bar"><div class="mastery-fill" style="width: 95%"></div></div>
+              <span class="mastery-text">95% 習得</span>
+            </div>
+            <div class="deck-footer">
+              <span class="count-text">9問</span>
+              <span class="lag-badge">1-back</span>
+            </div>
+            <button class="start-btn" onclick="alert('ボイスN-Backフラッシュカードを開始します！')">フラッシュカード開始 ➔</button>
+          </div>
+
+        </div>
+
+        <!-- View 2: 作成 (Create Custom Question) -->
+        <div id="view-create" class="view-pane">
+          <div class="create-form">
+            <div style="font-size: 16px; font-weight: 800; color: var(--gold-primary);">新しい問題を作成</div>
+            
+            <div>
+              <div class="form-label">問題文</div>
+              <input type="text" class="form-input" placeholder="例: GPがLPに資金出資を求める請求を何と呼ぶか？">
+            </div>
+
+            <div>
+              <div class="form-label">模範解答 (正解)</div>
+              <input type="text" class="form-input" placeholder="例: キャピタルコール">
+            </div>
+
+            <div>
+              <div class="form-label">カテゴリー</div>
+              <select class="form-input">
+                <option>サブスクリプション・ファイナンス</option>
+                <option>NAV ファイナンス</option>
+                <option>ハイブリッド & 優先株</option>
+                <option>GPファシリティ</option>
+                <option>LPA & コベナンツ</option>
+              </select>
+            </div>
+
+            <button class="submit-btn" onclick="alert('新しいファンドファイナンス問題を保存しました！')">問題を追加保存</button>
+          </div>
+        </div>
+
+        <!-- View 3: 設定 (Settings & Account) -->
+        <div id="view-settings" class="view-pane">
+          <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="font-size: 16px; font-weight: 800; color: var(--gold-primary);">アプリ設定 & アカウント</div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
+              <span style="font-size: 13px;">会員ステータス</span>
+              <span style="color: var(--gold-primary); font-weight: 800; font-size: 13px;">👑 WALL STREET PRO</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
+              <span style="font-size: 13px;">N-back 自動調整</span>
+              <span style="color: var(--green-success); font-weight: 800; font-size: 13px;">ON</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
+              <span style="font-size: 13px;">音声AI採点 (Claude)</span>
+              <span style="color: var(--green-success); font-weight: 800; font-size: 13px;">接続済み</span>
+            </div>
+
+            <button class="submit-btn" style="background: transparent; border: 1px solid var(--gold-primary); color: var(--gold-primary);" onclick="openSheet()">プラン変更 / アップグレード</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Navigation Bar (3 EXACT BUTTONS: 教材, 作成, 設定) -->
+      <div class="bottom-nav">
+        <div class="nav-btn active" onclick="switchNav('decks', this)">
+          <span class="nav-icon">📚</span>
+          <span>教材</span>
+        </div>
+        <div class="nav-btn" onclick="switchNav('create', this)">
+          <span class="nav-icon">✏️</span>
+          <span>作成</span>
+        </div>
+        <div class="nav-btn" onclick="switchNav('settings', this)">
+          <span class="nav-icon">⚙️</span>
+          <span>設定</span>
+        </div>
+      </div>
+
+      <!-- iOS Home Bar -->
+      <div class="home-indicator"></div>
+
+      <!-- Subscription Sheet -->
+      <div class="sheet-overlay" id="sheet">
+        <div class="sheet-card">
+          <div class="sheet-handle"></div>
+          <div style="font-size: 18px; font-weight: 800; color: var(--gold-primary); text-align: center;">FUNDS FINANCE PRO</div>
+          <div style="font-size: 12px; color: var(--text-sub); text-align: center;">
+            ファンドファイナンス（サブスクライン、NAV、LPAコベナンツ）の全問題を制限なしで学習できます。
+          </div>
+
+          <div style="background: #161c2b; border: 2px solid var(--gold-primary); border-radius: 14px; padding: 16px;">
+            <div style="font-size: 10px; color: var(--gold-primary); font-weight: 800;">FUNDS FINANCE PRO PLAN</div>
+            <div style="font-size: 26px; font-weight: 900; color: var(--gold-primary); margin: 6px 0;">$29.99 <span style="font-size: 12px; color: var(--text-sub);">/ 月</span></div>
+            <div style="font-size: 11px; color: var(--text-sub); line-height: 1.4;">
+              ✓ サブスク・NAV・ハイブリッド全カテゴリ解放<br>
+              ✓ 無制限の音声AI N-Backトレーニング<br>
+              ✓ Claude AI リアルタイム専門用語判定
+            </div>
+          </div>
+
+          <button style="background: #ffffff; color: #000; border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="closeSheet()">
+            <span>Pay</span> Apple Pay で登録する
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function switchNav(viewId, el) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view-pane').forEach(v => v.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('view-' + viewId).classList.add('active');
+    }
+
+    function filterCat(catId, el) {
+      document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+
+      const cards = document.querySelectorAll('.deck-card');
+      cards.forEach(card => {
+        if (catId === 'all' || card.dataset.cat === catId) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function openSheet() {
+      document.getElementById('sheet').classList.add('open');
+    }
+
+    function closeSheet() {
+      document.getElementById('sheet').classList.remove('open');
+    }
+  </script>
+</body>
+</html>
