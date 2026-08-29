@@ -318,6 +318,44 @@ export async function deleteCustomDeck(id: string): Promise<void> {
 }
 
 /**
+ * Replaces a deck's title, category, and questions. Old question ids are
+ * regenerated rather than reused — an edited question's phrasing invalidates
+ * whatever Claude previously learned to accept for it, so that must be
+ * dropped rather than carried over under an unchanged id.
+ */
+export async function updateCustomDeck(
+  id: string,
+  title: string,
+  category: string,
+  drafts: { q: string; accept: string[] }[],
+): Promise<CustomDeck> {
+  if (drafts.length > MAX_DECK_QUESTIONS) {
+    throw new Error(`A deck holds at most ${MAX_DECK_QUESTIONS} questions.`);
+  }
+
+  const decks = await loadCustomDecks();
+  const existing = decks.find((deck) => deck.id === id);
+
+  let seq = await readJson<number>(KEY_CUSTOM_DECK_SEQ, 0);
+  const questions: Question[] = drafts.map((draft) => {
+    seq += 1;
+    return { id: `deck_${seq}`, tier: 0, q: draft.q, accept: draft.accept };
+  });
+  const updated: CustomDeck = { id, title, category, questions };
+
+  await AsyncStorage.setItem(
+    KEY_CUSTOM_DECKS,
+    JSON.stringify(decks.map((deck) => (deck.id === id ? updated : deck))),
+  );
+  await AsyncStorage.setItem(KEY_CUSTOM_DECK_SEQ, JSON.stringify(seq));
+
+  for (const question of existing?.questions ?? []) {
+    await clearLearned(question.id);
+  }
+  return updated;
+}
+
+/**
  * The device's local calendar date. Deliberately not toISOString(), which is
  * UTC and would file every round played before 09:00 JST under the day before.
  */

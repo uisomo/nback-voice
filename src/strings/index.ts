@@ -23,7 +23,9 @@ export interface Strings {
     linkEditQuestions: string;
     sectionStepDuration: string;
     stepDurationUnit: string;
+    noteStepDuration: string;
     sectionAdaptive: string;
+    noteAdaptive: string;
     sectionSeriesN: string;
     noteSeriesN: string;
     seriesNDown: string;
@@ -37,6 +39,10 @@ export interface Strings {
     checkOk: string;
     checkFailedPrefix: string;
     sectionLanguage: string;
+    langJa: string;
+    langEn: string;
+    sectionUpgrade: string;
+    upgradeButton: string;
   };
   game: {
     lagHeader: (n: number) => string;
@@ -48,6 +54,8 @@ export interface Strings {
     setupFailed: string;
     warmupCaption: string;
     warmupHint: string;
+    warmupNLabel: string;
+    warmupStart: string;
     recogErrorPrefix: string;
     heardQuote: (text: string) => string;
     typedPlaceholderClosed: string;
@@ -88,15 +96,15 @@ export interface Strings {
     placeholderQuestion: string;
     placeholderAnswer: string;
     save: string;
-    add: string;
     delete: string;
     cancel: string;
     newDeck: string;
-    singleMode: string;
+    editDeck: string;
     deckNamePlaceholder: string;
     addQuestion: string;
     saveDeck: string;
     removeQuestion: string;
+    noDecks: string;
   };
 }
 
@@ -120,9 +128,11 @@ export const ja: Strings = {
     sectionBudget: '考える時間の基準 (秒)',
     noteBudget: '答え1文字につき1秒が、この基準に足される。時計が0になっても先へは進まない。',
     linkEditQuestions: '自分の問題を編集',
-    sectionStepDuration: '1ステップの長さ',
+    sectionStepDuration: '1ステップの長さ（問題表示＋回答の合計時間）',
     stepDurationUnit: '秒',
+    noteStepDuration: '問題が出てから回答が締め切られるまでの、1ステップあたりの時間。判定の基準ではなく、ペース配分の設定。',
     sectionAdaptive: 'Nを自動調整',
+    noteAdaptive: '直前のラウンドが100%（全問正解）だとNが上がる。半分以下の正解率だとNが下がる。',
     sectionSeriesN: 'シリーズごとのN',
     noteSeriesN: '自動調整の到達点をシリーズごとに直接調整・リセットできる。',
     seriesNDown: '－',
@@ -135,7 +145,11 @@ export const ja: Strings = {
     checking: '確認中…',
     checkOk: '確認できました。採点が使えます。',
     checkFailedPrefix: '失敗: ',
-    sectionLanguage: '言語 (英語)',
+    sectionLanguage: '言語',
+    langJa: '日本語',
+    langEn: 'English',
+    sectionUpgrade: 'プラン',
+    upgradeButton: 'アップグレード',
   },
   game: {
     lagHeader: (n) => `${n}-back ・ ${n}つ前の質問に答える`,
@@ -148,6 +162,8 @@ export const ja: Strings = {
     setupFailed: '準備に失敗しました。アプリを再起動してください',
     warmupCaption: 'ウォームアップ',
     warmupHint: 'タップすると始まります',
+    warmupNLabel: 'N を選ぶ',
+    warmupStart: '開始',
     recogErrorPrefix: '認識エラー: ',
     heardQuote: (text) => `「${text}」`,
     typedPlaceholderClosed: 'まだ答えません',
@@ -183,20 +199,20 @@ export const ja: Strings = {
     lag: (n) => `${n}-back`,
   },
   questions: {
-    heading: '自分の問題',
+    heading: '自分のデッキ',
     count: (n) => `${n} 問`,
     placeholderQuestion: '問題',
     placeholderAnswer: '答え',
     save: '保存',
-    add: '追加',
     delete: '削除',
     cancel: '取消',
     newDeck: '新しいデッキ',
-    singleMode: '1問だけ追加',
+    editDeck: 'デッキを編集',
     deckNamePlaceholder: 'デッキ名',
     addQuestion: '質問を追加',
     saveDeck: 'デッキを保存',
     removeQuestion: '削除',
+    noDecks: 'まだデッキがありません',
   },
 };
 
@@ -220,9 +236,11 @@ export const en: Strings = {
     sectionBudget: 'Base thinking time (seconds)',
     noteBudget: '1 second is added per character of the answer. The round never advances early just because the clock hits 0.',
     linkEditQuestions: 'Edit my questions',
-    sectionStepDuration: 'Step length',
+    sectionStepDuration: 'Step length (question display + answer time)',
     stepDurationUnit: 's',
+    noteStepDuration: 'How long each step lasts, from question to answer deadline. This paces the round — it is not a grading threshold.',
     sectionAdaptive: 'Auto-adjust N',
+    noteAdaptive: 'N goes up after a round scored 100% (every answer correct). It goes down after a round scored 50% or below.',
     sectionSeriesN: 'N per series',
     noteSeriesN: 'Adjust or reset where auto-adjust has landed, per series.',
     seriesNDown: '－',
@@ -235,7 +253,11 @@ export const en: Strings = {
     checking: 'Checking…',
     checkOk: 'Connected. Grading is available.',
     checkFailedPrefix: 'Failed: ',
-    sectionLanguage: 'Language (English)',
+    sectionLanguage: 'Language',
+    langJa: '日本語',
+    langEn: 'English',
+    sectionUpgrade: 'Plan',
+    upgradeButton: 'Upgrade',
   },
   game: {
     lagHeader: (n) => `${n}-back — answer the question from ${n} step${n === 1 ? '' : 's'} ago`,
@@ -248,6 +270,8 @@ export const en: Strings = {
     setupFailed: 'Setup failed. Please restart the app',
     warmupCaption: 'Warm-up',
     warmupHint: 'Tap to begin',
+    warmupNLabel: 'Choose N',
+    warmupStart: 'Start',
     recogErrorPrefix: 'Recognition error: ',
     heardQuote: (text) => `"${text}"`,
     typedPlaceholderClosed: 'Not answering yet',
@@ -283,20 +307,20 @@ export const en: Strings = {
     lag: (n) => `${n}-back`,
   },
   questions: {
-    heading: 'My Questions',
+    heading: 'My Decks',
     count: (n) => `${n} questions`,
     placeholderQuestion: 'Question',
     placeholderAnswer: 'Answer',
     save: 'Save',
-    add: 'Add',
     delete: 'Delete',
     cancel: 'Cancel',
     newDeck: 'New Deck',
-    singleMode: 'Add one question',
+    editDeck: 'Edit Deck',
     deckNamePlaceholder: 'Deck name',
     addQuestion: 'Add Question',
     saveDeck: 'Save Deck',
     removeQuestion: 'Remove',
+    noDecks: 'No decks yet',
   },
 };
 

@@ -133,9 +133,9 @@ afterEach(() => {
  * is load-bearing rather than decorative.
  */
 async function beginRound() {
-  await screen.findByTestId('warmup-question');
+  await screen.findByTestId('warmup-start');
   await act(async () => {
-    fireEvent.press(screen.getByTestId('warmup-choice-0'));
+    fireEvent.press(screen.getByTestId('warmup-start'));
   });
 }
 
@@ -1013,12 +1013,12 @@ describe('GameScreen warm-up gate', () => {
 
   it('shows an arithmetic item to tap while the round loads', async () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
-    const { findByTestId, getAllByTestId } = render(
+    const { findByTestId } = render(
       <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
     );
 
-    expect(await findByTestId('warmup-question')).toBeTruthy();
-    expect(getAllByTestId(/^warmup-choice-/)).toHaveLength(3);
+    expect(await findByTestId('warmup-n-select')).toBeTruthy();
+    expect(await findByTestId('warmup-start')).toBeTruthy();
   });
 
   it('unlocks the synthesizer inside the tap', async () => {
@@ -1026,10 +1026,10 @@ describe('GameScreen warm-up gate', () => {
     const { findByTestId, getByTestId } = render(
       <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
     );
-    await findByTestId('warmup-question');
+    await findByTestId('warmup-start');
 
     await act(async () => {
-      fireEvent.press(getByTestId('warmup-choice-0'));
+      fireEvent.press(getByTestId('warmup-start'));
     });
 
     expect(speaker.unlocked).toBe(1);
@@ -1041,9 +1041,9 @@ describe('GameScreen warm-up gate', () => {
     const { findByTestId, getByTestId } = render(
       <GameScreen seriesId="standard" onFinished={onFinished} deps={deps} />,
     );
-    await findByTestId('warmup-question');
+    await findByTestId('warmup-start');
     await act(async () => {
-      fireEvent.press(getByTestId('warmup-choice-0'));
+      fireEvent.press(getByTestId('warmup-start'));
     });
     await runWholeRound();
 
@@ -1051,28 +1051,20 @@ describe('GameScreen warm-up gate', () => {
     expect(onFinished).toHaveBeenCalledTimes(1);
   });
 
-  it('takes a wrong tap as readily as a right one — it is a warm-up', async () => {
-    const { deps, speaker } = makeDefaultDeps(alwaysCorrect);
-    const { findByTestId, getByTestId } = render(
+  it('starts the round at the N chosen in the dropdown', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    const { findByTestId, getByTestId, findAllByText } = render(
       <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
     );
-    const question = await findByTestId('warmup-question');
-    const answer = Number(
-      (question.props.children as string[]).join('').match(/= ?(\d+)/)?.[1] ??
-        NaN,
-    );
-    // Whichever slot is tapped, the round begins.
-    for (const slot of [0, 1, 2]) {
-      const choice = getByTestId(`warmup-choice-${slot}`);
-      if (Number(choice.props.children) === answer) continue;
-      await act(async () => {
-        fireEvent.press(choice);
-      });
-      break;
-    }
-    await runWholeRound();
+    await findByTestId('warmup-start');
+    await act(async () => {
+      fireEvent.press(getByTestId('warmup-n-choice-3'));
+    });
+    await act(async () => {
+      fireEvent.press(getByTestId('warmup-start'));
+    });
 
-    expect(speaker.spoken).toHaveLength(9);
+    expect((await findAllByText(/3-back/)).length).toBeGreaterThan(0);
   });
 
   it('shows which lag this round is, before it starts', async () => {
@@ -1089,9 +1081,9 @@ describe('GameScreen warm-up gate', () => {
     const { findByTestId, getByTestId, findByText } = render(
       <GameScreen seriesId="standard" onFinished={jest.fn()} deps={deps} />,
     );
-    await findByTestId('warmup-question');
+    await findByTestId('warmup-start');
     await act(async () => {
-      fireEvent.press(getByTestId('warmup-choice-0'));
+      fireEvent.press(getByTestId('warmup-start'));
     });
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2_500);
@@ -1577,8 +1569,8 @@ describe('language-driven locale', () => {
     });
     // The warm-up tap calls speaker.unlock(), which is the first observable
     // Speech.speak() call and proves which locale the constructed ExpoSpeaker holds.
-    const warmupChoice = await screen.findByTestId('warmup-choice-0');
-    fireEvent.press(warmupChoice);
+    const warmupStart = await screen.findByTestId('warmup-start');
+    fireEvent.press(warmupStart);
     expect(Speech.speak).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ language: 'en-US' }),

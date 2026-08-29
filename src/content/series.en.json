@@ -145,7 +145,8 @@
           "investment period"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "sub-finance"
   },
   {
     "id": "nav-finance",
@@ -265,7 +266,8 @@
           "Local law opinion"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "fund-cast",
@@ -380,7 +382,8 @@
           "Assets Under Management"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "gp-facility"
   },
   {
     "id": "persuasion",
@@ -697,7 +700,8 @@
           "Twenty percent"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "gp-facility"
   },
   {
     "id": "ffdd-02",
@@ -797,7 +801,8 @@
           "AIFMD Annex IV Reporting"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "fund-covenants"
   },
   {
     "id": "ffdd-03",
@@ -891,7 +896,8 @@
           "Entire Agreement Clause"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "fund-covenants"
   },
   {
     "id": "ffdd-04",
@@ -987,7 +993,8 @@
           "money-weighted return"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "ffdd-05",
@@ -1088,7 +1095,8 @@
           "Public markets"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "ffdd-06",
@@ -1187,7 +1195,8 @@
           "Discounted Cash Flow"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "ffdd-07",
@@ -1269,7 +1278,8 @@
           "OFAC"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "sub-finance"
   },
   {
     "id": "ffdd-08",
@@ -1358,7 +1368,8 @@
           "eligibility rate"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "ffdd-09",
@@ -1446,7 +1457,8 @@
           "Double-Counting of Leverage"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "ffdd-10",
@@ -1539,7 +1551,8 @@
           "Holdings Report"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "gp-facility"
   },
   {
     "id": "ffdd-11",
@@ -1637,7 +1650,8 @@
           "GP clawback"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "gp-facility"
   },
   {
     "id": "ffdd-12",
@@ -1737,7 +1751,8 @@
           "cherry picking of co-investments"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "fund-covenants"
   },
   {
     "id": "ffdd-13",
@@ -1838,7 +1853,8 @@
           "Bow Factor"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "fund-covenants"
   },
   {
     "id": "ffdd-14",
@@ -1940,7 +1956,8 @@
           "Sale"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "fund-covenants"
   },
   {
     "id": "ffdd-15",
@@ -2024,7 +2041,8 @@
           "Remaining Commitment Period"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "sub-finance"
   },
   {
     "id": "ffdd-16",
@@ -2122,7 +2140,8 @@
           "fall"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "ffdd-17",
@@ -2211,7 +2230,8 @@
           "LP data"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "nav-finance"
   },
   {
     "id": "ffdd-18",
@@ -2289,7 +2309,8 @@
           "2019"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "fund-covenants"
   },
   {
     "id": "ffdd-19",
@@ -2393,7 +2414,8 @@
           "Covenant Cushion"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "hybrid-pref"
   },
   {
     "id": "ffdd-20",
@@ -2512,7 +2534,8 @@
           "European Banking Authority"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "hybrid-pref"
   },
   {
     "id": "ffdd-21",
@@ -2579,6 +2602,7 @@
           "IRR Manipulation"
         ]
       }
-    ]
+    ],
+    "fundsCategory": "fund-covenants"
   }
 ]

@@ -8,14 +8,13 @@ import {
   View,
 } from 'react-native';
 import { FUNDS_FINANCE_CATEGORIES } from '../content/series';
-import type { Question } from '../engine/types';
 import {
   MAX_DECK_QUESTIONS,
-  addCustom,
   addCustomDeck,
-  deleteCustom,
-  loadCustom,
-  updateCustom,
+  deleteCustomDeck,
+  loadCustomDecks,
+  updateCustomDeck,
+  type CustomDeck,
 } from '../store/storage';
 import { useStrings } from '../strings';
 
@@ -31,12 +30,10 @@ interface QuestionDraft {
 const emptyDraft = (): QuestionDraft => ({ q: '', answer: '' });
 
 export function QuestionsScreen({ onClose }: Props) {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draftQ, setDraftQ] = useState('');
-  const [draftAnswer, setDraftAnswer] = useState('');
+  const [decks, setDecks] = useState<CustomDeck[]>([]);
   const strings = useStrings();
 
+  const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
   const [deckMode, setDeckMode] = useState(false);
   const [deckTitle, setDeckTitle] = useState('');
   const [deckCategory, setDeckCategory] = useState(FUNDS_FINANCE_CATEGORIES[0].id);
@@ -44,50 +41,35 @@ export function QuestionsScreen({ onClose }: Props) {
   const [deckError, setDeckError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    setQuestions(await loadCustom());
+    setDecks(await loadCustomDecks());
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const resetForm = () => {
-    setEditingId(null);
-    setDraftQ('');
-    setDraftAnswer('');
-  };
-
-  const submit = async () => {
-    const q = draftQ.trim();
-    const answer = draftAnswer.trim();
-    if (!q || !answer) return;
-    if (editingId) {
-      await updateCustom(editingId, q, answer);
-    } else {
-      await addCustom(q, answer);
-    }
-    resetForm();
-    await refresh();
-  };
-
-  const startEditing = (question: Question) => {
-    setEditingId(question.id);
-    setDraftQ(question.q);
-    setDraftAnswer(question.accept[0] ?? '');
-  };
-
-  const remove = async () => {
-    if (!editingId) return;
-    await deleteCustom(editingId);
-    resetForm();
-    await refresh();
-  };
-
   const resetDeckForm = () => {
+    setEditingDeckId(null);
     setDeckTitle('');
     setDeckCategory(FUNDS_FINANCE_CATEGORIES[0].id);
     setDeckDrafts([emptyDraft()]);
     setDeckError(null);
+  };
+
+  const startNewDeck = () => {
+    resetDeckForm();
+    setDeckMode(true);
+  };
+
+  const startEditingDeck = (deck: CustomDeck) => {
+    setEditingDeckId(deck.id);
+    setDeckTitle(deck.title);
+    setDeckCategory(deck.category);
+    setDeckDrafts(
+      deck.questions.map((question) => ({ q: question.q, answer: question.accept[0] ?? '' })),
+    );
+    setDeckError(null);
+    setDeckMode(true);
   };
 
   const updateDeckDraft = (index: number, field: keyof QuestionDraft, value: string) => {
@@ -113,18 +95,33 @@ export function QuestionsScreen({ onClose }: Props) {
       .filter((d) => d.q && d.accept[0]);
     if (!title || drafts.length === 0) return;
     try {
-      await addCustomDeck(title, deckCategory, drafts);
+      if (editingDeckId) {
+        await updateCustomDeck(editingDeckId, title, deckCategory, drafts);
+      } else {
+        await addCustomDeck(title, deckCategory, drafts);
+      }
       resetDeckForm();
       setDeckMode(false);
+      await refresh();
     } catch (e) {
       setDeckError(e instanceof Error ? e.message : String(e));
     }
   };
 
+  const removeDeck = async () => {
+    if (!editingDeckId) return;
+    await deleteCustomDeck(editingDeckId);
+    resetDeckForm();
+    setDeckMode(false);
+    await refresh();
+  };
+
   if (deckMode) {
     return (
       <View style={styles.screen}>
-        <Text style={styles.heading}>{strings.questions.newDeck}</Text>
+        <Text style={styles.heading}>
+          {editingDeckId ? strings.questions.editDeck : strings.questions.newDeck}
+        </Text>
 
         <TextInput
           style={styles.input}
@@ -187,6 +184,11 @@ export function QuestionsScreen({ onClose }: Props) {
           <Pressable style={styles.primary} onPress={() => void submitDeck()}>
             <Text style={styles.label}>{strings.questions.saveDeck}</Text>
           </Pressable>
+          {editingDeckId && (
+            <Pressable style={styles.secondary} onPress={() => void removeDeck()}>
+              <Text style={styles.label}>{strings.questions.delete}</Text>
+            </Pressable>
+          )}
           <Pressable
             style={styles.secondary}
             onPress={() => {
@@ -204,53 +206,22 @@ export function QuestionsScreen({ onClose }: Props) {
   return (
     <View style={styles.screen}>
       <Text style={styles.heading}>{strings.questions.heading}</Text>
-      <Text style={styles.count}>{strings.questions.count(questions.length)}</Text>
+      <Text style={styles.count}>{strings.questions.count(decks.length)}</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder={strings.questions.placeholderQuestion}
-        placeholderTextColor="#8e8e93"
-        value={draftQ}
-        onChangeText={setDraftQ}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder={strings.questions.placeholderAnswer}
-        placeholderTextColor="#8e8e93"
-        value={draftAnswer}
-        onChangeText={setDraftAnswer}
-      />
-
-      <View style={styles.formRow}>
-        <Pressable style={styles.primary} onPress={() => void submit()}>
-          <Text style={styles.label}>{editingId ? strings.questions.save : strings.questions.add}</Text>
-        </Pressable>
-        {editingId && (
-          <>
-            <Pressable style={styles.secondary} onPress={() => void remove()}>
-              <Text style={styles.label}>{strings.questions.delete}</Text>
-            </Pressable>
-            <Pressable style={styles.secondary} onPress={resetForm}>
-              <Text style={styles.label}>{strings.questions.cancel}</Text>
-            </Pressable>
-          </>
-        )}
-        {!editingId && (
-          <Pressable style={styles.secondary} onPress={() => setDeckMode(true)}>
-            <Text style={styles.label}>{strings.questions.newDeck}</Text>
-          </Pressable>
-        )}
-      </View>
+      <Pressable style={styles.primary} onPress={startNewDeck}>
+        <Text style={styles.label}>{strings.questions.newDeck}</Text>
+      </Pressable>
 
       <ScrollView style={styles.list}>
-        {questions.map((question) => (
+        {decks.length === 0 && <Text style={styles.itemA}>{strings.questions.noDecks}</Text>}
+        {decks.map((deck) => (
           <Pressable
-            key={question.id}
+            key={deck.id}
             style={styles.item}
-            onPress={() => startEditing(question)}
+            onPress={() => startEditingDeck(deck)}
           >
-            <Text style={styles.itemQ}>{question.q}</Text>
-            <Text style={styles.itemA}>{question.accept[0]}</Text>
+            <Text style={styles.itemQ}>{deck.title}</Text>
+            <Text style={styles.itemA}>{strings.questions.count(deck.questions.length)}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -280,6 +251,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     backgroundColor: '#c96f4a',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   secondary: {
     paddingVertical: 10,

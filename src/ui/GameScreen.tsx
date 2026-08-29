@@ -15,7 +15,6 @@ import type { PositionOutcome } from '../engine/round';
 import type { Position, RoundMode, RoundPlan } from '../engine/types';
 import { MIN_QUESTIONS } from '../content/pool';
 import { findSeries, listSeries } from '../content/series';
-import { makeWarmup, type Warmup } from '../content/warmup';
 import { ClaudeJudgeClient } from '../judge/claude';
 import { JudgeQueue } from '../judge/queue';
 import type { JudgeClient } from '../judge/types';
@@ -47,6 +46,9 @@ import { Grid } from './Grid';
  * held hostage by a stalled request.
  */
 const DRAIN_TIMEOUT_MS = 15_000;
+
+/** N choices offered on the warm-up screen — matches the fixed-N range in Settings. */
+const N_CHOICES = [1, 2, 3, 4, 5];
 
 function within<T>(promise: Promise<T>, ms: number): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -153,10 +155,13 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const [answer, setAnswer] = useState<LiveAnswer | null>(null);
   const [recogError, setRecogError] = useState<string | null>(null);
   const [seriesLabel, setSeriesLabel] = useState('');
-  const [warmup, setWarmup] = useState<Warmup | null>(null);
-  const [warmupTapped, setWarmupTapped] = useState<number | null>(null);
+  /** True from setup until the warm-up start tap; gates the warm-up screen. */
+  const [warmup, setWarmup] = useState(false);
+  const [warmupStarted, setWarmupStarted] = useState(false);
   /** The round's N, known before it starts so the owner can be told. */
   const [lag, setLag] = useState<number | null>(null);
+  /** The N chosen in the warm-up dropdown, defaulting to the loaded/fixed N. */
+  const [selectedN, setSelectedN] = useState<number | null>(null);
   /**
    * How this round is answered. null until settings resolve: rendering either
    * layout before then paints a grid the round may not be using at all.
@@ -179,6 +184,8 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const planRef = useRef<RoundPlan | null>(null);
   /** Starts the prepared round; set once setup finishes, called by the tap. */
   const beginRef = useRef<(() => void) | null>(null);
+  /** Rebuilds plan/engine/runner for a chosen N; set once setup finishes. */
+  const buildForNRef = useRef<((n: number) => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
    * Clears the just-judged answer off screen a moment after its ○/× lands.
@@ -266,7 +273,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         const storedN = await loadN(series.id);
         if (cancelled) return;
 
-        const n = settings.adaptive ? storedN : settings.fixedN;
+        const defaultN = settings.adaptive ? storedN : settings.fixedN;
         const pool = series.questions;
 
         // Named before the mic opens: the lag alone does not say which set of
@@ -282,8 +289,6 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         }
 
         setMode(settings.mode);
-        const plan = buildRound(n, pool, Math.random, settings.mode);
-        planRef.current = plan;
         const typed = settings.answerInput === 'typed' ? new TypedListener() : null;
         typedRef.current = typed;
         setAnswerInput(settings.answerInput);
@@ -295,192 +300,208 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         const budgetBaseMs = typed
           ? settings.budgetBaseMs + a
           : settings.budgetBaseMs;
-        const engine = new RoundEngine(plan, { budgetBaseMs });
-        const queue = new JudgeQueue(
-          resolved.judgeClient,
-          {
-            onVerdict: (index, correct) => {
-              engine.resolveAnswer(index, correct);
-              // Colours the answer only while it is still the one on screen —
-              // a verdict that arrives after the owner has spoken again belongs
-              // to a step they are no longer looking at.
-              setAnswer((current) =>
-                current && current.index === index ? { ...current, correct } : current,
-              );
-              // Briefly shows the ○/× and then clears it, rather than leaving
-              // a solved answer on screen through the whole of the next
-              // question. Guarded the same way the colour above is: only
-              // clears if this verdict's answer is still the one showing.
-              if (verdictClearRef.current) clearTimeout(verdictClearRef.current);
-              verdictClearRef.current = setTimeout(() => {
-                verdictClearRef.current = null;
-                setAnswer((current) => (current?.index === index ? null : current));
-              }, VERDICT_DISPLAY_MS);
+
+        /**
+         * Builds the plan/engine/runner for a given N and wires beginRef to
+         * start it. Re-run from the warm-up screen if the owner changes the
+         * N dropdown there, so the tap that unlocks audio always starts a
+         * round at the N actually chosen — not the one loaded before the
+         * warm-up screen appeared.
+         */
+        const buildForN = (n: number) => {
+          const plan = buildRound(n, pool, Math.random, settings.mode);
+          planRef.current = plan;
+          const engine = new RoundEngine(plan, { budgetBaseMs });
+          const queue = new JudgeQueue(
+            resolved.judgeClient,
+            {
+              onVerdict: (index, correct) => {
+                engine.resolveAnswer(index, correct);
+                // Colours the answer only while it is still the one on screen —
+                // a verdict that arrives after the owner has spoken again belongs
+                // to a step they are no longer looking at.
+                setAnswer((current) =>
+                  current && current.index === index ? { ...current, correct } : current,
+                );
+                // Briefly shows the ○/× and then clears it, rather than leaving
+                // a solved answer on screen through the whole of the next
+                // question. Guarded the same way the colour above is: only
+                // clears if this verdict's answer is still the one showing.
+                if (verdictClearRef.current) clearTimeout(verdictClearRef.current);
+                verdictClearRef.current = setTimeout(() => {
+                  verdictClearRef.current = null;
+                  setAnswer((current) => (current?.index === index ? null : current));
+                }, VERDICT_DISPLAY_MS);
+              },
+              onLearn: (questionId, answer) => {
+                void addLearned(questionId, answer);
+              },
             },
-            onLearn: (questionId, answer) => {
-              void addLearned(questionId, answer);
-            },
-          },
-          settings.language,
-        );
+            settings.language,
+          );
 
-        const runner = new RoundRunner({
-          plan,
-          engine,
-          speaker: resolved.speaker,
-          listener: typed ?? resolved.listener,
-          onJudge: (answer) => queue.enqueue(answer),
-          clock: typed ? () => Date.now() : undefined,
-          // Typed mode has no microphone to keep the synthesizer out of, so
-          // the question and the answer window run together (spec §7).
-          merged: typed !== null,
-        });
-        runnerRef.current = runner;
+          const runner = new RoundRunner({
+            plan,
+            engine,
+            speaker: resolved.speaker,
+            listener: typed ?? resolved.listener,
+            onJudge: (answer) => queue.enqueue(answer),
+            clock: typed ? () => Date.now() : undefined,
+            // Typed mode has no microphone to keep the synthesizer out of, so
+            // the question and the answer window run together (spec §7).
+            merged: typed !== null,
+          });
+          runnerRef.current = runner;
 
-        // Invoked from schedule(), long after this setup block has returned, so
-        // it owns its error handling — and always reaches the results screen.
-        const finish = async () => {
-          try {
-            await within(queue.drain(), DRAIN_TIMEOUT_MS);
-            if (!cancelled) {
-              if (settings.adaptive) await saveN(series.id, engine.nextN(n));
-              await appendHistory({
-                date: localDate(),
-                n,
-                positionScore: engine.positionScore,
-                answerScore: engine.answerScore,
-                unresolved: engine.unresolvedCount,
-                seriesId: series.id,
-                onTimeScore: engine.onTimeScore,
-              });
-            }
-          } catch (error) {
-            console.error('[nback] ラウンド終了処理に失敗しました', error);
-          }
-          if (!cancelled) onFinished(engine, plan);
-        };
-
-        const schedule = () => {
-          if (cancelled) return;
-          const { phase, stepIndex, flashPosition } = runner.state;
-
-          if (phase === 'done') {
-            // The round is over: nothing is owed, so the countdown must not
-            // freeze on screen and the field must not stay typable through
-            // the grading drain (up to DRAIN_TIMEOUT_MS).
-            setRemainingMs(null);
-            setTypedText('');
-            setQuestion('');
-            void finish();
-            return;
-          }
-
-          setFlash(flashPosition);
-          // 'AB' is a step opening too — a merged step has no separate A.
-          if (phase !== 'B') {
-            setSelected(null);
-            setTapVerdict(null);
-          }
-          // The mic reopening is the owner's turn again, so the previous
-          // answer clears here rather than at the step boundary — it stays up
-          // through the next question, which is when its verdict arrives.
-          // Merged steps have no such boundary to clear on: there the submit
-          // itself replaces what is on screen (see handleTypedSubmit).
-          if (phase === 'B') setAnswer(null);
-
-          const step = plan.steps[stepIndex];
-          const owesAnswer = step.recallTarget !== null;
-          // Merged steps are always the owner's turn, so they say so — except
-          // on the opening steps, which ask for nothing yet.
-          const answering = phase === 'AB' ? owesAnswer : phase === 'B';
-          setLabel(strings.game.stepLabel(stepIndex + 1, plan.steps.length, n, answering));
-
-          // Spoken and shown both: the question stays up through its own
-          // answer window, and the trailing steps show nothing at all.
-          setQuestion(step.question?.q ?? '');
-          // Whether the field is live this phase — from the merged step's
-          // start, or from phase B in the two-phase round.
-          const windowOpen = phase === 'B' || phase === 'AB';
-
-          if (windowOpen && typed && owesAnswer) {
-            const target = plan.steps[step.recallTarget!];
-            const budget = answerBudgetMs(
-              target.question?.accept[0] ?? '',
-              budgetBaseMs,
-            );
-            openStepRef.current = stepIndex;
-            setTypedText('');
-            setRemainingMs(budget);
-            const startedAt = Date.now();
-            clockRef.current = setInterval(() => {
-              const left = budget - (Date.now() - startedAt);
-              setRemainingMs(left);
-              // The target is reached; the window itself stays open until the
-              // answer is sent. Painting 0.0s once and then stopping keeps an
-              // idle step from re-rendering the screen every 200ms forever.
-              if (left <= 0 && clockRef.current) {
-                clearInterval(clockRef.current);
-                clockRef.current = null;
+          // Invoked from schedule(), long after this setup block has returned, so
+          // it owns its error handling — and always reaches the results screen.
+          const finish = async () => {
+            try {
+              await within(queue.drain(), DRAIN_TIMEOUT_MS);
+              if (!cancelled) {
+                if (settings.adaptive) await saveN(series.id, engine.nextN(n));
+                await appendHistory({
+                  date: localDate(),
+                  n,
+                  positionScore: engine.positionScore,
+                  answerScore: engine.answerScore,
+                  unresolved: engine.unresolvedCount,
+                  seriesId: series.id,
+                  onTimeScore: engine.onTimeScore,
+                });
               }
-            }, 200);
-          } else {
-            setRemainingMs(null);
-            // RoundRunner always opens the TypedListener on phase B and
-            // readyToClose() always waits on settle(), even on a step that
-            // owes no answer — the runner does not know about steps. Nothing
-            // is shown to submit here, so the UI submits on the step's
-            // behalf: the outer timer below still paces the step normally,
-            // this just keeps readyToClose() from waiting on input nobody
-            // will ever give.
-            if (windowOpen && typed) {
-              typed.submit();
+            } catch (error) {
+              console.error('[nback] ラウンド終了処理に失敗しました', error);
             }
-          }
-
-          const advance = () => {
-            void runner.readyToClose().then(() => {
-              if (cancelled) return;
-              if (clockRef.current) {
-                clearInterval(clockRef.current);
-                clockRef.current = null;
-              }
-              // tick() transitions synchronously, so the repaint lands with
-              // the transition rather than chaining off another promise.
-              runner.tick();
-              schedule();
-            });
+            if (!cancelled) onFinished(engine, plan);
           };
 
-          // Typed answer windows close on submit, not on a timer: that is what
-          // makes the round submit-driven. Everything else keeps its timer,
-          // including typed steps that owe no answer.
-          if (windowOpen && typed && owesAnswer) {
-            advance();
-          } else {
-            // A merged step is both halves at once, so it is paced by both.
-            const span = phase === 'A' ? a : phase === 'AB' ? a + b : b;
-            timerRef.current = setTimeout(advance, span);
-          }
+          const schedule = () => {
+            if (cancelled) return;
+            const { phase, stepIndex, flashPosition } = runner.state;
+
+            if (phase === 'done') {
+              // The round is over: nothing is owed, so the countdown must not
+              // freeze on screen and the field must not stay typable through
+              // the grading drain (up to DRAIN_TIMEOUT_MS).
+              setRemainingMs(null);
+              setTypedText('');
+              setQuestion('');
+              void finish();
+              return;
+            }
+
+            setFlash(flashPosition);
+            // 'AB' is a step opening too — a merged step has no separate A.
+            if (phase !== 'B') {
+              setSelected(null);
+              setTapVerdict(null);
+            }
+            // The mic reopening is the owner's turn again, so the previous
+            // answer clears here rather than at the step boundary — it stays up
+            // through the next question, which is when its verdict arrives.
+            // Merged steps have no such boundary to clear on: there the submit
+            // itself replaces what is on screen (see handleTypedSubmit).
+            if (phase === 'B') setAnswer(null);
+
+            const step = plan.steps[stepIndex];
+            const owesAnswer = step.recallTarget !== null;
+            // Merged steps are always the owner's turn, so they say so — except
+            // on the opening steps, which ask for nothing yet.
+            const answering = phase === 'AB' ? owesAnswer : phase === 'B';
+            setLabel(strings.game.stepLabel(stepIndex + 1, plan.steps.length, n, answering));
+
+            // Spoken and shown both: the question stays up through its own
+            // answer window, and the trailing steps show nothing at all.
+            setQuestion(step.question?.q ?? '');
+            // Whether the field is live this phase — from the merged step's
+            // start, or from phase B in the two-phase round.
+            const windowOpen = phase === 'B' || phase === 'AB';
+
+            if (windowOpen && typed && owesAnswer) {
+              const target = plan.steps[step.recallTarget!];
+              const budget = answerBudgetMs(
+                target.question?.accept[0] ?? '',
+                budgetBaseMs,
+              );
+              openStepRef.current = stepIndex;
+              setTypedText('');
+              setRemainingMs(budget);
+              const startedAt = Date.now();
+              clockRef.current = setInterval(() => {
+                const left = budget - (Date.now() - startedAt);
+                setRemainingMs(left);
+                // The target is reached; the window itself stays open until the
+                // answer is sent. Painting 0.0s once and then stopping keeps an
+                // idle step from re-rendering the screen every 200ms forever.
+                if (left <= 0 && clockRef.current) {
+                  clearInterval(clockRef.current);
+                  clockRef.current = null;
+                }
+              }, 200);
+            } else {
+              setRemainingMs(null);
+              // RoundRunner always opens the TypedListener on phase B and
+              // readyToClose() always waits on settle(), even on a step that
+              // owes no answer — the runner does not know about steps. Nothing
+              // is shown to submit here, so the UI submits on the step's
+              // behalf: the outer timer below still paces the step normally,
+              // this just keeps readyToClose() from waiting on input nobody
+              // will ever give.
+              if (windowOpen && typed) {
+                typed.submit();
+              }
+            }
+
+            const advance = () => {
+              void runner.readyToClose().then(() => {
+                if (cancelled) return;
+                if (clockRef.current) {
+                  clearInterval(clockRef.current);
+                  clockRef.current = null;
+                }
+                // tick() transitions synchronously, so the repaint lands with
+                // the transition rather than chaining off another promise.
+                runner.tick();
+                schedule();
+              });
+            };
+
+            // Typed answer windows close on submit, not on a timer: that is what
+            // makes the round submit-driven. Everything else keeps its timer,
+            // including typed steps that owe no answer.
+            if (windowOpen && typed && owesAnswer) {
+              advance();
+            } else {
+              // A merged step is both halves at once, so it is paced by both.
+              const span = phase === 'A' ? a : phase === 'AB' ? a + b : b;
+              timerRef.current = setTimeout(advance, span);
+            }
+          };
+
+          // Prepared but not started: the round waits for the warm-up tap,
+          // which is what lets iOS speak at all.
+          beginRef.current = () => {
+            // Runs from the tap handler, outside this block's try, so it owns
+            // its failures — a synthesizer that cannot start must not leave the
+            // owner on a screen that looks ready.
+            try {
+              runner.start();
+              setReady(true);
+              schedule();
+            } catch (error) {
+              console.error('[nback] ラウンドの開始に失敗しました', error);
+              setLabel(strings.game.setupFailed);
+            }
+          };
         };
 
-        // Prepared but not started: the round waits for the warm-up tap,
-        // which is what lets iOS speak at all.
-        beginRef.current = () => {
-          // Runs from the tap handler, outside this block's try, so it owns
-          // its failures — a synthesizer that cannot start must not leave the
-          // owner on a screen that looks ready.
-          try {
-            runner.start();
-            setReady(true);
-            schedule();
-          } catch (error) {
-            console.error('[nback] ラウンドの開始に失敗しました', error);
-            setLabel(strings.game.setupFailed);
-          }
-        };
         if (cancelled) return;
-        setLag(n);
-        setWarmup(makeWarmup());
+        buildForNRef.current = buildForN;
+        setLag(defaultN);
+        setSelectedN(defaultN);
+        buildForN(defaultN);
+        setWarmup(true);
       } catch (error) {
         console.error('[nback] ラウンドの準備に失敗しました', error);
         if (!cancelled) setLabel(strings.game.setupFailed);
@@ -499,20 +520,22 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   }, [resolved, onFinished, seriesId]);
 
   /**
-   * The warm-up tap. The unlock has to happen here, synchronously: it is the
-   * gesture itself that permits speech, and anything awaited first lands
-   * outside it. Right or wrong answer, the round begins — this is a warm-up,
-   * not a gate.
+   * The warm-up start tap. The unlock has to happen here, synchronously: it
+   * is the gesture itself that permits speech, and anything awaited first
+   * lands outside it. If the dropdown's N differs from what the round was
+   * built with, it is rebuilt for the chosen N before starting — the tap
+   * that unlocks audio always starts a round at the N actually chosen.
    */
-  const handleWarmupTap = useCallback(
-    (choice: number) => {
-      resolved.speaker.unlock();
-      setWarmupTapped(choice);
-      setWarmup(null);
-      beginRef.current?.();
-    },
-    [resolved],
-  );
+  const handleWarmupStart = useCallback(() => {
+    resolved.speaker.unlock();
+    if (selectedN !== null && selectedN !== lag) {
+      buildForNRef.current?.(selectedN);
+      setLag(selectedN);
+    }
+    setWarmupStarted(true);
+    setWarmup(false);
+    beginRef.current?.();
+  }, [resolved, selectedN, lag]);
 
   /**
    * Sending the typed answer. The transcript display is driven by the
@@ -576,21 +599,22 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           {seriesLabel}
         </Text>
         <Text style={styles.warmupCaption}>{strings.game.warmupCaption}</Text>
-        <Text testID="warmup-question" style={styles.warmupQuestion}>
-          {warmup.question} = ?
-        </Text>
-        <View style={styles.warmupRow}>
-          {warmup.choices.map((choice, slot) => (
+        <Text style={styles.warmupNLabel}>{strings.game.warmupNLabel}</Text>
+        <View testID="warmup-n-select" style={styles.warmupRow}>
+          {N_CHOICES.map((n) => (
             <Pressable
-              key={choice}
-              testID={`warmup-choice-${slot}`}
-              style={styles.warmupChoice}
-              onPress={() => handleWarmupTap(choice)}
+              key={n}
+              testID={`warmup-n-choice-${n}`}
+              style={[styles.warmupChoice, selectedN === n && styles.warmupChoiceSelected]}
+              onPress={() => setSelectedN(n)}
             >
-              <Text style={styles.warmupChoiceLabel}>{choice}</Text>
+              <Text style={styles.warmupChoiceLabel}>{n}</Text>
             </Pressable>
           ))}
         </View>
+        <Pressable testID="warmup-start" style={styles.warmupStartButton} onPress={handleWarmupStart}>
+          <Text style={styles.warmupStartLabel}>{strings.game.warmupStart}</Text>
+        </Pressable>
         <Text style={styles.warmupHint}>{strings.game.warmupHint}</Text>
       </View>
     );
@@ -606,7 +630,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LagHeader n={lag} strings={strings.game} />
-      {warmupTapped !== null && !ready && (
+      {warmupStarted && !ready && (
         <Text style={styles.warmupCaption}>{strings.game.preparing}</Text>
       )}
       <Text style={styles.label}>{label}</Text>
@@ -726,11 +750,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  warmupQuestion: {
-    color: '#f4f1ea',
-    fontSize: 40,
+  warmupNLabel: {
+    color: '#8e8e93',
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 12,
   },
   warmupRow: {
     flexDirection: 'row',
@@ -744,6 +768,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#1c1c1e',
   },
+  warmupChoiceSelected: { backgroundColor: '#c96f4a' },
   warmupSeries: {
     color: '#f4f1ea',
     fontSize: 18,
@@ -751,6 +776,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   warmupChoiceLabel: { color: '#f4f1ea', fontSize: 28 },
+  warmupStartButton: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#c96f4a',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  warmupStartLabel: { color: '#000', fontSize: 18, fontWeight: 'bold' },
   warmupHint: { color: '#8e8e93', fontSize: 14, textAlign: 'center' },
   error: {
     color: '#e5534b',

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { FUNDS_FINANCE_CATEGORIES } from '../../content/series';
-import { addCustom, loadCustom, loadCustomDecks } from '../../store/storage';
+import { addCustomDeck, loadCustomDecks } from '../../store/storage';
 import { QuestionsScreen } from '../QuestionsScreen';
 
 beforeEach(async () => {
@@ -9,83 +9,26 @@ beforeEach(async () => {
 });
 
 describe('QuestionsScreen', () => {
-  it('shows a count of zero when there are no questions', async () => {
+  it('has no single-question quick-add form', async () => {
+    const { queryByPlaceholderText, queryByText } = render(
+      <QuestionsScreen onClose={() => {}} />,
+    );
+    await waitFor(() => {});
+    expect(queryByPlaceholderText('問題')).toBeNull();
+    expect(queryByPlaceholderText('答え')).toBeNull();
+    expect(queryByText('追加')).toBeNull();
+  });
+
+  it('offers a button to start a new deck', async () => {
+    const { getByText } = render(<QuestionsScreen onClose={() => {}} />);
+    await waitFor(() => {});
+    expect(getByText('新しいデッキ')).toBeTruthy();
+  });
+
+  it('lists decks created in the past', async () => {
+    await addCustomDeck('過去のデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     const { findByText } = render(<QuestionsScreen onClose={() => {}} />);
-    expect(await findByText(/0 問/)).toBeTruthy();
-  });
-
-  it('lists existing questions', async () => {
-    await addCustom('犬の鳴き声は？', 'わん');
-    const { findByText } = render(<QuestionsScreen onClose={() => {}} />);
-    expect(await findByText('犬の鳴き声は？')).toBeTruthy();
-  });
-
-  it('adds a question and persists it', async () => {
-    const { getByPlaceholderText, getByText } = render(
-      <QuestionsScreen onClose={() => {}} />,
-    );
-    await waitFor(() => {});
-    fireEvent.changeText(getByPlaceholderText('問題'), '猫の鳴き声は？');
-    fireEvent.changeText(getByPlaceholderText('答え'), 'にゃー');
-    fireEvent.press(getByText('追加'));
-    await waitFor(async () => {
-      const stored = await loadCustom();
-      expect(stored).toHaveLength(1);
-      expect(stored[0].q).toBe('猫の鳴き声は？');
-      expect(stored[0].accept).toEqual(['にゃー']);
-    });
-  });
-
-  it('refuses to add when either field is empty', async () => {
-    const { getByPlaceholderText, getByText } = render(
-      <QuestionsScreen onClose={() => {}} />,
-    );
-    await waitFor(() => {});
-    fireEvent.changeText(getByPlaceholderText('問題'), '問題だけ');
-    fireEvent.press(getByText('追加'));
-    await waitFor(() => {});
-    expect(await loadCustom()).toHaveLength(0);
-  });
-
-  it('clears the form after a successful add', async () => {
-    const { getByPlaceholderText, getByText } = render(
-      <QuestionsScreen onClose={() => {}} />,
-    );
-    await waitFor(() => {});
-    fireEvent.changeText(getByPlaceholderText('問題'), '猫の鳴き声は？');
-    fireEvent.changeText(getByPlaceholderText('答え'), 'にゃー');
-    fireEvent.press(getByText('追加'));
-    await waitFor(() => {
-      expect(getByPlaceholderText('問題').props.value).toBe('');
-    });
-  });
-
-  it('edits an existing question', async () => {
-    const created = await addCustom('元の問題', 'もと');
-    const { findByText, getByPlaceholderText, getByText } = render(
-      <QuestionsScreen onClose={() => {}} />,
-    );
-    fireEvent.press(await findByText('元の問題'));
-    fireEvent.changeText(getByPlaceholderText('問題'), '直した問題');
-    fireEvent.changeText(getByPlaceholderText('答え'), 'なおした');
-    fireEvent.press(getByText('保存'));
-    await waitFor(async () => {
-      const [stored] = await loadCustom();
-      expect(stored.id).toBe(created.id);
-      expect(stored.q).toBe('直した問題');
-    });
-  });
-
-  it('deletes a question', async () => {
-    await addCustom('消える問題', 'あ');
-    const { findByText, getByText } = render(
-      <QuestionsScreen onClose={() => {}} />,
-    );
-    fireEvent.press(await findByText('消える問題'));
-    fireEvent.press(getByText('削除'));
-    await waitFor(async () => {
-      expect(await loadCustom()).toHaveLength(0);
-    });
+    expect(await findByText('過去のデッキ')).toBeTruthy();
   });
 
   it('fires onClose', async () => {
@@ -98,12 +41,6 @@ describe('QuestionsScreen', () => {
 });
 
 describe('QuestionsScreen deck builder', () => {
-  it('offers a mode switch into deck building', async () => {
-    const { getByText } = render(<QuestionsScreen onClose={() => {}} />);
-    await waitFor(() => {});
-    expect(getByText('新しいデッキ')).toBeTruthy();
-  });
-
   it('lists only the fixed funds-finance categories, not a free-text field', async () => {
     const { getByText, queryByPlaceholderText } = render(
       <QuestionsScreen onClose={() => {}} />,
@@ -152,5 +89,56 @@ describe('QuestionsScreen deck builder', () => {
       fireEvent.press(getByText('質問を追加'));
     }
     expect(queryByText('質問を追加')).toBeNull();
+  });
+
+  it('returns to the deck list on cancel', async () => {
+    const { getByText, queryByText } = render(<QuestionsScreen onClose={() => {}} />);
+    await waitFor(() => {});
+    fireEvent.press(getByText('新しいデッキ'));
+    fireEvent.press(getByText('取消'));
+    expect(queryByText('質問を追加')).toBeNull();
+    expect(getByText('新しいデッキ')).toBeTruthy();
+  });
+});
+
+describe('QuestionsScreen editing a past deck', () => {
+  it('opens a tapped deck pre-filled for editing', async () => {
+    await addCustomDeck('編集対象', 'sub-finance', [{ q: '元の問題', accept: ['元の答え'] }]);
+    const { findByText, getByPlaceholderText, getByDisplayValue } = render(
+      <QuestionsScreen onClose={() => {}} />,
+    );
+    fireEvent.press(await findByText('編集対象'));
+    expect(getByPlaceholderText('デッキ名')).toHaveProp('value', '編集対象');
+    expect(getByDisplayValue('元の問題')).toBeTruthy();
+    expect(getByDisplayValue('元の答え')).toBeTruthy();
+  });
+
+  it('saves edits back to the same deck', async () => {
+    const created = await addCustomDeck('編集対象', 'sub-finance', [
+      { q: '元の問題', accept: ['元の答え'] },
+    ]);
+    const { findByText, getByPlaceholderText, getByText } = render(
+      <QuestionsScreen onClose={() => {}} />,
+    );
+    fireEvent.press(await findByText('編集対象'));
+    fireEvent.changeText(getByPlaceholderText('デッキ名'), '直したデッキ');
+    fireEvent.press(getByText('デッキを保存'));
+
+    await waitFor(async () => {
+      const decks = await loadCustomDecks();
+      expect(decks).toHaveLength(1);
+      expect(decks[0].id).toBe(created.id);
+      expect(decks[0].title).toBe('直したデッキ');
+    });
+  });
+
+  it('deletes the deck being edited', async () => {
+    await addCustomDeck('消えるデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const { findByText, getByText } = render(<QuestionsScreen onClose={() => {}} />);
+    fireEvent.press(await findByText('消えるデッキ'));
+    fireEvent.press(getByText('削除'));
+    await waitFor(async () => {
+      expect(await loadCustomDecks()).toHaveLength(0);
+    });
   });
 });

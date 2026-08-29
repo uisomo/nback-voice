@@ -337,23 +337,23 @@ describe('SettingsScreen per-series N', () => {
   });
 });
 
-it('persists the language toggle', async () => {
+it('persists the language choice from the chip picker', async () => {
   const { getByTestId } = render(
     <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
   );
   await waitFor(() => {});
-  fireEvent(getByTestId('language-switch'), 'valueChange', true);
+  fireEvent.press(getByTestId('language-chip-en'));
   await waitFor(async () => {
     expect((await loadSettings()).language).toBe('en');
   });
 });
 
-it('defaults the language switch to off (ja)', async () => {
+it('defaults the language chip to ja', async () => {
   const { getByTestId } = render(
     <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
   );
   await waitFor(() => {});
-  expect(getByTestId('language-switch').props.value).toBe(false);
+  expect(getByTestId('language-chip-ja').props.accessibilityState?.selected).toBe(true);
 });
 
 it('renders English labels when language is en', async () => {
@@ -363,4 +363,54 @@ it('renders English labels when language is en', async () => {
   );
   expect(await findByText('Easy')).toBeTruthy();
   expect(await findByText('Auto-adjust N')).toBeTruthy();
+});
+
+describe('SettingsScreen theme and subscription cleanup', () => {
+  it('has no theme variety picker', async () => {
+    const { queryByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {});
+    expect(queryByText('Bloomberg Terminal')).toBeNull();
+    expect(queryByText('Wall St Executive')).toBeNull();
+    expect(queryByText('Quant Cyber Neon')).toBeNull();
+  });
+
+  it('offers a single upgrade button instead of three tier chips', async () => {
+    const { getByText, queryByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {});
+    expect(queryByText('Free Starter')).toBeNull();
+    expect(queryByText('Wall St Pro ($29/mo)')).toBeNull();
+    expect(queryByText('Enterprise Desk')).toBeNull();
+    expect(getByText('アップグレード')).toBeTruthy();
+  });
+
+  it('opens the subscription modal from the upgrade button', async () => {
+    const { getByText, findByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    await waitFor(() => {});
+    fireEvent.press(getByText('アップグレード'));
+    expect(await findByText('Financial Pro Membership')).toBeTruthy();
+  });
+});
+
+describe('SettingsScreen step duration clarity', () => {
+  it('explains what the step duration controls', async () => {
+    const { findByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    expect(await findByText(/問題表示.*回答/)).toBeTruthy();
+  });
+});
+
+describe('SettingsScreen adaptive note', () => {
+  it('states the round must be a perfect score to raise N', async () => {
+    const { findByText } = render(
+      <SettingsScreen onClose={() => {}} onEditQuestions={() => {}} />,
+    );
+    expect(await findByText(/100%|全問正解/)).toBeTruthy();
+  });
 });

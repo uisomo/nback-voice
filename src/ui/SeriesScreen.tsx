@@ -5,10 +5,12 @@ import { MIN_QUESTIONS } from '../content/pool';
 import {
   loadCustom,
   loadCustomDecks,
+  loadHistory,
   loadLearned,
   loadN,
   loadSettings,
   saveSettings,
+  type RoundRecord,
   type Settings,
   type SubscriptionTier,
   type ThemeVariety,
@@ -30,6 +32,25 @@ interface Row {
   count: number;
   n: number;
   fundsCategory?: string;
+  masteryPct: number;
+}
+
+/**
+ * The combined score of the most recent round played on this series, as a
+ * percent. A null channel (question mode has no position channel) is
+ * excluded from the average rather than counted as zero — same rule the
+ * engine itself uses when scoring a round. 0 when the series has never
+ * been played.
+ */
+function lastRoundMasteryPct(seriesId: string, history: RoundRecord[]): number {
+  const record = [...history].reverse().find((r) => r.seriesId === seriesId);
+  if (!record) return 0;
+  const channels = [record.positionScore, record.answerScore].filter(
+    (score): score is number => score !== null,
+  );
+  if (channels.length === 0) return 0;
+  const average = channels.reduce((sum, s) => sum + s, 0) / channels.length;
+  return Math.round(average * 100);
 }
 
 interface Group {
@@ -45,11 +66,12 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
   const strings = useStrings();
 
   const loadAll = async () => {
-    const [s, custom, learned, customDecks] = await Promise.all([
+    const [s, custom, learned, customDecks, history] = await Promise.all([
       loadSettings(),
       loadCustom(),
       loadLearned(),
       loadCustomDecks(),
+      loadHistory(),
     ]);
     setSettingsState(s);
 
@@ -72,6 +94,7 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
             count: series.questions.length,
             n: await loadN(series.id),
             fundsCategory: series.fundsCategory,
+            masteryPct: lastRoundMasteryPct(series.id, history),
           })),
         ),
       })),
@@ -177,7 +200,6 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
               {group.rows.map((row) => {
                 const shortfall = MIN_QUESTIONS - row.count;
                 const usable = shortfall <= 0;
-                const masteryPct = Math.min(100, Math.floor(Math.random() * 30 + 70));
 
                 return (
                   <Pressable
@@ -198,19 +220,6 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
                       <Text style={[styles.title, { color: theme.textPrimary }]}>
                         {row.title}
                       </Text>
-                      <View
-                        style={[
-                          styles.diffBadge,
-                          {
-                            backgroundColor: theme.bg,
-                            borderColor: theme.cardBorder,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.diffText, { color: theme.accentPrimary }]}>
-                          Wall St L1
-                        </Text>
-                      </View>
                     </View>
 
                     {row.credit && (
@@ -219,21 +228,24 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
                       </Text>
                     )}
 
-                    {/* Progress Bar */}
+                    {/* Progress Bar: most recent round's score on this series */}
                     <View style={styles.progressContainer}>
                       <View style={[styles.progressTrack, { backgroundColor: theme.bg }]}>
                         <View
                           style={[
                             styles.progressFill,
                             {
-                              width: `${masteryPct}%`,
+                              width: `${row.masteryPct}%`,
                               backgroundColor: theme.accentSuccess,
                             },
                           ]}
                         />
                       </View>
-                      <Text style={[styles.progressText, { color: theme.textMuted }]}>
-                        {masteryPct}% Mastered
+                      <Text
+                        testID={`series-progress-${row.id}`}
+                        style={[styles.progressText, { color: theme.textMuted }]}
+                      >
+                        {row.masteryPct}% Mastered
                       </Text>
                     </View>
 
@@ -331,13 +343,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: { fontSize: 17, fontWeight: 'bold', flex: 1 },
-  diffBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  diffText: { fontSize: 10, fontWeight: 'bold' },
   credit: { fontSize: 12, marginTop: 4 },
   progressContainer: {
     marginVertical: 12,

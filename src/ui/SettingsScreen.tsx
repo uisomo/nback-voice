@@ -29,6 +29,7 @@ import type { Question } from '../engine/types';
 import { listSeries, type Series } from '../content/series';
 import { useStrings } from '../strings';
 import type { Strings } from '../strings';
+import { SubscriptionModal } from './SubscriptionModal';
 
 interface Props {
   onClose: () => void;
@@ -90,6 +91,7 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
 
   const [apiKey, setApiKey] = useState('');
   const [check, setCheck] = useState<CheckState>({ name: 'idle' });
+  const [subModalOpen, setSubModalOpen] = useState(false);
   const strings = useStrings();
 
   // Seeded from DEFAULT_SETTINGS so the field shows something before load
@@ -200,39 +202,10 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
           half was clipped away with no way to reach it. 閉じる stays outside,
           below, so the way out is never the thing you have to scroll for. */}
       <ScrollView testID="settings-scroll" style={styles.body}>
-        <Text style={styles.label}>🎨 Theme Variety (3 Designs)</Text>
-        <View style={styles.row}>
-          {[
-            { id: 'terminal', label: 'Bloomberg Terminal' },
-            { id: 'executive', label: 'Wall St Executive' },
-            { id: 'quant', label: 'Quant Cyber Neon' },
-          ].map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => update({ themeVariety: item.id as any })}
-              style={[styles.chip, settings.themeVariety === item.id && styles.chipOn]}
-            >
-              <Text style={styles.chipLabel}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.label}>💳 Pro Subscription Plan</Text>
-        <View style={styles.row}>
-          {[
-            { id: 'free', label: 'Free Starter' },
-            { id: 'pro', label: 'Wall St Pro ($29/mo)' },
-            { id: 'enterprise', label: 'Enterprise Desk' },
-          ].map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => update({ subscriptionTier: item.id as any })}
-              style={[styles.chip, settings.subscriptionTier === item.id && styles.chipOn]}
-            >
-              <Text style={styles.chipLabel}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <Text style={styles.label}>{strings.settings.sectionUpgrade}</Text>
+        <Pressable style={[styles.chip, styles.upgradeButton]} onPress={() => setSubModalOpen(true)}>
+          <Text style={styles.chipLabel}>{strings.settings.upgradeButton}</Text>
+        </Pressable>
 
         <Text style={styles.label}>{strings.settings.sectionMode}</Text>
         <View style={styles.row}>
@@ -301,6 +274,7 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
             </Pressable>
           ))}
         </View>
+        <Text style={styles.note}>{strings.settings.noteStepDuration}</Text>
 
         <View style={styles.row}>
           <Text style={styles.label}>{strings.settings.sectionAdaptive}</Text>
@@ -309,14 +283,26 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
             onValueChange={(adaptive) => update({ adaptive })}
           />
         </View>
+        <Text style={styles.note}>{strings.settings.noteAdaptive}</Text>
 
+        <Text style={styles.label}>{strings.settings.sectionLanguage}</Text>
         <View style={styles.row}>
-          <Text style={styles.label}>{strings.settings.sectionLanguage}</Text>
-          <Switch
-            testID="language-switch"
-            value={settings.language === 'en'}
-            onValueChange={(isEn) => update({ language: isEn ? 'en' : 'ja' })}
-          />
+          <Pressable
+            testID="language-chip-ja"
+            accessibilityState={{ selected: settings.language === 'ja' }}
+            onPress={() => update({ language: 'ja' })}
+            style={[styles.chip, settings.language === 'ja' && styles.chipOn]}
+          >
+            <Text style={styles.chipLabel}>{strings.settings.langJa}</Text>
+          </Pressable>
+          <Pressable
+            testID="language-chip-en"
+            accessibilityState={{ selected: settings.language === 'en' }}
+            onPress={() => update({ language: 'en' })}
+            style={[styles.chip, settings.language === 'en' && styles.chipOn]}
+          >
+            <Text style={styles.chipLabel}>{strings.settings.langEn}</Text>
+          </Pressable>
         </View>
 
         {!settings.adaptive && (
@@ -413,6 +399,14 @@ export function SettingsScreen({ onClose, onEditQuestions, judgeClient }: Props)
       <Pressable style={styles.button} onPress={onClose}>
         <Text style={styles.chipLabel}>{strings.common.close}</Text>
       </Pressable>
+
+      <SubscriptionModal
+        visible={subModalOpen}
+        onClose={() => setSubModalOpen(false)}
+        currentTier={settings.subscriptionTier}
+        themeVariety={settings.themeVariety}
+        onTierChanged={(newTier) => update({ subscriptionTier: newTier })}
+      />
     </View>
   );
 }
@@ -426,6 +420,7 @@ const styles = StyleSheet.create({
   chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#1c1c1e' },
   chipOn: { backgroundColor: '#c96f4a' },
   chipOff: { opacity: 0.4 },
+  upgradeButton: { alignSelf: 'flex-start', marginBottom: 24 },
   link: { marginBottom: 24 },
   linkLabel: { color: '#c96f4a', fontSize: 16 },
   chipLabel: { color: '#f4f1ea', fontSize: 16 },

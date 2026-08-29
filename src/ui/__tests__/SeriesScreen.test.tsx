@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { FUNDS_FINANCE_CATEGORIES } from '../../content/series';
-import { addCustom, addCustomDeck, saveN } from '../../store/storage';
+import { addCustom, addCustomDeck, appendHistory, saveN } from '../../store/storage';
 import { SeriesScreen } from '../SeriesScreen';
 
 beforeEach(async () => {
@@ -12,7 +12,7 @@ describe('SeriesScreen', () => {
   it('lists categories in declaration order', async () => {
     render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
     await waitFor(() => {
-      expect(screen.getByText('金融の語彙を体に入れる')).toBeTruthy();
+      expect(screen.getByText('ファンドファイナンスでFluid Intelligenceを鍛える脳トレ')).toBeTruthy();
     });
     expect(screen.getByText('伝え方を変える')).toBeTruthy();
     expect(screen.getByText('だれでも答えられる')).toBeTruthy();
@@ -67,6 +67,77 @@ describe('SeriesScreen', () => {
     });
     fireEvent.press(screen.getByText('設定'));
     expect(onOpenSettings).toHaveBeenCalled();
+  });
+
+  it('has no difficulty badge on a card', async () => {
+    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('コミットメントとキャピタルコール')).toBeTruthy();
+    });
+    expect(screen.queryByText('Wall St L1')).toBeNull();
+  });
+});
+
+describe('SeriesScreen progress bar', () => {
+  it('shows 0% mastered when a series has never been played', async () => {
+    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('series-progress-capital-call')).toHaveTextContent('0% Mastered');
+    });
+  });
+
+  it('shows the most recent round score for that series, not an average', async () => {
+    await appendHistory({
+      date: '2026-08-20',
+      n: 1,
+      positionScore: 0.5,
+      answerScore: 0.5,
+      unresolved: 0,
+      seriesId: 'capital-call',
+    });
+    await appendHistory({
+      date: '2026-08-21',
+      n: 1,
+      positionScore: 1,
+      answerScore: 1,
+      unresolved: 0,
+      seriesId: 'capital-call',
+    });
+    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('series-progress-capital-call')).toHaveTextContent('100% Mastered');
+    });
+  });
+
+  it('ignores rounds recorded under a different series', async () => {
+    await appendHistory({
+      date: '2026-08-20',
+      n: 1,
+      positionScore: 1,
+      answerScore: 1,
+      unresolved: 0,
+      seriesId: 'nav-finance',
+    });
+    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('series-progress-capital-call')).toHaveTextContent('0% Mastered');
+    });
+    expect(screen.getByTestId('series-progress-nav-finance')).toHaveTextContent('100% Mastered');
+  });
+
+  it('treats a null channel (question mode) as absent from the average, not zero', async () => {
+    await appendHistory({
+      date: '2026-08-20',
+      n: 1,
+      positionScore: null,
+      answerScore: 1,
+      unresolved: 0,
+      seriesId: 'capital-call',
+    });
+    render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('series-progress-capital-call')).toHaveTextContent('100% Mastered');
+    });
   });
 });
 

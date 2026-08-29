@@ -118,7 +118,7 @@ describe('listSeries language switch', () => {
     const en = listSeries({ custom: CUSTOM, learned: {}, maxTier: 2, language: 'en' });
     const grouped = groupSeries(en, 'en');
     expect(grouped.map((g) => g.label)).toEqual([
-      'Building financial vocabulary',
+      'Brain training for fluid intelligence, through funds finance',
       'Changing how you explain it',
       'Anyone can answer',
     ]);
@@ -286,6 +286,21 @@ describe('the shipped catalogue', () => {
         expect(series.credit).toMatch(/より$/);
       }
     }
+  });
+
+  it('tags every finance-category authored series with a funds-finance sub-category', () => {
+    const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
+    for (const series of list) {
+      if (series.category !== 'finance') continue;
+      expect(series.fundsCategory).toMatch(
+        /^(sub-finance|nav-finance|hybrid-pref|gp-facility|fund-covenants)$/,
+      );
+    }
+  });
+
+  it('leaves the delivery-category series without a funds-finance tag', () => {
+    const list = listSeries({ custom: [], learned: {}, maxTier: 2 });
+    expect(list.find((s) => s.id === 'persuasion')!.fundsCategory).toBeUndefined();
   });
 });
 

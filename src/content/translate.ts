@@ -22,7 +22,7 @@ export interface TranslatedSeries {
 }
 
 export const CATEGORIES_EN: Record<string, string> = {
-  finance: 'Building financial vocabulary',
+  finance: 'Brain training for fluid intelligence, through funds finance',
   delivery: 'Changing how you explain it',
   basics: 'Anyone can answer',
   'custom-decks': 'My decks',

@@ -10,7 +10,7 @@ import rawEn from './series.en.json';
  * than a subject name.
  */
 export const CATEGORIES = [
-  { id: 'finance', label: '金融の語彙を体に入れる' },
+  { id: 'finance', label: 'ファンドファイナンスでFluid Intelligenceを鍛える脳トレ' },
   { id: 'delivery', label: '伝え方を変える' },
   { id: 'basics', label: 'だれでも答えられる' },
   { id: 'custom-decks', label: '自分のデッキ' },
@@ -199,6 +199,8 @@ interface AuthoredSeries {
   title: string;
   credit?: string;
   questions: Question[];
+  /** A FundsFinanceCategory id, present only on 'finance'-category series. */
+  fundsCategory?: string;
 }
 
 const AUTHORED_JA = rawJa as AuthoredSeries[];

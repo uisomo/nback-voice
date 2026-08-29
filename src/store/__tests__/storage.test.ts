@@ -21,6 +21,7 @@ import {
   saveN,
   saveSettings,
   updateCustom,
+  updateCustomDeck,
 } from '../storage';
 
 beforeEach(async () => {
@@ -455,6 +456,43 @@ describe('custom decks', () => {
     await deleteCustomDeck(ids[0]);
     await addCustomDeck('新しい11個目', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     expect(await loadCustomDecks()).toHaveLength(10);
+  });
+
+  it('updates title, category, and questions in place', async () => {
+    const created = await addCustomDeck('元の名前', 'sub-finance', [{ q: 'Q1', accept: ['A1'] }]);
+    const updated = await updateCustomDeck(created.id, '新しい名前', 'nav-finance', [
+      { q: 'Q2', accept: ['A2'] },
+      { q: 'Q3', accept: ['A3'] },
+    ]);
+    expect(updated).toMatchObject({ id: created.id, title: '新しい名前', category: 'nav-finance' });
+    expect(updated.questions.map((q) => q.q)).toEqual(['Q2', 'Q3']);
+
+    const [stored] = await loadCustomDecks();
+    expect(stored).toEqual(updated);
+  });
+
+  it('rejects updating a deck to more than 10 questions', async () => {
+    const created = await addCustomDeck('デッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const drafts = Array.from({ length: 11 }, (_, i) => ({ q: `Q${i}`, accept: [`A${i}`] }));
+    await expect(updateCustomDeck(created.id, 'デッキ', 'sub-finance', drafts)).rejects.toThrow();
+    const [stored] = await loadCustomDecks();
+    expect(stored.questions).toHaveLength(1);
+  });
+
+  it('drops learned synonyms for questions removed by the edit', async () => {
+    const created = await addCustomDeck('デッキ', 'sub-finance', [{ q: 'Q1', accept: ['A1'] }]);
+    const oldQuestionId = created.questions[0].id;
+    await addLearned(oldQuestionId, 'べつのこたえ');
+    await updateCustomDeck(created.id, 'デッキ', 'sub-finance', [{ q: 'Q2', accept: ['A2'] }]);
+    expect(await loadLearned()).toEqual({});
+  });
+
+  it('leaves other decks untouched', async () => {
+    const a = await addCustomDeck('A', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    const b = await addCustomDeck('B', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
+    await updateCustomDeck(a.id, 'A改', 'sub-finance', [{ q: 'Q改', accept: ['A改'] }]);
+    const decks = await loadCustomDecks();
+    expect(decks.find((d) => d.id === b.id)!.title).toBe('B');
   });
 });
 
