@@ -1,6 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { addCustomDeck, loadCustomDecks, CUSTOM_DECK_CATEGORY } from '../../store/storage';
+import {
+  addCustomDeck,
+  loadCustomDecks,
+  CUSTOM_DECK_CATEGORY,
+  saveSettings,
+  DEFAULT_SETTINGS,
+} from '../../store/storage';
 import { QuestionsScreen } from '../QuestionsScreen';
 
 beforeEach(async () => {
@@ -25,7 +31,7 @@ describe('QuestionsScreen', () => {
   });
 
   it('lists decks created in the past', async () => {
-    await addCustomDeck('過去のデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    await addCustomDeck('god', '過去のデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     const { findByText } = render(<QuestionsScreen onClose={() => {}} />);
     expect(await findByText('過去のデッキ')).toBeTruthy();
   });
@@ -50,6 +56,7 @@ describe('QuestionsScreen deck builder', () => {
   });
 
   it('creates a deck with multiple questions tagged under the custom-deck category', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'god' });
     const { getByText, getByPlaceholderText, getAllByPlaceholderText } = render(
       <QuestionsScreen onClose={() => {}} />,
     );
@@ -77,6 +84,7 @@ describe('QuestionsScreen deck builder', () => {
   });
 
   it('stops offering more questions at 10', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'god' });
     const { getByText, queryByText } = render(<QuestionsScreen onClose={() => {}} />);
     await waitFor(() => {});
     fireEvent.press(getByText('新しいデッキ'));
@@ -98,7 +106,7 @@ describe('QuestionsScreen deck builder', () => {
 
 describe('QuestionsScreen editing a past deck', () => {
   it('opens a tapped deck pre-filled for editing', async () => {
-    await addCustomDeck('編集対象', 'sub-finance', [{ q: '元の問題', accept: ['元の答え'] }]);
+    await addCustomDeck('god', '編集対象', 'sub-finance', [{ q: '元の問題', accept: ['元の答え'] }]);
     const { findByText, getByPlaceholderText, getByDisplayValue } = render(
       <QuestionsScreen onClose={() => {}} />,
     );
@@ -109,7 +117,8 @@ describe('QuestionsScreen editing a past deck', () => {
   });
 
   it('saves edits back to the same deck', async () => {
-    const created = await addCustomDeck('編集対象', 'sub-finance', [
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'god' });
+    const created = await addCustomDeck('god', '編集対象', 'sub-finance', [
       { q: '元の問題', accept: ['元の答え'] },
     ]);
     const { findByText, getByPlaceholderText, getByText } = render(
@@ -128,12 +137,58 @@ describe('QuestionsScreen editing a past deck', () => {
   });
 
   it('deletes the deck being edited', async () => {
-    await addCustomDeck('消えるデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    await addCustomDeck('god', '消えるデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     const { findByText, getByText } = render(<QuestionsScreen onClose={() => {}} />);
     fireEvent.press(await findByText('消えるデッキ'));
     fireEvent.press(getByText('削除'));
     await waitFor(async () => {
       expect(await loadCustomDecks()).toHaveLength(0);
+    });
+  });
+});
+
+describe('QuestionsScreen tier limits', () => {
+  it('shows an upgrade message when a free-tier user tries to save a deck', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'free' });
+    const { getByText, getByPlaceholderText, getAllByPlaceholderText, findByText } = render(
+      <QuestionsScreen onClose={() => {}} />,
+    );
+    await waitFor(() => {});
+    fireEvent.press(getByText('新しいデッキ'));
+    fireEvent.changeText(getByPlaceholderText('デッキ名'), 'テスト');
+    fireEvent.changeText(getAllByPlaceholderText('問題')[0], '問1');
+    fireEvent.changeText(getAllByPlaceholderText('答え')[0], '答1');
+    fireEvent.press(getByText('デッキを保存'));
+
+    expect(await findByText(/Upgrade/)).toBeTruthy();
+    expect(await loadCustomDecks()).toEqual([]);
+  });
+
+  it('lets a pro-tier user save up to three questions but not a fourth', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'pro' });
+    const { getByText, getByPlaceholderText, getAllByPlaceholderText, queryByText } = render(
+      <QuestionsScreen onClose={() => {}} />,
+    );
+    await waitFor(() => {});
+    fireEvent.press(getByText('新しいデッキ'));
+    fireEvent.changeText(getByPlaceholderText('デッキ名'), 'プロデッキ');
+    fireEvent.changeText(getAllByPlaceholderText('問題')[0], '問1');
+    fireEvent.changeText(getAllByPlaceholderText('答え')[0], '答1');
+    fireEvent.press(getByText('質問を追加'));
+    fireEvent.changeText(getAllByPlaceholderText('問題')[1], '問2');
+    fireEvent.changeText(getAllByPlaceholderText('答え')[1], '答2');
+    fireEvent.press(getByText('質問を追加'));
+    fireEvent.changeText(getAllByPlaceholderText('問題')[2], '問3');
+    fireEvent.changeText(getAllByPlaceholderText('答え')[2], '答3');
+
+    // The add-question button must be gone at the pro-tier cap of 3.
+    expect(queryByText('質問を追加')).toBeNull();
+
+    fireEvent.press(getByText('デッキを保存'));
+    await waitFor(async () => {
+      const decks = await loadCustomDecks();
+      expect(decks).toHaveLength(1);
+      expect(decks[0].questions).toHaveLength(3);
     });
   });
 });

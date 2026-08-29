@@ -133,7 +133,7 @@ describe('SeriesScreen progress bar', () => {
 
 describe('SeriesScreen custom decks', () => {
   it('shows a created deck under its own 自分のデッキ section', async () => {
-    await addCustomDeck('サブスク基礎', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    await addCustomDeck('god', 'サブスク基礎', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
     render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
     await waitFor(() => {
       expect(screen.getByText('自分のデッキ')).toBeTruthy();
@@ -142,8 +142,8 @@ describe('SeriesScreen custom decks', () => {
   });
 
   it('filters the picker to the selected funds-finance category', async () => {
-    await addCustomDeck('サブスクデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
-    await addCustomDeck('NAVデッキ', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
+    await addCustomDeck('god', 'サブスクデッキ', 'sub-finance', [{ q: 'Q', accept: ['A'] }]);
+    await addCustomDeck('god', 'NAVデッキ', 'nav-finance', [{ q: 'Q', accept: ['A'] }]);
     render(<SeriesScreen onSelect={jest.fn()} onOpenSettings={jest.fn()} />);
     await waitFor(() => {
       expect(screen.getByText('サブスクデッキ')).toBeTruthy();

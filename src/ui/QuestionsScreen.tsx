@@ -9,12 +9,14 @@ import {
 } from 'react-native';
 import {
   CUSTOM_DECK_CATEGORY,
-  MAX_DECK_QUESTIONS,
   addCustomDeck,
   deleteCustomDeck,
   loadCustomDecks,
+  loadSettings,
+  tierLimits,
   updateCustomDeck,
   type CustomDeck,
+  type SubscriptionTier,
 } from '../store/storage';
 import { useStrings } from '../strings';
 
@@ -39,8 +41,12 @@ export function QuestionsScreen({ onClose }: Props) {
   const [deckDrafts, setDeckDrafts] = useState<QuestionDraft[]>([emptyDraft()]);
   const [deckError, setDeckError] = useState<string | null>(null);
 
+  const [tier, setTier] = useState<SubscriptionTier>('free');
+
   const refresh = useCallback(async () => {
-    setDecks(await loadCustomDecks());
+    const [loadedDecks, settings] = await Promise.all([loadCustomDecks(), loadSettings()]);
+    setDecks(loadedDecks);
+    setTier(settings.subscriptionTier);
   }, []);
 
   useEffect(() => {
@@ -76,9 +82,8 @@ export function QuestionsScreen({ onClose }: Props) {
   };
 
   const addDeckQuestion = () => {
-    setDeckDrafts((prev) =>
-      prev.length >= MAX_DECK_QUESTIONS ? prev : [...prev, emptyDraft()],
-    );
+    const max = tierLimits(tier).maxQuestionsPerDeck;
+    setDeckDrafts((prev) => (prev.length >= max ? prev : [...prev, emptyDraft()]));
   };
 
   const removeDeckQuestion = (index: number) => {
@@ -93,9 +98,9 @@ export function QuestionsScreen({ onClose }: Props) {
     if (!title || drafts.length === 0) return;
     try {
       if (editingDeckId) {
-        await updateCustomDeck(editingDeckId, title, CUSTOM_DECK_CATEGORY, drafts);
+        await updateCustomDeck(tier, editingDeckId, title, CUSTOM_DECK_CATEGORY, drafts);
       } else {
-        await addCustomDeck(title, CUSTOM_DECK_CATEGORY, drafts);
+        await addCustomDeck(tier, title, CUSTOM_DECK_CATEGORY, drafts);
       }
       resetDeckForm();
       setDeckMode(false);
@@ -154,7 +159,7 @@ export function QuestionsScreen({ onClose }: Props) {
           ))}
         </ScrollView>
 
-        {deckDrafts.length < MAX_DECK_QUESTIONS && (
+        {deckDrafts.length < tierLimits(tier).maxQuestionsPerDeck && (
           <Pressable style={styles.secondary} onPress={addDeckQuestion}>
             <Text style={styles.label}>{strings.questions.addQuestion}</Text>
           </Pressable>
