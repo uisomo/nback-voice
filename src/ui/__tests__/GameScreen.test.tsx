@@ -15,9 +15,11 @@ import {
 import type { JudgeClient, Verdict } from '../../judge/types';
 import {
   addCustom,
+  appendHistory,
   DEFAULT_SETTINGS,
   loadHistory,
   loadN,
+  localDate,
   saveSettings,
 } from '../../store/storage';
 import { GameScreen } from '../GameScreen';
@@ -583,6 +585,42 @@ describe('GameScreen series', () => {
     await beginRound();
     await runWholeRound();
     expect((await loadHistory())[0].seriesId).toBe('persuasion');
+  });
+});
+
+describe('GameScreen daily round limit', () => {
+  it('blocks a free-tier player after three rounds today', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'free' });
+    const today = localDate();
+    for (let i = 0; i < 3; i++) {
+      await appendHistory({
+        date: today,
+        n: 1,
+        positionScore: 1,
+        answerScore: 1,
+        unresolved: 0,
+      });
+    }
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
+    expect(await screen.findByText(/上限|limit/)).toBeTruthy();
+  });
+
+  it('does not block a pro-tier player regardless of rounds played today', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, subscriptionTier: 'pro' });
+    const today = localDate();
+    for (let i = 0; i < 5; i++) {
+      await appendHistory({
+        date: today,
+        n: 1,
+        positionScore: 1,
+        answerScore: 1,
+        unresolved: 0,
+      });
+    }
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
+    expect(await screen.findByTestId('warmup-series')).toBeTruthy();
   });
 });
 

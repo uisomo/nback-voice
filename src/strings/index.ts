@@ -50,6 +50,7 @@ export interface Strings {
     micPermissionNeeded: string;
     seriesLabel: (title: string, count: number) => string;
     notEnoughQuestions: string;
+    dailyLimitReached: string;
     stepLabel: (index: number, total: number, n: number, answering: boolean) => string;
     setupFailed: string;
     warmupCaption: string;
@@ -157,6 +158,7 @@ export const ja: Strings = {
     micPermissionNeeded: 'マイクの許可が必要です',
     seriesLabel: (title, count) => `${title} ／ ${count}問`,
     notEnoughQuestions: '問題が足りません',
+    dailyLimitReached: '本日の上限（3回）に達しました。アップグレードすると無制限になります',
     stepLabel: (index, total, n, answering) =>
       `${index} / ${total}　${n}-back　${answering ? 'どうぞ' : '出題中'}`,
     setupFailed: '準備に失敗しました。アプリを再起動してください',
@@ -265,6 +267,7 @@ export const en: Strings = {
     micPermissionNeeded: 'Microphone permission is required',
     seriesLabel: (title, count) => `${title} — ${count} questions`,
     notEnoughQuestions: 'Not enough questions',
+    dailyLimitReached: "You've reached today's limit (3 rounds). Upgrade for unlimited play.",
     stepLabel: (index, total, n, answering) =>
       `${index} / ${total}   ${n}-back   ${answering ? 'Your turn' : 'Listen'}`,
     setupFailed: 'Setup failed. Please restart the app',
