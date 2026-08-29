@@ -132,7 +132,7 @@ export function SeriesScreen({ onSelect, onOpenSettings }: Props) {
   };
 
   const themeVariety = settings?.themeVariety || 'terminal';
-  const subscriptionTier = settings?.subscriptionTier || 'pro';
+  const subscriptionTier = settings?.subscriptionTier || 'free';
   const selectedCat = settings?.selectedCategory || 'all';
   const theme = getTheme(themeVariety);
 
