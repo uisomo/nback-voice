@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DEFAULT_SETTINGS,
+  TIER_LIMITS,
   addCustom,
   addCustomDeck,
   addLearned,
@@ -17,12 +18,15 @@ import {
   loadSettings,
   localDate,
   phaseDurations,
+  roundsPlayedToday,
   saveApiKey,
   saveN,
   saveSettings,
+  tierLimits,
   updateCustom,
   updateCustomDeck,
 } from '../storage';
+import type { RoundRecord, SubscriptionTier, TierLimits } from '../storage';
 
 beforeEach(async () => {
   await AsyncStorage.clear();
@@ -493,6 +497,57 @@ describe('custom decks', () => {
     await updateCustomDeck(a.id, 'A改', 'sub-finance', [{ q: 'Q改', accept: ['A改'] }]);
     const decks = await loadCustomDecks();
     expect(decks.find((d) => d.id === b.id)!.title).toBe('B');
+  });
+});
+
+describe('tier limits', () => {
+  it('gives free tier zero decks, zero questions, three rounds a day', () => {
+    expect(tierLimits('free')).toEqual({
+      maxDecks: 0,
+      maxQuestionsPerDeck: 0,
+      maxRoundsPerDay: 3,
+    });
+  });
+
+  it('gives pro tier five decks of three questions, unlimited rounds', () => {
+    expect(tierLimits('pro')).toEqual({
+      maxDecks: 5,
+      maxQuestionsPerDeck: 3,
+      maxRoundsPerDay: Infinity,
+    });
+  });
+
+  it('gives god tier twenty decks of ten questions, unlimited rounds', () => {
+    expect(tierLimits('god')).toEqual({
+      maxDecks: 20,
+      maxQuestionsPerDeck: 10,
+      maxRoundsPerDay: Infinity,
+    });
+  });
+
+  it('falls back to free limits for an unrecognized stored tier value', () => {
+    // A settings blob saved before 'enterprise' was removed as a value.
+    expect(tierLimits('enterprise' as SubscriptionTier)).toEqual(tierLimits('free'));
+  });
+
+  it('defaults new installs to the free tier', () => {
+    expect(DEFAULT_SETTINGS.subscriptionTier).toBe('free');
+  });
+});
+
+describe('roundsPlayedToday', () => {
+  it('counts only records dated today', () => {
+    const today = localDate();
+    const history: RoundRecord[] = [
+      { date: today, n: 1, positionScore: 1, answerScore: 1, unresolved: 0 },
+      { date: today, n: 2, positionScore: 1, answerScore: 1, unresolved: 0 },
+      { date: '2020-01-01', n: 1, positionScore: 1, answerScore: 1, unresolved: 0 },
+    ];
+    expect(roundsPlayedToday(history)).toBe(2);
+  });
+
+  it('is zero for empty history', () => {
+    expect(roundsPlayedToday([])).toBe(0);
   });
 });
 

@@ -8,7 +8,7 @@ import type { Question, RoundMode } from '../engine/types';
  * scored: all four combinations are meaningful.
  */
 export type AnswerInput = 'voice' | 'typed';
-export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
+export type SubscriptionTier = 'free' | 'pro' | 'god';
 export type ThemeVariety = 'terminal' | 'executive' | 'quant';
 
 export interface Settings {
@@ -60,7 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   answerInput: 'typed',
   budgetBaseMs: DEFAULT_BUDGET_BASE_MS,
   language: 'ja',
-  subscriptionTier: 'pro',
+  subscriptionTier: 'free',
   themeVariety: 'terminal',
   selectedCategory: 'all',
 };
@@ -161,6 +161,12 @@ export async function appendHistory(record: RoundRecord): Promise<void> {
   const history = await loadHistory();
   history.push(record);
   await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(history));
+}
+
+/** How many rounds have been recorded under today's local date. */
+export function roundsPlayedToday(history: RoundRecord[]): number {
+  const today = localDate();
+  return history.filter((record) => record.date === today).length;
 }
 
 export async function loadLearned(): Promise<Record<string, string[]>> {
@@ -272,6 +278,29 @@ export const CUSTOM_DECK_CATEGORY = 'custom';
 export const MAX_DECK_QUESTIONS = 10;
 /** A user can keep at most this many decks at once. */
 export const MAX_CUSTOM_DECKS = 10;
+
+export interface TierLimits {
+  maxDecks: number;
+  maxQuestionsPerDeck: number;
+  /** Rounds playable per local calendar day. Infinity means no cap. */
+  maxRoundsPerDay: number;
+}
+
+export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
+  free: { maxDecks: 0, maxQuestionsPerDeck: 0, maxRoundsPerDay: 3 },
+  pro: { maxDecks: 5, maxQuestionsPerDeck: 3, maxRoundsPerDay: Infinity },
+  god: { maxDecks: 20, maxQuestionsPerDeck: 10, maxRoundsPerDay: Infinity },
+};
+
+/**
+ * The only way limits should be read. A settings blob saved before a tier
+ * value was removed (e.g. the old 'enterprise') must not crash the app —
+ * it is treated as free rather than migrated, since the stored value is
+ * otherwise harmless.
+ */
+export function tierLimits(tier: SubscriptionTier): TierLimits {
+  return TIER_LIMITS[tier] ?? TIER_LIMITS.free;
+}
 
 export async function loadCustomDecks(): Promise<CustomDeck[]> {
   return readJson<CustomDeck[]>(KEY_CUSTOM_DECKS, []);
