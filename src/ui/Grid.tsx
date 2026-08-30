@@ -31,8 +31,11 @@ export function Grid({
       : tapVerdict === 'wrong'
         ? styles.ringWrong
         : null;
-  // -4 is the 2px margin each cell carries on both sides (styles.cell).
-  const cell = Math.floor(size / 3) - 4;
+  // -4 is the 2px margin each cell carries on both sides (styles.cell). Floored
+  // at 0: a layout pass that reports no height at all (the first one on web,
+  // and every one where the keyboard has just taken the space) would otherwise
+  // hand React Native a negative width.
+  const cell = Math.max(0, Math.floor(size / 3) - 4);
   return (
     <View style={[styles.grid, { width: size, height: size }]}>
       {Array.from({ length: 9 }, (_, i) => (

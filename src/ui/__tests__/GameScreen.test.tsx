@@ -1278,6 +1278,45 @@ describe('GameScreen typed answer feedback', () => {
   });
 
   /**
+   * With the keyboard up there is only a few hundred points of height left,
+   * and the grid is what has to fit inside it — a grid sized off the full
+   * window renders its bottom row behind the keyboard, where it can be
+   * neither seen nor tapped.
+   */
+  it('sizes the grid from the room the keyboard actually left', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    act(() => {
+      screen.getByTestId('grid-box').props.onLayout({
+        nativeEvent: { layout: { width: 390, height: 180 } },
+      });
+    });
+    // 180 is the constraint, not 390: min(width, height) / 3, less the 2px
+    // margin each cell carries on both sides.
+    expect(
+      StyleSheet.flatten(screen.getByTestId('cell-0').props.style)?.width,
+    ).toBe(56);
+  });
+
+  /** A layout pass mid keyboard animation reports nothing; -4 is not a width. */
+  it('never asks the grid for a negative cell', async () => {
+    const { deps } = makeDefaultDeps(alwaysCorrect);
+    render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
+    await beginRound();
+
+    act(() => {
+      screen.getByTestId('grid-box').props.onLayout({
+        nativeEvent: { layout: { width: 390, height: 0 } },
+      });
+    });
+    expect(
+      StyleSheet.flatten(screen.getByTestId('cell-0').props.style)?.width,
+    ).toBe(0);
+  });
+
+  /**
    * Voice mode shows every answer and marks it ○/× as the judge replies; the
    * recognizer's result event is what puts it there. Nothing fires that event
    * in typed mode, so the submit has to do it — otherwise the default mode

@@ -129,6 +129,18 @@ describe('Grid sizing', () => {
     expect(cellWidth(getByTestId('cell-0'))).toBe(62);
   });
 
+  /**
+   * The first layout pass on web reports no height, and so does every pass
+   * taken while the keyboard is animating in. 0/3 - 4 is -4, and a negative
+   * width is a render error rather than a small grid.
+   */
+  it('floors its cells at zero when handed no room at all', () => {
+    const { getByTestId } = render(
+      <Grid flashPosition={null} selected={null} onTap={() => {}} size={0} />,
+    );
+    expect(cellWidth(getByTestId('cell-0'))).toBe(0);
+  });
+
   it('stays square, so the grid never stretches', () => {
     const { getByTestId } = render(
       <Grid flashPosition={null} selected={null} onTap={() => {}} size={197} />,

@@ -42,6 +42,7 @@ import {
   tierLimits,
 } from '../store/storage';
 import { Grid } from './Grid';
+import { useVisualViewportHeight } from './useVisualViewport';
 
 /**
  * Hard cap on waiting for background grading at round end. Answers still in
@@ -136,13 +137,32 @@ function verdictMark(answer: LiveAnswer): string {
  * label alone ("2-back") does not say whether that means the question just
  * asked or the one before it, and getting it wrong costs a whole round.
  */
-function LagHeader({ n, strings }: { n: number | null; strings: Strings['game'] }) {
+function LagHeader({
+  n,
+  strings,
+  typed,
+}: {
+  n: number | null;
+  strings: Strings['game'];
+  /** Typed rounds run on whatever the keyboard leaves; the header shrinks with it. */
+  typed?: boolean;
+}) {
   if (n === null) return null;
-  return <Text style={styles.lag}>{strings.lagHeader(n)}</Text>;
+  return (
+    <Text style={[styles.lag, typed && styles.lagTyped]}>{strings.lagHeader(n)}</Text>
+  );
 }
+
+/**
+ * The biggest the grid is allowed to get. Without it a tall phone with the
+ * keyboard down stretches the 3×3 across the whole screen, which reads as a
+ * different game from one step to the next.
+ */
+const MAX_GRID = 320;
 
 export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const strings = useStrings();
+  const viewportHeight = useVisualViewportHeight();
   const [language, setLanguage] = useState<'ja' | 'en' | null>(null);
   const resolved = useMemo(
     () => deps ?? realDeps(language ? languageToLocale(language) : undefined),
@@ -631,35 +651,66 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
     );
   }
 
+  const typed = answerInput === 'typed';
+
   return (
     // The keyboard stays up for the whole round (spec §7). On iOS it overlays
     // the view rather than resizing it, so without this the field, the send
     // button and the clock all sit behind it — and the transcript the player
     // is meant to correct cannot be seen at all.
+    //
+    // On the web build that is not enough: KeyboardAvoidingView has no native
+    // keyboard metrics in a browser, and iOS Safari keeps reporting the full
+    // window height with the keyboard up. Pinning the height to the visual
+    // viewport is what keeps the last row of the grid on screen there.
     <KeyboardAvoidingView
-      style={styles.screen}
+      style={[
+        styles.screen,
+        // Typed mode is laid out from the top: with the keyboard up the column
+        // is taller than what is left, and centring it would push the lag
+        // header off the top as well as the grid off the bottom.
+        typed && styles.screenTyped,
+        viewportHeight !== null && { height: viewportHeight },
+      ]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <LagHeader n={lag} strings={strings.game} />
+      <LagHeader n={lag} strings={strings.game} typed={typed} />
       {warmupStarted && !ready && (
         <Text style={styles.warmupCaption}>{strings.game.preparing}</Text>
       )}
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, typed && styles.labelTyped]}>{label}</Text>
       {recogError && (
         <Text testID="recog-error" style={styles.error}>
           {strings.game.recogErrorPrefix}
           {recogError}
         </Text>
       )}
-      {answer && (
-        <Text
-          testID="live-transcript"
-          style={[styles.heard, { color: answerColor(answer) }]}
-        >
-          {`${strings.game.heardQuote(answer.text)}${verdictMark(answer)}`}
-        </Text>
+      {/* In typed mode the slot keeps its height whether or not a verdict is
+          showing. Without it the grid below resizes every time an ○/× lands
+          and clears — the squares move out from under the finger that is
+          trying to tap them. */}
+      {typed ? (
+        <View style={styles.heardSlot}>
+          {answer && (
+            <Text
+              testID="live-transcript"
+              style={[styles.heard, styles.heardTyped, { color: answerColor(answer) }]}
+            >
+              {`${strings.game.heardQuote(answer.text)}${verdictMark(answer)}`}
+            </Text>
+          )}
+        </View>
+      ) : (
+        answer && (
+          <Text
+            testID="live-transcript"
+            style={[styles.heard, { color: answerColor(answer) }]}
+          >
+            {`${strings.game.heardQuote(answer.text)}${verdictMark(answer)}`}
+          </Text>
+        )
       )}
-      {answerInput === 'typed' && (
+      {typed && (
         // Above the grid, in spec §7's order: 質問 → 時計 → 入力欄 → グリッド.
         // Everything the keyboard could hide is the part that has to stay
         // visible, so the grid is what gives up the space.
@@ -704,14 +755,18 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
           </View>
         </View>
       )}
-      {mode === 'dual' && answerInput === 'typed' && (
+      {mode === 'dual' && typed && (
         // Typed mode only: the keyboard eats space a fixed 300 grid does not
         // account for, so size it from what onLayout finds actually left.
+        // Clamped at both ends — a transient 0-height layout pass used to
+        // produce negative cells, and an unbounded one stretches the grid
+        // across a whole tall screen once the keyboard closes.
         <View
+          testID="grid-box"
           style={styles.gridBox}
           onLayout={(event) => {
             const { width, height } = event.nativeEvent.layout;
-            setGridBox(Math.min(width, height));
+            setGridBox(Math.max(0, Math.min(width, height, MAX_GRID)));
           }}
         >
           <Grid
@@ -741,12 +796,18 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: 'center', backgroundColor: '#000' },
+  /* Every vertical gap above the grid is money the keyboard is already
+     spending. A typed round on an iPhone has roughly 400pt of visible height,
+     and the question, clock and field need ~120 of it — so the chrome is
+     tightened here rather than letting the grid absorb the whole shortfall. */
+  screenTyped: { justifyContent: 'flex-start', paddingTop: 8, paddingBottom: 4 },
   label: {
     color: '#f4f1ea',
     fontSize: 18,
     textAlign: 'center',
     marginBottom: 24,
   },
+  labelTyped: { fontSize: 15, marginBottom: 4 },
   /* The colour is applied inline: neutral until this step's verdict lands,
      because 判定待ち is not 不正解. */
   lag: {
@@ -755,6 +816,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
+  lagTyped: { fontSize: 15, marginBottom: 4 },
   warmupCaption: {
     color: '#8e8e93',
     fontSize: 14,
@@ -807,8 +869,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  gridBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  typedBlock: { marginBottom: 16, alignItems: 'center' },
+  heardTyped: { fontSize: 17, marginBottom: 0 },
+  /* Reserved whether or not a verdict is showing, so the grid below does not
+     resize under the player's finger when one lands and clears. */
+  heardSlot: { minHeight: 24, justifyContent: 'center', marginBottom: 4 },
+  /* minHeight:0 so the box can actually shrink below its content on web —
+     without it flexbox refuses, and the grid overflows the viewport instead
+     of fitting inside what the keyboard left. */
+  gridBox: {
+    flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typedBlock: { marginBottom: 8, alignItems: 'center' },
   /* Keeps its height when a trailing step has no question, so the field and
      the grid below it do not jump. */
   question: {
@@ -822,7 +897,7 @@ const styles = StyleSheet.create({
     color: '#4caf7d',
     fontSize: 20,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   clockOut: { color: '#e5534b' },
   typedRow: {
