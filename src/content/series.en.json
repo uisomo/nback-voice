@@ -420,15 +420,6 @@
         ]
       },
       {
-        "id": "ffdd-01_04",
-        "tier": 0,
-        "q": "What is the SEC registration disclosure filed by investment advisers describing their business activities and disciplinary history?",
-        "accept": [
-          "Form ADV",
-          "ADV"
-        ]
-      },
-      {
         "id": "ffdd-01_05",
         "tier": 0,
         "q": "What term refers to value based on amounts a fund has actually disposed of and monetized from its investments, as distinct from unrealized appreciation?",
@@ -445,15 +436,6 @@
           "EBITDA Multiple",
           "Earnings Before Interest Taxes Depreciation and Amortization Multiple",
           "EBITDA Multiple"
-        ]
-      },
-      {
-        "id": "ffdd-01_07",
-        "tier": 0,
-        "q": "What is the name of the regulatory filing that U.S. investment advisers submit to the SEC on a quarterly basis, mentioned alongside Form ADV?",
-        "accept": [
-          "Form PF",
-          "PF"
         ]
       },
       {
@@ -556,17 +538,6 @@
         "accept": [
           "Carried Interest",
           "Carry"
-        ]
-      },
-      {
-        "id": "ffdd-02_06",
-        "tier": 0,
-        "q": "What is the short-term bridge facility secured by the LP's unpaid capital commitment called?",
-        "accept": [
-          "Subscription Line",
-          "Subscription Line of Credit",
-          "Subscription Facility",
-          "Sub-line"
         ]
       },
       {
@@ -784,8 +755,7 @@
         "q": "What is the abbreviation for the metric that compounds each cash flow against a public-market benchmark and compares the results?",
         "accept": [
           "KS-PME",
-          "Kaplan-Schoar Public Market Equivalent",
-          "PME"
+          "Kaplan-Schoar Public Market Equivalent"
         ]
       },
       {
@@ -1201,14 +1171,6 @@
         ]
       },
       {
-        "id": "ffdd-09_04",
-        "tier": 0,
-        "q": "What do you call a facility that combines the subscription tranche and the NAV tranche into a single agreement?",
-        "accept": [
-          "Hybrid Facility"
-        ]
-      },
-      {
         "id": "ffdd-09_05",
         "tier": 0,
         "q": "With GAV of USD 1 billion and full-stack borrowing of USD 220 million, what is the simple LTV?",
@@ -1375,15 +1337,6 @@
     "credit": "Based on *Funds Finance Deep Dive*",
     "questions": [
       {
-        "id": "ffdd-11_02",
-        "tier": 0,
-        "q": "What is the LPA provision that halts the investment period (and similar mechanisms) once a designated individual is no longer able to dedicate substantial time to the fund?",
-        "accept": [
-          "Key Person clause",
-          "Key Person"
-        ]
-      },
-      {
         "id": "ffdd-11_04",
         "tier": 0,
         "q": "What is the ILPA-provided questionnaire that includes questions on prior fund write-downs and restructurings?",
@@ -1494,16 +1447,6 @@
         ]
       },
       {
-        "id": "ffdd-12_05",
-        "tier": 0,
-        "q": "What is the transaction called in which a portfolio company from an existing fund is transferred into a new vehicle designed by the GP?",
-        "accept": [
-          "Continuation Fund",
-          "continuation fund",
-          "continuation vehicle"
-        ]
-      },
-      {
         "id": "ffdd-12_06",
         "tier": 0,
         "q": "What is the committee composed of major LPs that reviews, among other things, GP conflict-of-interest matters called?",
@@ -1530,17 +1473,6 @@
           "Broken-Deal Expense Allocation",
           "Broken-deal expense allocation",
           "broken deal expense allocation"
-        ]
-      },
-      {
-        "id": "ffdd-12_10",
-        "tier": 0,
-        "q": "What is the carry mechanic called in which the GP receives carry on a deal as soon as that deal generates a profit, with no obligation to return it if subsequent deals produce losses?",
-        "accept": [
-          "Deal-by-Deal",
-          "deal-by-deal",
-          "American-style carry",
-          "American waterfall"
         ]
       },
       {
@@ -1590,16 +1522,6 @@
         "accept": [
           "Galton-Watson",
           "Galton-Watson process"
-        ]
-      },
-      {
-        "id": "ffdd-13_03",
-        "tier": 0,
-        "q": "A GP has offered a 'sell now' price on a continuation vehicle. Which method should you run to stress-test the true economics of the GP catch-up and tail?",
-        "accept": [
-          "Monte Carlo waterfall",
-          "Monte Carlo",
-          "Monte Carlo simulation"
         ]
       },
       {
@@ -1687,31 +1609,12 @@
         ]
       },
       {
-        "id": "ffdd-14_03",
-        "tier": 0,
-        "q": "What is the term for an LP's uncalled capital commitment, which is deducted as a future cash outflow even in Hold Value calculations?",
-        "accept": [
-          "Unfunded Commitment",
-          "Unfunded Commitments"
-        ]
-      },
-      {
         "id": "ffdd-14_07",
         "tier": 0,
         "q": "What is it called when a NAV facility's LTV breaches the covenant threshold, the cure period fails, and the borrower loses the benefit of its original maturity?",
         "accept": [
           "Acceleration",
           "Loss of benefit of maturity"
-        ]
-      },
-      {
-        "id": "ffdd-14_08",
-        "tier": 0,
-        "q": "What is the new fund called that is GP-led, into which assets are transferred and in which they continue to be held?",
-        "accept": [
-          "Continuation Vehicle",
-          "Continuation Vehicles",
-          "CV"
         ]
       },
       {
@@ -1809,16 +1712,6 @@
         ]
       },
       {
-        "id": "ffdd-15_04",
-        "tier": 0,
-        "q": "In Fitch's rating model, what metric captures the concentration of capital commitments in a specific group of LPs, where diversification of the LP pool becomes less effective?",
-        "accept": [
-          "Concentration",
-          "LP concentration",
-          "Concentration risk"
-        ]
-      },
-      {
         "id": "ffdd-15_05",
         "tier": 0,
         "q": "In Fitch's model, how does the advance rate applied to a lower-rated LP change?",
@@ -1893,17 +1786,6 @@
           "1",
           "sum equals 1",
           "Σθ=1"
-        ]
-      },
-      {
-        "id": "ffdd-16_05",
-        "tier": 0,
-        "q": "What is the formal name of the statistical method used for GLM model parameter estimation, which maximizes the probability of obtaining the observed data?",
-        "accept": [
-          "Maximum Likelihood Estimation",
-          "Maximum Likelihood",
-          "Max Likelihood",
-          "MLE"
         ]
       },
       {
