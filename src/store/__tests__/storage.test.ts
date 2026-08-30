@@ -22,6 +22,7 @@ import {
   saveApiKey,
   saveN,
   saveSettings,
+  isDemoBuild,
   tierLimits,
   updateCustom,
   updateCustomDeck,
@@ -559,6 +560,37 @@ describe('tier limits', () => {
   it('falls back to free limits for an unrecognized stored tier value', () => {
     // A settings blob saved before 'enterprise' was removed as a value.
     expect(tierLimits('enterprise' as SubscriptionTier)).toEqual(tierLimits('free'));
+  });
+});
+
+describe('the demo build', () => {
+  afterEach(() => {
+    delete process.env.EXPO_PUBLIC_DEMO;
+  });
+
+  it('lifts the free tier’s daily round cap', () => {
+    process.env.EXPO_PUBLIC_DEMO = '1';
+    expect(tierLimits('free').maxRoundsPerDay).toBe(Infinity);
+  });
+
+  // The demo is for playing, not for showing what a paid tier unlocks — the
+  // deck ceilings have to stay put or it stops demonstrating the real app.
+  it('leaves the deck and question ceilings where they are', () => {
+    process.env.EXPO_PUBLIC_DEMO = '1';
+    expect(tierLimits('free').maxDecks).toBe(0);
+    expect(tierLimits('free').maxQuestionsPerDeck).toBe(0);
+    expect(tierLimits('pro').maxDecks).toBe(5);
+  });
+
+  it('is off unless the build asked for it', () => {
+    expect(isDemoBuild()).toBe(false);
+    expect(tierLimits('free').maxRoundsPerDay).toBe(3);
+  });
+
+  it('ignores any value other than 1, so a stray env var cannot lift the cap', () => {
+    process.env.EXPO_PUBLIC_DEMO = 'true';
+    expect(isDemoBuild()).toBe(false);
+    expect(tierLimits('free').maxRoundsPerDay).toBe(3);
   });
 
   it('defaults new installs to the free tier', () => {

@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FUNDS_FINANCE_CATEGORIES, type FundsFinanceCategory } from '../content/series';
+import { isDemoBuild } from '../store/storage';
 import type { SubscriptionTier, ThemeVariety } from '../store/storage';
 import { getTheme } from './theme';
 
@@ -31,6 +32,14 @@ export function FinancialHeader({
           <View style={[styles.proBadge, { backgroundColor: theme.accentGold }]}>
             <Text style={styles.proBadgeText}>PRO</Text>
           </View>
+          {/* Two deploys that look identical are a trap: the demo lifts the
+              daily cap, so "why is the limit not working" has to be answerable
+              from the screen rather than from the URL. */}
+          {isDemoBuild() && (
+            <View testID="demo-badge" style={styles.demoBadge}>
+              <Text style={styles.demoBadgeText}>DEMO</Text>
+            </View>
+          )}
         </View>
 
         {/* Subscription Pro Badge */}
@@ -131,6 +140,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
+  },
+  demoBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    backgroundColor: '#e5534b',
+  },
+  demoBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '900',
   },
   proBadgeText: {
     color: '#000',

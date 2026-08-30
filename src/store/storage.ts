@@ -296,13 +296,30 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
 };
 
 /**
+ * Whether this bundle is the demo. Read from the environment on every call
+ * rather than captured once, so a test can flip it — Metro inlines
+ * `process.env.EXPO_PUBLIC_*` as a literal wherever it appears, so the
+ * production build still folds this to a constant.
+ */
+export function isDemoBuild(): boolean {
+  return process.env.EXPO_PUBLIC_DEMO === '1';
+}
+
+/**
  * The only way limits should be read. A settings blob saved before a tier
  * value was removed (e.g. the old 'enterprise') must not crash the app —
  * it is treated as free rather than migrated, since the stored value is
  * otherwise harmless.
+ *
+ * The demo build lifts the daily round cap and nothing else. A demo exists to
+ * be played with, and stopping the person you handed it to after three rounds
+ * is the one thing it must not do; the deck and question ceilings still show
+ * what the free tier really is. This is a build-time split, not a setting, so
+ * the paying app has no code path that can be talked into unlimited rounds.
  */
 export function tierLimits(tier: SubscriptionTier): TierLimits {
-  return TIER_LIMITS[tier] ?? TIER_LIMITS.free;
+  const limits = TIER_LIMITS[tier] ?? TIER_LIMITS.free;
+  return isDemoBuild() ? { ...limits, maxRoundsPerDay: Infinity } : limits;
 }
 
 export async function loadCustomDecks(): Promise<CustomDeck[]> {
