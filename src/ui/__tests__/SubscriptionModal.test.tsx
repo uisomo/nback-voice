@@ -1,7 +1,23 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SubscriptionModal } from '../SubscriptionModal';
+import { requestSubscriptionPurchase, resolveEntitledTier } from '../../store/iap';
+
+jest.mock('../../store/iap', () => ({
+  requestSubscriptionPurchase: jest.fn(),
+  resolveEntitledTier: jest.fn(),
+}));
+
+jest.mock('expo-iap', () => ({
+  useIAP: () => ({ finishTransaction: jest.fn() }),
+}));
 
 describe('SubscriptionModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (requestSubscriptionPurchase as jest.Mock).mockResolvedValue(undefined);
+    (resolveEntitledTier as jest.Mock).mockResolvedValue('free');
+  });
+
   it('shows all three tier tabs', () => {
     render(<SubscriptionModal visible onClose={jest.fn()} currentTier="free" />);
     // "Starter" appears twice: once as the tab label, once as the active
@@ -44,24 +60,42 @@ describe('SubscriptionModal', () => {
     expect(screen.getByText('$10')).toBeTruthy();
   });
 
-  it('persists the chosen tier and calls onTierChanged', async () => {
+  it('requests a real purchase for the selected paid tier and cycle', async () => {
     const onTierChanged = jest.fn();
     render(
-      <SubscriptionModal
-        visible
-        onClose={jest.fn()}
-        currentTier="free"
-        onTierChanged={onTierChanged}
-      />,
+      <SubscriptionModal visible onClose={jest.fn()} currentTier="free" onTierChanged={onTierChanged} />,
     );
     fireEvent.press(screen.getByText('Funds Finance God'));
-    // handleSelectPlan awaits loadSettings/saveSettings (AsyncStorage), so
-    // the press needs to be wrapped in an async act to flush the promise
-    // before we assert on the callback.
+    fireEvent.press(screen.getByText('月額'));
     await act(async () => {
       fireEvent.press(screen.getByText('このプランにする'));
     });
-    expect(onTierChanged).toHaveBeenCalledWith('god');
+    expect(requestSubscriptionPurchase).toHaveBeenCalledWith('god', 'monthly');
+    // Entitlement only changes once StoreKit's purchase-updated listener
+    // reports success (see App.tsx wiring) — not from tapping the button.
+    expect(onTierChanged).not.toHaveBeenCalled();
+  });
+
+  it('does not attempt a purchase for the free tier', async () => {
+    render(<SubscriptionModal visible onClose={jest.fn()} currentTier="pro" />);
+    fireEvent.press(screen.getByText('Starter'));
+    await act(async () => {
+      fireEvent.press(screen.getByText('このプランにする'));
+    });
+    expect(requestSubscriptionPurchase).not.toHaveBeenCalled();
+  });
+
+  it('offers a restore-purchases link that re-syncs entitlement', async () => {
+    const onTierChanged = jest.fn();
+    (resolveEntitledTier as jest.Mock).mockResolvedValue('pro');
+    render(
+      <SubscriptionModal visible onClose={jest.fn()} currentTier="free" onTierChanged={onTierChanged} />,
+    );
+    await act(async () => {
+      fireEvent.press(screen.getByText('購入を復元'));
+    });
+    expect(resolveEntitledTier).toHaveBeenCalled();
+    expect(onTierChanged).toHaveBeenCalledWith('pro');
   });
 
   it('renders nothing when not visible', () => {

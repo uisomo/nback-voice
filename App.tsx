@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import type { RoundEngine } from './src/engine';
 import type { RoundPlan } from './src/engine/types';
-import { DEFAULT_SETTINGS, loadSettings, type Settings } from './src/store/storage';
+import { resolveEntitledTier } from './src/store/iap';
+import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './src/store/storage';
 import { GameScreen } from './src/ui/GameScreen';
 import { QuestionsScreen } from './src/ui/QuestionsScreen';
 import { ResultsScreen } from './src/ui/ResultsScreen';
@@ -28,6 +29,19 @@ export default function App() {
   useEffect(() => {
     if (screen.name === 'results') void loadSettings().then(setSettings);
   }, [screen]);
+
+  // Re-sync entitlement once at launch so a reinstall, a renewal that lapsed
+  // while the app was closed, or a purchase made on another device is
+  // reflected without the user having to open the paywall and hit restore.
+  useEffect(() => {
+    void (async () => {
+      const tier = await resolveEntitledTier();
+      const current = await loadSettings();
+      if (current.subscriptionTier !== tier) {
+        await saveSettings({ ...current, subscriptionTier: tier });
+      }
+    })();
+  }, []);
 
   const activeTab = screen.name === 'questions' ? 'questions' : screen.name === 'settings' ? 'settings' : 'series';
   const showBottomBar = screen.name === 'series' || screen.name === 'questions' || screen.name === 'settings';

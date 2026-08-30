@@ -9,6 +9,25 @@
       "ios": {
         "simulator": false
       }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "ios": {
+        "simulator": false
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "tkyukyou826isomoto@gmail.com"
+      }
     }
   }
 }

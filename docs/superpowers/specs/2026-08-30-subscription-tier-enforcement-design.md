@@ -28,10 +28,18 @@ system and should be removed.
 
 ## Non-goals
 
-- Real payment processing / IAP integration. `handleSelectPlan` continues
-  to just persist `subscriptionTier` locally, as today.
 - Server-side enforcement. All checks are client-side against local
   `AsyncStorage` state, consistent with the rest of the app.
+
+**Update (same day):** real payment processing was originally out of scope
+here — `handleSelectPlan` just persisted `subscriptionTier` locally, with a
+paywall UI that displayed real prices and a "Secure SSL Encrypted" claim
+despite collecting no payment. That combination is an App Store Guideline
+3.1.1 rejection risk (and arguably deceptive UI) if submitted as-is, so real
+StoreKit purchases via `expo-iap` were added the same day — see
+`src/store/iap.ts` and the updated `SubscriptionModal.tsx`. Tier changes now
+only happen via a verified purchase, a verified restore, or selecting the
+free tier.
 
 ## Tier model
 

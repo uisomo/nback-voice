@@ -1,6 +1,14 @@
+import { useIAP } from 'expo-iap';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { loadSettings, saveSettings, type SubscriptionTier, type ThemeVariety } from '../store/storage';
+import {
+  finishSubscriptionPurchase,
+  requestSubscriptionPurchase,
+  resolveEntitledTier,
+  resolvePurchaseTier,
+  type BillingCycle,
+} from '../store/iap';
+import type { SubscriptionTier, ThemeVariety } from '../store/storage';
 import { getTheme } from './theme';
 
 interface Props {
@@ -66,16 +74,51 @@ export function SubscriptionModal({
   themeVariety = 'terminal',
   onTierChanged,
 }: Props) {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('annual');
   const [activeTab, setActiveTab] = useState<SubscriptionTier>(currentTier);
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(currentTier);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  useIAP({
+    onPurchaseSuccess: async (purchase) => {
+      const tier = await resolvePurchaseTier(purchase);
+      await finishSubscriptionPurchase(purchase);
+      if (tier && onTierChanged) onTierChanged(tier);
+      setPurchasing(false);
+    },
+    onPurchaseError: (error) => {
+      setPurchaseError(error.message);
+      setPurchasing(false);
+    },
+  });
   const theme = getTheme(themeVariety);
 
   const handleSelectPlan = async (tier: SubscriptionTier) => {
-    setSelectedTier(tier);
-    const settings = await loadSettings();
-    await saveSettings({ ...settings, subscriptionTier: tier });
-    if (onTierChanged) onTierChanged(tier);
+    setPurchaseError(null);
+    if (tier === 'free') {
+      if (onTierChanged) onTierChanged(tier);
+      return;
+    }
+    setPurchasing(true);
+    try {
+      await requestSubscriptionPurchase(tier, billingCycle);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : String(error));
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setPurchaseError(null);
+    setRestoring(true);
+    try {
+      const tier = await resolveEntitledTier();
+      if (onTierChanged) onTierChanged(tier);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setRestoring(false);
+    }
   };
 
   if (!visible) return null;
@@ -193,27 +236,39 @@ export function SubscriptionModal({
               {active.description}
             </Text>
 
+            {purchaseError && (
+              <Text style={[styles.errorText, { color: theme.textSecondary }]}>{purchaseError}</Text>
+            )}
+
             <Pressable
+              disabled={currentTier === active.tier || purchasing}
               onPress={() => void handleSelectPlan(active.tier)}
               style={[
                 styles.planButton,
                 {
                   backgroundColor:
-                    selectedTier === active.tier ? theme.cardBorder : theme.accentGold,
+                    currentTier === active.tier ? theme.cardBorder : theme.accentGold,
+                  opacity: purchasing ? 0.6 : 1,
                 },
               ]}
             >
               <Text style={[styles.planButtonText, { color: '#000', fontWeight: 'bold' }]}>
-                {selectedTier === active.tier ? active.activeLabel : active.selectLabel}
+                {currentTier === active.tier
+                  ? active.activeLabel
+                  : purchasing
+                    ? '処理中…'
+                    : active.selectLabel}
               </Text>
             </Pressable>
           </View>
         </ScrollView>
 
         <View style={[styles.footer, { borderTopColor: theme.cardBorder }]}>
-          <Text style={[styles.footerNote, { color: theme.textMuted }]}>
-            🔒 Secure SSL Encrypted. Cancel or modify subscription anytime.
-          </Text>
+          <Pressable onPress={() => void handleRestore()} disabled={restoring}>
+            <Text style={[styles.footerNote, { color: theme.textMuted, textDecorationLine: 'underline' }]}>
+              {restoring ? '復元中…' : '購入を復元'}
+            </Text>
+          </Pressable>
           <Pressable onPress={onClose} style={styles.doneButton}>
             <Text style={[styles.doneText, { color: theme.accentPrimary }]}>Done</Text>
           </Pressable>
@@ -337,6 +392,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 10,
     marginBottom: 14,
+  },
+  errorText: {
+    fontSize: 12,
+    marginBottom: 10,
   },
   planButton: {
     paddingVertical: 12,
