@@ -670,15 +670,44 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         // is taller than what is left, and centring it would push the lag
         // header off the top as well as the grid off the bottom.
         typed && styles.screenTyped,
-        viewportHeight !== null && { height: viewportHeight },
+        viewportHeight !== null && {
+          height: viewportHeight,
+          maxHeight: viewportHeight,
+          // `flex: 1` above compiles to `flex: 1 1 0%`, and flex-basis beats
+          // height for a flex item — which #root is, at `height: 100%` of the
+          // *layout* viewport that Safari never shrinks. So the height above
+          // was ignored, the screen stayed the full window tall and the grid
+          // grew to fill it. Opting out of flex sizing is what makes it bind.
+          flexGrow: 0,
+          flexShrink: 0,
+          flexBasis: 'auto',
+        },
       ]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <LagHeader n={lag} strings={strings.game} typed={typed} />
+      {/* The step label already names the lag ("4 / 10 1-back"), so the header
+          repeating it is a line typed mode cannot afford — every point above
+          the grid is one the keyboard has already taken. */}
+      {!typed && <LagHeader n={lag} strings={strings.game} />}
       {warmupStarted && !ready && (
         <Text style={styles.warmupCaption}>{strings.game.preparing}</Text>
       )}
-      <Text style={[styles.label, typed && styles.labelTyped]}>{label}</Text>
+      {typed ? (
+        // Label and clock share a row for the same reason.
+        <View style={styles.typedTopRow}>
+          <Text style={[styles.label, styles.labelTyped]}>{label}</Text>
+          {remainingMs !== null && (
+            <Text
+              testID="answer-clock"
+              style={[styles.clock, styles.clockTyped, remainingMs <= 0 && styles.clockOut]}
+            >
+              {Math.max(0, remainingMs / 1000).toFixed(1)}s
+            </Text>
+          )}
+        </View>
+      ) : (
+        <Text style={styles.label}>{label}</Text>
+      )}
       {recogError && (
         <Text testID="recog-error" style={styles.error}>
           {strings.game.recogErrorPrefix}
@@ -715,17 +744,9 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         // Everything the keyboard could hide is the part that has to stay
         // visible, so the grid is what gives up the space.
         <View style={styles.typedBlock}>
-          <Text testID="current-question" style={styles.question}>
+          <Text testID="current-question" style={[styles.question, styles.questionTyped]}>
             {question}
           </Text>
-          {remainingMs !== null && (
-            <Text
-              testID="answer-clock"
-              style={[styles.clock, remainingMs <= 0 && styles.clockOut]}
-            >
-              {Math.max(0, remainingMs / 1000).toFixed(1)}s
-            </Text>
-          )}
           <View style={styles.typedRow}>
             <TextInput
               testID="typed-answer-input"
@@ -807,7 +828,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  labelTyped: { fontSize: 15, marginBottom: 4 },
+  labelTyped: { fontSize: 15, marginBottom: 0 },
+  /* Step label and countdown on one line. Two lines of chrome is a whole row
+     of grid cells on a phone with the keyboard up. */
+  typedTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 4,
+  },
   /* The colour is applied inline: neutral until this step's verdict lands,
      because 判定待ち is not 不正解. */
   lag: {
@@ -893,12 +923,15 @@ const styles = StyleSheet.create({
     minHeight: 28,
     marginBottom: 8,
   },
+  /* A three-line question at 20pt is ~90pt of the ~360 a keyboard leaves. */
+  questionTyped: { fontSize: 17, lineHeight: 22, minHeight: 22, marginBottom: 6 },
   clock: {
     color: '#4caf7d',
     fontSize: 20,
     textAlign: 'center',
     marginBottom: 4,
   },
+  clockTyped: { fontSize: 15, marginBottom: 0 },
   clockOut: { color: '#e5534b' },
   typedRow: {
     flexDirection: 'row',
