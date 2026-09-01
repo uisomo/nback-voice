@@ -148,6 +148,18 @@ async function runWholeRound() {
   });
 }
 
+/**
+ * In typed mode an opening step that recalls nothing waits for a 次へ tap
+ * rather than sliding by on a timer (the owner steps through every step,
+ * including the first). This presses it, landing the round on step 1 — the
+ * first window that owes an answer — with no time elapsed.
+ */
+async function passOpeningStep() {
+  await act(async () => {
+    fireEvent.press(screen.getByTestId('typed-submit'));
+  });
+}
+
 describe('GameScreen', () => {
   it('speaks 9 questions and finishes the round', async () => {
     const onFinished = jest.fn();
@@ -1196,18 +1208,25 @@ describe('GameScreen typed mode', () => {
 
     // A merged step opens its window at once — but nothing is owed on step 0,
     // so the field must stay closed for the whole of it and no countdown
-    // appears.
+    // appears. The button reads 次へ, not 送る: nothing is being sent, the
+    // owner is only stepping forward.
     await act(async () => {
       await jest.advanceTimersByTimeAsync(2000);
     });
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(false);
     expect(screen.queryByTestId('answer-clock')).toBeNull();
+    expect(screen.getByTestId('typed-submit')).toHaveTextContent('次へ');
 
-    // Nothing is ever submitted on this step. If it only advanced on
-    // submission it would hang here forever; it must self-close on its
-    // normal timer instead — a merged step's own length, A + B.
+    // The opening step does not self-close on a timer any more: the owner asked
+    // to press through every step, so however long it waits it stays put until
+    // 次へ is tapped.
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(3000);
+      await jest.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.queryByText('2 / 10　1-back　どうぞ')).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('typed-submit'));
     });
     expect(screen.queryByText('2 / 10　1-back　どうぞ')).toBeTruthy();
   });
@@ -1224,11 +1243,9 @@ describe('GameScreen typed mode', () => {
     render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    // Step 0 (observe-only) self-closes after its own 5000; step 1 is the
-    // first real answer window, and 7000 lands inside it, still open.
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(7000);
-    });
+    // Step 0 (observe-only) is stepped past with 次へ; step 1 is the first
+    // real answer window, open the moment the tap lands.
+    await passOpeningStep();
     expect(screen.queryByText('2 / 10　1-back　どうぞ')).toBeTruthy();
     expect(screen.getByTestId('typed-answer-input').props.editable).toBe(true);
 
@@ -1327,11 +1344,9 @@ describe('GameScreen typed answer feedback', () => {
     render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    // Step 1 is the first window that owes an answer at N=1; step 0 is a
-    // merged step of its own, so it takes A + B to go by.
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    // Step 1 is the first window that owes an answer at N=1; step 0 is stepped
+    // past with 次へ.
+    await passOpeningStep();
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
       fireEvent.press(screen.getByTestId('typed-submit'));
@@ -1400,10 +1415,8 @@ describe('GameScreen typed answer feedback', () => {
     await beginRound();
 
     // Step 1 is the first step that owes an answer at N=1. Its window opens
-    // with the step, so no timer advance beyond step 0's own length is needed.
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    // with the step, reached by stepping past step 0 with 次へ.
+    await passOpeningStep();
 
     expect(screen.getByTestId('current-question')).toHaveTextContent(
       speaker.spoken[1],
@@ -1423,9 +1436,7 @@ describe('GameScreen typed answer feedback', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    await passOpeningStep();
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
       fireEvent.press(screen.getByTestId('typed-submit'));
@@ -1449,9 +1460,7 @@ describe('GameScreen typed answer feedback', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    await passOpeningStep();
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
       fireEvent.press(screen.getByTestId('typed-submit'));
@@ -1469,9 +1478,7 @@ describe('GameScreen typed answer feedback', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    await passOpeningStep();
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
       fireEvent.press(screen.getByTestId('typed-submit'));
@@ -1500,9 +1507,7 @@ describe('GameScreen typed answer feedback', () => {
 
     // Step 1's answer window: what is owed is step 0's question, but what is
     // on screen is step 1's — showing the recalled one deletes the N-back.
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    await passOpeningStep();
     expect(speaker.spoken[1]).not.toBe(speaker.spoken[0]);
     expect(screen.getByTestId('current-question')).toHaveTextContent(
       speaker.spoken[1],
@@ -1554,11 +1559,9 @@ describe('GameScreen answer clock', () => {
     render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    // Step 1's window opens with the step itself, once step 0's own 5000 is
-    // out: base 4000 + phase A 2000 + 5 characters.
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    // Step 1's window opens with the step itself, reached by 次へ off step 0:
+    // base 4000 + phase A 2000 + 5 characters.
+    await passOpeningStep();
     expect(screen.getByTestId('answer-clock')).toHaveTextContent('11.0s');
 
     await act(async () => {
@@ -1577,9 +1580,7 @@ describe('GameScreen answer clock', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    await passOpeningStep();
 
     // base 1000 + phase A 2000 + 5 characters.
     expect(screen.getByTestId('answer-clock')).toHaveTextContent('8.0s');
@@ -1590,9 +1591,7 @@ describe('GameScreen answer clock', () => {
     const { deps } = makeDefaultDeps(alwaysCorrect);
     render(<GameScreen seriesId="custom" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    await passOpeningStep();
     expect(jest.getTimerCount()).toBeGreaterThan(0); // the countdown is running
 
     await act(async () => {
@@ -1676,9 +1675,7 @@ describe('GameScreen double-press guard', () => {
     render(<GameScreen seriesId="capital-call" onFinished={jest.fn()} deps={deps} />);
     await beginRound();
 
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(5000);
-    });
+    await passOpeningStep();
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('typed-answer-input'), 'こたえ');
       fireEvent.press(screen.getByTestId('typed-submit'));

@@ -201,6 +201,13 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
   const [question, setQuestion] = useState('');
   /** null when the field is closed for this step; the countdown otherwise. */
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  /**
+   * True on an opening step that recalls nothing: the player owes no answer,
+   * but the round still pauses for a deliberate 次へ tap rather than sliding
+   * past on its own — the owner asked to press through every step, including
+   * the first (see project memory content-feedback-2026-09).
+   */
+  const [awaitingNext, setAwaitingNext] = useState(false);
   const [gridBox, setGridBox] = useState(300);
 
   const runnerRef = useRef<RoundRunner | null>(null);
@@ -234,6 +241,12 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
    * the update the first press made.
    */
   const openStepRef = useRef<number | null>(null);
+  /**
+   * The 次へ handler for a no-answer opening step. schedule() stores the
+   * step's own advance closure here so the button — rendered outside that
+   * scope — can submit and step forward on a tap instead of a timer.
+   */
+  const nextRef = useRef<(() => void) | null>(null);
 
   useSpeechRecognitionEvent('result', (event) => {
     const transcript = event.results[0]?.transcript;
@@ -416,6 +429,8 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               // freeze on screen and the field must not stay typable through
               // the grading drain (up to DRAIN_TIMEOUT_MS).
               setRemainingMs(null);
+              setAwaitingNext(false);
+              nextRef.current = null;
               setTypedText('');
               setQuestion('');
               void finish();
@@ -448,6 +463,10 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             // Whether the field is live this phase — from the merged step's
             // start, or from phase B in the two-phase round.
             const windowOpen = phase === 'B' || phase === 'AB';
+            // An opening typed step: the field is live but nothing is recalled
+            // yet. The owner still steps through it by tapping 次へ (see the
+            // awaitingNext state), so it is neither timer-paced nor auto-sent.
+            const typedNext = windowOpen && typed && !owesAnswer;
 
             if (windowOpen && typed && owesAnswer) {
               const target = plan.steps[step.recallTarget!];
@@ -456,6 +475,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
                 budgetBaseMs,
               );
               openStepRef.current = stepIndex;
+              setAwaitingNext(false);
               setTypedText('');
               setRemainingMs(budget);
               const startedAt = Date.now();
@@ -472,15 +492,18 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               }, 200);
             } else {
               setRemainingMs(null);
-              // RoundRunner always opens the TypedListener on phase B and
-              // readyToClose() always waits on settle(), even on a step that
-              // owes no answer — the runner does not know about steps. Nothing
-              // is shown to submit here, so the UI submits on the step's
-              // behalf: the outer timer below still paces the step normally,
-              // this just keeps readyToClose() from waiting on input nobody
-              // will ever give.
-              if (windowOpen && typed) {
-                typed.submit();
+              if (!typedNext) {
+                setAwaitingNext(false);
+                // RoundRunner always opens the TypedListener on phase B and
+                // readyToClose() always waits on settle(), even on a step that
+                // owes no answer — the runner does not know about steps. When
+                // the UI is not going to show a 次へ button (voice mode, or a
+                // trailing recall-only step with no live field), it submits on
+                // the step's behalf so readyToClose() is not left waiting on
+                // input nobody will ever give.
+                if (windowOpen && typed) {
+                  typed.submit();
+                }
               }
             }
 
@@ -499,10 +522,20 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
             };
 
             // Typed answer windows close on submit, not on a timer: that is what
-            // makes the round submit-driven. Everything else keeps its timer,
-            // including typed steps that owe no answer.
+            // makes the round submit-driven.
             if (windowOpen && typed && owesAnswer) {
               advance();
+            } else if (typedNext) {
+              // Wait for the 次へ tap. openStepRef guards the submit the same
+              // way it does an answer step; nextRef hands this step's advance
+              // to the button, which submits then steps forward.
+              openStepRef.current = stepIndex;
+              setTypedText('');
+              setAwaitingNext(true);
+              nextRef.current = () => {
+                typed.submit();
+                advance();
+              };
             } else {
               // A merged step is both halves at once, so it is paced by both.
               const span = phase === 'A' ? a : phase === 'AB' ? a + b : b;
@@ -544,6 +577,7 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (clockRef.current) clearInterval(clockRef.current);
       if (verdictClearRef.current) clearTimeout(verdictClearRef.current);
+      nextRef.current = null;
       resolved.listener.stop();
       typedRef.current?.stop();
       resolved.speaker.stop();
@@ -614,6 +648,20 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
         : null,
     );
     typed.submit();
+  }, []);
+
+  /**
+   * The 次へ tap on an opening step that recalls nothing. Same openStepRef
+   * guard as handleTypedSubmit so a double-tap cannot fire the next step's
+   * advance twice; clears the button before running the stored advance.
+   */
+  const handleNext = useCallback(() => {
+    if (openStepRef.current === null) return;
+    openStepRef.current = null;
+    setAwaitingNext(false);
+    const advance = nextRef.current;
+    nextRef.current = null;
+    advance?.();
   }, []);
 
   const handleTap = useCallback((position: Position) => {
@@ -766,12 +814,18 @@ export function GameScreen({ seriesId, onFinished, deps }: Props) {
               onSubmitEditing={handleTypedSubmit}
               returnKeyType="send"
             />
+            {/* One button, two jobs: an opening step that recalls nothing shows
+                次へ and steps forward on the tap; every answering step shows
+                送る and sends what was typed. The owner presses through the
+                round the same way at every step, including the first. */}
             <Pressable
               testID="typed-submit"
-              onPress={handleTypedSubmit}
-              disabled={remainingMs === null}
+              onPress={awaitingNext ? handleNext : handleTypedSubmit}
+              disabled={remainingMs === null && !awaitingNext}
             >
-              <Text style={styles.typedSend}>{strings.game.send}</Text>
+              <Text style={styles.typedSend}>
+                {awaitingNext ? strings.game.next : strings.game.send}
+              </Text>
             </Pressable>
           </View>
         </View>

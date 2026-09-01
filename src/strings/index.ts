@@ -62,6 +62,7 @@ export interface Strings {
     typedPlaceholderClosed: string;
     typedPlaceholderOpen: string;
     send: string;
+    next: string;
   };
   results: {
     dash: string;
@@ -171,6 +172,7 @@ export const ja: Strings = {
     typedPlaceholderClosed: 'まだ答えません',
     typedPlaceholderOpen: '答えを入力',
     send: '送る',
+    next: '次へ',
   },
   results: {
     dash: '—',
@@ -280,6 +282,7 @@ export const en: Strings = {
     typedPlaceholderClosed: 'Not answering yet',
     typedPlaceholderOpen: 'Type your answer',
     send: 'Send',
+    next: 'Next',
   },
   results: {
     dash: '—',
