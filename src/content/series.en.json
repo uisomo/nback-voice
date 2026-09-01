@@ -1457,15 +1457,6 @@
         ]
       },
       {
-        "id": "ffdd-12_08",
-        "tier": 0,
-        "q": "In what journal was the Barber and Yasuda (2017) paper published showing that PE funds' reported NAVs exhibit significantly higher quarter-to-quarter autocorrelation than public-market returns?",
-        "accept": [
-          "Journal of Financial Economics",
-          "JFE"
-        ]
-      },
-      {
         "id": "ffdd-12_09",
         "tier": 0,
         "q": "What is the problem called in which diligence costs on a failed M&A transaction are charged to the fund?",
@@ -1473,17 +1464,6 @@
           "Broken-Deal Expense Allocation",
           "Broken-deal expense allocation",
           "broken deal expense allocation"
-        ]
-      },
-      {
-        "id": "ffdd-12_11",
-        "tier": 0,
-        "q": "According to Lazard's 2025 secondary market report, what dollar level did GP-led transactions reach in 2025?",
-        "accept": [
-          "$116 billion",
-          "$116B",
-          "116 billion dollars",
-          "USD 116 billion"
         ]
       },
       {
@@ -1981,11 +1961,10 @@
       {
         "id": "ffdd-18_09",
         "tier": 0,
-        "q": "In June 2024, a U.S. court fully vacated the SEC's private fund adviser rules. Which court issued this decision?",
+        "q": "In June 2024 a U.S. federal appeals court fully vacated which set of SEC rules that would have required GPs to make detailed cost and performance disclosures?",
         "accept": [
-          "Fifth Circuit",
-          "U.S. Court of Appeals for the Fifth Circuit",
-          "United States Court of Appeals for the Fifth Circuit"
+          "Private Fund Adviser Rules",
+          "PFAR"
         ]
       },
       {
@@ -2249,29 +2228,11 @@
         ]
       },
       {
-        "id": "ffdd-21_05",
-        "tier": 0,
-        "q": "What is the name of the database used in the 2019 study by Brown, Gredil, and Kaplan that analyzed reported NAV patterns in buyout and VC funds?",
-        "accept": [
-          "Burgiss"
-        ]
-      },
-      {
         "id": "ffdd-21_06",
         "tier": 0,
-        "q": "What is the hypothesis, repeatedly tested in GP performance persistence research, that a fund's early returns drive the fundraising success of subsequent funds?",
+        "q": "What term describes the phenomenon, tested in PE research, whereby a GP's performance on past funds predicts performance on its next fund?",
         "accept": [
-          "Performance Persistence hypothesis",
           "Performance Persistence"
-        ]
-      },
-      {
-        "id": "ffdd-21_07",
-        "tier": 0,
-        "q": "How has PE performance persistence changed over time, according to multiple empirical studies?",
-        "accept": [
-          "Weakened",
-          "Declined"
         ]
       },
       {
@@ -2285,7 +2246,7 @@
       {
         "id": "ffdd-21_09",
         "tier": 0,
-        "q": "What is the field of study that examines the tendency of GPs to mark up portfolio valuations immediately before a fundraising period, focusing on the relationship between fundraising timing and valuation?",
+        "q": "What term describes the tendency of a GP facing its next fundraise to mark up portfolio valuations just before the raise?",
         "accept": [
           "Fundraising-Period Markups"
         ]
