@@ -1,0 +1,14 @@
+[
+  {
+    "id": "stub-subline-01",
+    "product": "sub-finance",
+    "title": "スタブ案件",
+    "credit": "『FundsFinanceの教科書』より",
+    "sheet": [
+      { "label": "金額 / Amount", "value": "コミットメントの30%", "group": "terms" }
+    ],
+    "conversation": [
+      { "speaker": "RM", "line": "本件のサブスクリプション・ラインをご説明します。" }
+    ]
+  }
+]
