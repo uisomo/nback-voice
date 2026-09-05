@@ -62,16 +62,26 @@ separately afterward.
   sequence again in Layer 2 (具体アクション). Not interleaved per-step.
 - **Scoring**: use the existing n-back scoring (`src/judge`), unlike the 案件
   game which had no scoring. Spoken answer graded by concept, not spelling.
-- **Content source**: authored from the book. The book project defines the
-  action schema (`/mnt/c/Projects/book/.claude/agents/action-{cataloger,
-  scenario-writer,sequencer}.md`). The `chapter_N.actions.json` files the user
-  referenced **do not exist on disk yet**; raw action prose lives in
-  `Books2/6.FundsFinanceの教科書/*.md`. Claude reads chapters → drafts
-  structured cards + sequences + purpose statements → **user approves** (same
-  author→approve loop as the 案件 cases and the review harness).
-- **Purpose is authored, first-class**: precise, specific per-card purpose is
-  written by Claude and reviewed by the user; it is the value-add layer, not
-  scraped from the text.
+- **Content source**: the book **already ships structured `chapter_N.actions.json`**
+  files at `/mnt/c/Projects/book/Books/24.ファンドファイナンスの徹底解剖書_jpen_
+  jppn_enen_enpn/contents/` (8 files: ch.02, 03, 05, 06, 07, 09, 10, 11 as of
+  2026-09-06). Each file is an ordered array of actions and **is itself a
+  sequence** — the per-chapter set of steps. `Books` is a Google-Drive symlink
+  that goes cold intermittently; see [[gdrive-mount-stale]]. Real per-action
+  schema: `{chapter, action_number, id, title, category (Universal/Conditional/
+  Arbitrary), trigger, when_not_to_use, best_timing, purpose, impact,
+  sample_phrase, order_and_relationships}`. There is NO separate sequence/goal/
+  scenario file — the chapter `.md` (and `_revised.md`) is the prose.
+- **Purpose is already authored**: each action's `purpose` is written by the
+  book author and precise. Claude **reviews/adapts** it (not writes from
+  scratch) and the user approves — lighter than the original plan.
+- **`accept[]` must be authored**: the JSON has one canonical `purpose` and one
+  `sample_phrase` per card but **no synonym/paraphrase sets**. Deriving
+  `purposeAccept[]` / `actionAccept[]` is the real authoring task, so the judge
+  can grade spoken answers by concept. User approves.
+- **`sample_phrase` is sometimes null** (typically Arbitrary actions, e.g.
+  ch02-a07). Layer 2's answer needs a fallback: author a concrete `action`, or
+  mark the card Layer-2-skipped.
 - **Position channel optional**: question-only by default (semantic chain is
   the target); grid-flash dual mode is a toggle.
 
@@ -97,22 +107,23 @@ SequencesScreen (list of sequences)
 
 ```ts
 interface ActionCard {
-  id: string;                 // "nav-ltv-01-legal-info"
-  order: number;              // 1-based position in the sequence
-  title: string;              // short card label, e.g. "法的情報の整理"
-  purpose: string;            // Layer-1 answer: THE specific goal of this step
-  purposeAccept: string[];    // synonym/paraphrase set the judge grows against
-  action: string;             // Layer-2 answer: what to concretely do
-  actionAccept: string[];
-  category: 'universal' | 'conditional' | 'arbitrary';  // from book schema
-  note?: string;              // optional post-reveal color, ties back to book
+  id: string;                 // book id, e.g. "ch02-a01"
+  order: number;              // from `action_number`, 1-based
+  title: string;              // from `title`
+  purpose: string;            // Layer-1 answer: from book `purpose` (reviewed)
+  purposeAccept: string[];    // AUTHORED synonym/paraphrase set (judge grades against)
+  action: string;             // Layer-2 answer: from `sample_phrase` (see fallback)
+  actionAccept: string[];     // AUTHORED
+  category: 'universal' | 'conditional' | 'arbitrary';  // lowercased from book
+  note?: string;              // post-reveal color, from trigger/best_timing/relationships
+  layer2Skipped?: boolean;    // true when sample_phrase was null and no action authored
 }
 
 interface Sequence {
-  id: string;                 // "nav-ltv"
+  id: string;                 // e.g. "ch02" or a themed slug
   product: 'sub-finance' | 'nav-finance' | 'hybrid-pref' | 'gp-facility';
-  goal: string;               // chapter goal, e.g. "NAV LTVを見極める"
-  scenario: string;           // one-paragraph setup
+  goal: string;               // authored from chapter theme, e.g. "証拠格付けで信頼性を見極める"
+  scenario: string;           // authored one-paragraph setup
   credit: string;             // 『FundsFinanceの教科書』第○章 より
   cards: ActionCard[];        // ordered by `order`
 }
@@ -120,9 +131,17 @@ interface Sequence {
 
 Rationale:
 
+- The app's `sequences.json` is a **built/adapted view** of the book's
+  `chapter_N.actions.json`, not a copy: fields are renamed (`action_number` →
+  `order`), `category` lowercased, `sample_phrase` → `action`, and the
+  scattered `trigger`/`when_not_to_use`/`best_timing`/`order_and_relationships`
+  fold into `note`. `goal`/`scenario` are authored per chapter (no source
+  field). This mapping is a candidate for the deferred build harness.
 - **`purpose` / `purposeAccept` and `action` / `actionAccept`** mirror
   `series.json`'s `{q, accept}` so the existing judge grades a spoken answer by
-  concept and grows the accept-set at runtime, unchanged.
+  concept and grows the accept-set at runtime, unchanged. `purpose`/`action`
+  come from the book; **the `Accept[]` sets are authored** (the book has no
+  synonym sets).
 - **`scenario` + `goal`** are the framing that makes each card's purpose
   predictable (the user's worked example:「Nav financeの申し込みがあった。NAV
   LTVを見極めるためには7つのステップがある」).
@@ -143,6 +162,10 @@ A new **pure builder** turns a `Sequence` + `{ n, layer, mode }` into the
   n-back** — the card whose purpose/action must be recalled and is scored.
 - `layer` selects which field of the *recallTarget* card is the scored answer:
   `purpose`/`purposeAccept` (Layer 1) vs `action`/`actionAccept` (Layer 2).
+- In Layer 2, a card with `layer2Skipped: true` (null `sample_phrase`, no
+  authored action) still **primes** but is never a scored `recallTarget` — the
+  builder skips it as a target and shifts the recall to the nearest prior
+  eligible card, or marks that step prime-only.
 - `mode: 'question'` (default) drops the visual channel; `mode: 'dual'` keeps
   grid positions. The engine already supports both `RoundMode`s.
 
@@ -263,24 +286,35 @@ on device/browser.
 
 ## Content sourcing
 
-Sequences are hand-authored (minimum **2**: one NAV, one Subscription — so both
-product shapes are exercised), drawn from the FundsFinance book at
-`/mnt/c/Projects/book/Books2/6.FundsFinanceの教科書`:
+Sequences are **adapted from the book's existing `chapter_N.actions.json`**
+(minimum **2** chapters for v1), at:
 
-- Sequence backbone from the book's action/sequence structure (see the book
-  agents `action-cataloger` / `action-sequencer` for the schema), e.g. ch.16
-  (case studies), ch.19 (審査設計テンプレ), ch.23 (実務チェックリスト集),
-  ch.24 (演習: 判断→条項→運用→是正).
-- Per-card `action` / `title` grounded in the relevant chapter; **`purpose`
-  authored precisely by Claude and approved by the user.**
-- The NAV worked example (「NAV LTVを見極める」, 7 steps) is the canonical first
-  sequence.
+```
+/mnt/c/Projects/book/Books/24.ファンドファイナンスの徹底解剖書_jpen_jppn_enen_enpn/contents/
+  chapter_{02,03,05,06,07,09,10,11}.actions.json   (8 available, 2026-09-06)
+```
 
-Note: the `chapter_N.actions.json` files referenced in the original request do
-not exist on disk (no `24.ファンドファイナンスの徹底解剖書` folder, no
-`.actions.json` anywhere under `/mnt/c/Projects/book`). Content is authored from
-the chapters as found. If those JSONs are produced later by the book pipeline,
-they layer in at the deferred harness step.
+Each file is an ordered array — one sequence per chapter. ch.02 (証拠格付け /
+情報開示誠実性, 7 steps) is the canonical first sequence and matches the user's
+worked example. Pick a second chapter whose theme maps to a different `product`
+so both sheet shapes are exercised.
+
+Authoring steps (Claude drafts → **user approves**):
+
+1. Map each action into `ActionCard` (rename `action_number`→`order`, lowercase
+   `category`, `sample_phrase`→`action`, fold `trigger`/`best_timing`/
+   `order_and_relationships` into `note`). `purpose` carried over and reviewed.
+2. **Author `purposeAccept[]` / `actionAccept[]`** — 2-4 paraphrases each so the
+   judge grades spoken answers by concept.
+3. **Author `goal` and `scenario`** per chapter (no source field; from the
+   chapter theme / `chapter_NN.md`).
+4. Handle **null `sample_phrase`** (e.g. ch02-a07): either author a concrete
+   `action` + `actionAccept`, or set `layer2Skipped: true` (card primes but is
+   not a scored recall target in Layer 2).
+
+The `Books` path is a Google-Drive symlink that intermittently returns
+`No such device`; if reads fail, see [[gdrive-mount-stale]] (pin the folder
+offline or `sudo mount /mnt/g`).
 
 ## Deferred sub-projects (not planned here)
 
@@ -291,8 +325,11 @@ they layer in at the deferred harness step.
   comment box → all checked unlocks the existing 案件 conversation flow, else
   Take2. Specced separately.
 - English `sequences.en.json` via a translate step (mirroring `translate.ts`).
-- A `review-sequences` generation/audit harness mirroring `src/content/
-  review.ts` that reads the book chapters and generates/audits sequences +
-  purpose statements, keeping quality at build time (CONTEXT.md pitfall #5).
+- A `review-sequences` build/audit harness mirroring `src/content/review.ts`
+  that reads the book's `chapter_N.actions.json` directly, applies the
+  field-mapping above, and generates/audits the `accept[]` sets + `goal`/
+  `scenario` — keeping quality (and the JSON→app adaptation) at build time
+  (CONTEXT.md pitfall #5). This is where the manual authoring steps become
+  automated.
 - Persisting judge-grown accept terms back to content.
 ```

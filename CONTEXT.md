@@ -49,7 +49,7 @@ RUNBOOK に詳細。要点だけ:
 
 1. **iOS バンドルだけ落ちる**: `@anthropic-ai/sdk` の `client.mjs` が `node:fs` を引き込む。RN に Node 組み込みは無い。Metro は到達しないコードも解決するので、一度も通らないパスでバンドルが止まる。`metro.config.js` が native のときだけ `node:` import を空モジュールに差し替えて塞ぐ（web は素通し）。**依存を足したら check:bundle。**
 2. **TTS フェイクの穴**: 全テストが緑でも、発話の実時間が絡む重大バグは1件すり抜けた実績あり。音声まわりの変更は実機/ブラウザで必ず目視。
-3. **WSL の Google Drive マウント**: `/mnt/g` が空でマウントされていないことがある。`sudo mount -t drvfs G: /mnt/g`（パスワードは実ターミナルで）か WSL 再起動。日本語ドライブなので `My Drive` ではなく `マイドライブ`。
+3. **WSL の Google Drive マウント**: `/mnt/c/Projects/book/Books` は `/mnt/g/マイドライブ/Books`（Drive）への symlink。読めないのは「未マウント」ではなく **Drive のオンデマンド配信が冷える**のが原因で、症状は `No such device`（`No such file` ではない）。恒久対策は Windows 側でフォルダを「オフラインで使用可能」にピン留め。強制再マウントは `sudo umount /mnt/g; sudo mount /mnt/g`（`/etc/sudoers.d/gdrive-mount` で NOPASSWD 済み）。日本語ドライブなので `My Drive` ではなく `マイドライブ`。詳細は Claude memory の gdrive-mount-stale。
 4. **WSL の npm rename race**: `/mnt/c` 上の `npm install` が ENOTEMPTY で無限ループしうる。tsc + node で回避。
 5. **series の品質**: 問題は静的な `series.json`。品質は実行時生成でなく `npm run review-questions`（Claude 監査harness）で担保。
 
