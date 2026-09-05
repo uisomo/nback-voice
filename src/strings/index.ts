@@ -108,6 +108,20 @@ export interface Strings {
     removeQuestion: string;
     noDecks: string;
   };
+  cases: {
+    tab: string;
+    start: string;
+    reveal: string;
+    next: string;
+    approved: string;
+    again: string;
+    backToList: string;
+    memo: string;
+    guessPlaceholder: string;
+    yourGuess: string;
+    turnCounter: (i: number, total: number) => string;
+    productLabel: (p: string) => string;
+  };
 }
 
 export const ja: Strings = {
@@ -218,6 +232,25 @@ export const ja: Strings = {
     removeQuestion: '削除',
     noDecks: 'まだデッキがありません',
   },
+  cases: {
+    tab: '案件',
+    start: '会話を始める',
+    reveal: 'めくる',
+    next: '次へ',
+    approved: '承認',
+    again: 'もう一度',
+    backToList: '案件一覧へ',
+    memo: '案件メモ',
+    guessPlaceholder: '次のセリフを入力…',
+    yourGuess: 'あなたの回答',
+    turnCounter: (i, total) => `${i} / ${total}`,
+    productLabel: (p) =>
+      p === 'sub-finance' ? 'サブスクリプション・ファイナンス'
+      : p === 'nav-finance' ? 'NAV ファイナンス'
+      : p === 'hybrid-pref' ? 'ハイブリッド & 優先株'
+      : p === 'gp-facility' ? 'GP ファシリティ'
+      : p,
+  },
 };
 
 export const en: Strings = {
@@ -327,6 +360,25 @@ export const en: Strings = {
     saveDeck: 'Save Deck',
     removeQuestion: 'Remove',
     noDecks: 'No decks yet',
+  },
+  cases: {
+    tab: 'Cases',
+    start: 'Start conversation',
+    reveal: 'Reveal',
+    next: 'Next',
+    approved: 'APPROVED',
+    again: 'Again',
+    backToList: 'Back to cases',
+    memo: 'Deal facts',
+    guessPlaceholder: 'Type the next line…',
+    yourGuess: 'Your guess',
+    turnCounter: (i, total) => `${i} / ${total}`,
+    productLabel: (p) =>
+      p === 'sub-finance' ? 'Subscription Finance'
+      : p === 'nav-finance' ? 'NAV Finance'
+      : p === 'hybrid-pref' ? 'Hybrid & Preferred'
+      : p === 'gp-facility' ? 'GP Facilities'
+      : p,
   },
 };
 
