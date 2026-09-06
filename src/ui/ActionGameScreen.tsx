@@ -263,6 +263,17 @@ export function ActionGameScreen({
       </View>
       <View style={[styles.rule, { backgroundColor: theme.cardBorder }]} />
 
+      {/*
+        段の途中で抜ける導線。action-game ではタブバーが隠れるので、これが
+        無いと残りの手を全部タップし切るまで画面から出られなくなる。つぎへ
+        と取り違えないよう副次ボタンの見た目のまま、どの面からも押せる位置に置く。
+      */}
+      <Pressable testID="action-back" onPress={onExit} style={styles.secondaryBtn}>
+        <Text style={[styles.secondaryBtnText, { color: theme.textPrimary }]}>
+          {strings.actions.backToList}
+        </Text>
+      </Pressable>
+
       {pane === 'read' && display && (
         <>
           <Pressable

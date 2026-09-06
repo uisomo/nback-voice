@@ -12,11 +12,16 @@ import { getTheme } from '../theme';
 const SEQ = listSequences()[0];
 const THEME = getTheme();
 
-/** N を 1 に落として学習段を開始する。ラグが短いほど手数が少なくて済む。 */
+/**
+ * N を 1 に落として学習段を開始する。ラグが短いほど手数が少なくて済む。
+ * 抜け道の検査に使えるよう onExit のモックを返す。
+ */
 function startStudyAtN1() {
-  render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
+  const onExit = jest.fn();
+  render(<ActionGameScreen sequenceId={SEQ.id} onExit={onExit} />);
   fireEvent.press(screen.getByTestId('action-n-down')); // 2 -> 1
   fireEvent.press(screen.getByTestId('action-start'));
+  return onExit;
 }
 
 const bgOf = (testID: string) =>
@@ -96,6 +101,15 @@ describe('the study stage', () => {
     );
     expect(screen.getByTestId('action-input-purpose')).toBeTruthy();
     expect(screen.getByTestId('action-input-action')).toBeTruthy();
+  });
+
+  it('can be left mid-stage — the play phase has its own way out', () => {
+    // 段の途中でも抜けられること。タブバーは action-game では隠れるので、
+    // ここに戻る導線が無いと段を最後までタップし切るしか出口が無くなる。
+    const onExit = startStudyAtN1();
+    expect(screen.getByTestId('action-play')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('action-back'));
+    expect(onExit).toHaveBeenCalledTimes(1);
   });
 });
 
