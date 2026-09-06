@@ -13,7 +13,7 @@ const GRID_SIZE = 9;
 
 export function eligibleCards(seq: Sequence, layer: Layer): ActionCard[] {
   if (layer === 'purpose') return seq.cards;
-  return seq.cards.filter((c) => !c.layer2Skipped);
+  return seq.cards.filter((c) => c.subActions.length > 0);
 }
 
 export function cardToQuestion(card: ActionCard, layer: Layer): Question {
@@ -21,7 +21,10 @@ export function cardToQuestion(card: ActionCard, layer: Layer): Question {
     id: card.id,
     tier: 2,
     q: card.title,
-    accept: layer === 'purpose' ? card.purposeAccept : card.actionAccept,
+    accept:
+      layer === 'purpose'
+        ? card.purposeAccept
+        : card.subActions.flatMap((s) => s.actionAccept),
   };
 }
 

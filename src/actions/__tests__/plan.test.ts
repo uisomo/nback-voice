@@ -8,8 +8,9 @@ function card(id: string, order: number, extra: Partial<Sequence['cards'][number
     title: `title-${id}`,
     purpose: `purpose-${id}`,
     purposeAccept: [`p-${id}`],
-    action: `action-${id}`,
-    actionAccept: [`a-${id}`],
+    subActions: [
+      { id: `${id}-s1`, purpose: `sp-${id}`, action: `action-${id}`, actionAccept: [`a-${id}`] },
+    ],
     category: 'universal' as const,
     ...extra,
   };
@@ -61,7 +62,7 @@ describe('action round builder', () => {
       ...SEQ,
       cards: [
         card('c1', 1),
-        card('c2', 2, { layer2Skipped: true, action: '', actionAccept: [] }),
+        card('c2', 2, { layer2Skipped: true, subActions: [] }),
         card('c3', 3),
       ],
     };

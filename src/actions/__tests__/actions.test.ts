@@ -48,16 +48,35 @@ describe('sequences content', () => {
     }
   });
 
-  it('a card is either Layer-2 playable (non-empty action + actionAccept) or explicitly layer2Skipped', () => {
+  it('every subAction has a unique id, a non-empty purpose/action, and a non-empty actionAccept', () => {
+    const ids: string[] = [];
     for (const s of listSequences()) {
       for (const c of s.cards) {
-        if (c.layer2Skipped) {
-          continue;
+        for (const sub of c.subActions) {
+          ids.push(sub.id);
+          expect(sub.id.startsWith(`${c.id}-s`)).toBe(true);
+          expect(sub.purpose.trim()).not.toBe('');
+          expect(sub.action.trim()).not.toBe('');
+          expect(sub.actionAccept.length).toBeGreaterThan(0);
+          for (const a of sub.actionAccept) expect(a.trim()).not.toBe('');
         }
-        expect(c.action.trim()).not.toBe('');
-        expect(c.actionAccept.length).toBeGreaterThan(0);
-        for (const a of c.actionAccept) expect(a.trim()).not.toBe('');
       }
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('layer2Skipped is exactly the set of cards with no subActions', () => {
+    for (const s of listSequences()) {
+      for (const c of s.cards) {
+        expect(Boolean(c.layer2Skipped)).toBe(c.subActions.length === 0);
+      }
+    }
+  });
+
+  it('credit does not claim a specific chapter as the source', () => {
+    // 書籍全文検索の結果、引用元とされた章に該当語は0件だった（spec §4.2）。
+    for (const s of listSequences()) {
+      expect(s.credit).not.toMatch(/第\d+章/);
     }
   });
 
