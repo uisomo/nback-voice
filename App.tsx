@@ -4,11 +4,13 @@ import type { RoundEngine } from './src/engine';
 import type { RoundPlan } from './src/engine/types';
 import { resolveEntitledTier } from './src/store/iap';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './src/store/storage';
+import { ActionGameScreen } from './src/ui/ActionGameScreen';
 import { CaseGameScreen } from './src/ui/CaseGameScreen';
 import { CasesScreen } from './src/ui/CasesScreen';
 import { GameScreen } from './src/ui/GameScreen';
 import { QuestionsScreen } from './src/ui/QuestionsScreen';
 import { ResultsScreen } from './src/ui/ResultsScreen';
+import { SequencesScreen } from './src/ui/SequencesScreen';
 import { SeriesScreen } from './src/ui/SeriesScreen';
 import { SettingsScreen } from './src/ui/SettingsScreen';
 
@@ -24,7 +26,9 @@ type Screen =
   | { name: 'settings' }
   | { name: 'questions' }
   | { name: 'cases' }
-  | { name: 'case-game'; caseId: string };
+  | { name: 'case-game'; caseId: string }
+  | { name: 'sequences' }
+  | { name: 'action-game'; sequenceId: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'series' });
@@ -51,12 +55,14 @@ export default function App() {
     screen.name === 'questions' ? 'questions'
     : screen.name === 'settings' ? 'settings'
     : screen.name === 'cases' ? 'cases'
+    : screen.name === 'sequences' ? 'sequences'
     : 'series';
   const showBottomBar =
     screen.name === 'series' ||
     screen.name === 'questions' ||
     screen.name === 'settings' ||
-    screen.name === 'cases';
+    screen.name === 'cases' ||
+    screen.name === 'sequences';
 
   return (
     <View style={styles.root}>
@@ -123,9 +129,20 @@ export default function App() {
             onExit={() => setScreen({ name: 'cases' })}
           />
         )}
+
+        {screen.name === 'sequences' && (
+          <SequencesScreen onSelect={(sequenceId) => setScreen({ name: 'action-game', sequenceId })} />
+        )}
+
+        {screen.name === 'action-game' && (
+          <ActionGameScreen
+            sequenceId={screen.sequenceId}
+            onExit={() => setScreen({ name: 'sequences' })}
+          />
+        )}
       </View>
 
-      {/* 4 Main Bottom Navigation Buttons: 教材 (Decks), 案件 (Cases), 作成 (Create Custom Q&A), 設定 (Settings) */}
+      {/* 5 Main Bottom Navigation Buttons: 教材, 案件, アクション, 作成, 設定 */}
       {showBottomBar && (
         <View style={styles.bottomNav}>
           <Pressable
@@ -145,6 +162,16 @@ export default function App() {
             <Text style={styles.navIcon}>💼</Text>
             <Text style={[styles.navLabel, activeTab === 'cases' && styles.navLabelActive]}>
               案件
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setScreen({ name: 'sequences' })}
+            style={[styles.navBtn, activeTab === 'sequences' && styles.navBtnActive]}
+          >
+            <Text style={styles.navIcon}>🎯</Text>
+            <Text style={[styles.navLabel, activeTab === 'sequences' && styles.navLabelActive]}>
+              アクション
             </Text>
           </Pressable>
 
