@@ -122,6 +122,23 @@ export interface Strings {
     turnCounter: (i: number, total: number) => string;
     productLabel: (p: string) => string;
   };
+  actions: {
+    tab: string;
+    layer1: string;
+    layer2: string;
+    promptPurpose: string;
+    promptAction: string;
+    answer: string;
+    next: string;
+    toLayer2: string;
+    again: string;
+    backToList: string;
+    start: string;
+    nLabel: string;
+    goalLabel: string;
+    cardsPreview: string;
+    productLabel: (p: string) => string;
+  };
 }
 
 export const ja: Strings = {
@@ -251,6 +268,28 @@ export const ja: Strings = {
       : p === 'gp-facility' ? 'GP ファシリティ'
       : p,
   },
+  actions: {
+    tab: 'アクション',
+    layer1: '目的',
+    layer2: '具体アクション',
+    promptPurpose: 'N手前のカードの目的は？',
+    promptAction: 'N手前のカードで具体的に何をする？',
+    answer: '答える',
+    next: '次へ',
+    toLayer2: 'Layer 2 へ',
+    again: 'もう一度',
+    backToList: '一覧へ',
+    start: 'はじめる',
+    nLabel: 'N',
+    goalLabel: '目標',
+    cardsPreview: 'カードの並び',
+    productLabel: (p) =>
+      p === 'sub-finance' ? 'サブスクリプション・ファイナンス'
+      : p === 'nav-finance' ? 'NAV ファイナンス'
+      : p === 'hybrid-pref' ? 'ハイブリッド & 優先株'
+      : p === 'gp-facility' ? 'GP ファシリティ'
+      : p,
+  },
 };
 
 export const en: Strings = {
@@ -373,6 +412,28 @@ export const en: Strings = {
     guessPlaceholder: 'Type the next line…',
     yourGuess: 'Your guess',
     turnCounter: (i, total) => `${i} / ${total}`,
+    productLabel: (p) =>
+      p === 'sub-finance' ? 'Subscription Finance'
+      : p === 'nav-finance' ? 'NAV Finance'
+      : p === 'hybrid-pref' ? 'Hybrid & Preferred'
+      : p === 'gp-facility' ? 'GP Facilities'
+      : p,
+  },
+  actions: {
+    tab: 'Actions',
+    layer1: 'Purpose',
+    layer2: 'Concrete action',
+    promptPurpose: 'Purpose of the card N steps back?',
+    promptAction: 'What do you concretely do for the card N steps back?',
+    answer: 'Answer',
+    next: 'Next',
+    toLayer2: 'To Layer 2',
+    again: 'Again',
+    backToList: 'Back to list',
+    start: 'Start',
+    nLabel: 'N',
+    goalLabel: 'Goal',
+    cardsPreview: 'Card order',
     productLabel: (p) =>
       p === 'sub-finance' ? 'Subscription Finance'
       : p === 'nav-finance' ? 'NAV Finance'
