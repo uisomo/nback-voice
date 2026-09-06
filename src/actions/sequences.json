@@ -1,0 +1,21 @@
+[
+  {
+    "id": "stub-ch02",
+    "product": "sub-finance",
+    "goal": "スタブ目標",
+    "scenario": "スタブのシナリオ説明。",
+    "credit": "『FundsFinanceの教科書』より",
+    "cards": [
+      {
+        "id": "stub-a01",
+        "order": 1,
+        "title": "スタブ・アクション",
+        "purpose": "スタブの目的",
+        "purposeAccept": ["スタブの目的", "目的のスタブ"],
+        "action": "スタブの具体アクション",
+        "actionAccept": ["スタブの具体アクション"],
+        "category": "universal"
+      }
+    ]
+  }
+]
