@@ -4,6 +4,8 @@ import type { RoundEngine } from './src/engine';
 import type { RoundPlan } from './src/engine/types';
 import { resolveEntitledTier } from './src/store/iap';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from './src/store/storage';
+import { CaseGameScreen } from './src/ui/CaseGameScreen';
+import { CasesScreen } from './src/ui/CasesScreen';
 import { GameScreen } from './src/ui/GameScreen';
 import { QuestionsScreen } from './src/ui/QuestionsScreen';
 import { ResultsScreen } from './src/ui/ResultsScreen';
@@ -20,7 +22,9 @@ type Screen =
       seriesId: string;
     }
   | { name: 'settings' }
-  | { name: 'questions' };
+  | { name: 'questions' }
+  | { name: 'cases' }
+  | { name: 'case-game'; caseId: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'series' });
@@ -43,8 +47,16 @@ export default function App() {
     })();
   }, []);
 
-  const activeTab = screen.name === 'questions' ? 'questions' : screen.name === 'settings' ? 'settings' : 'series';
-  const showBottomBar = screen.name === 'series' || screen.name === 'questions' || screen.name === 'settings';
+  const activeTab =
+    screen.name === 'questions' ? 'questions'
+    : screen.name === 'settings' ? 'settings'
+    : screen.name === 'cases' ? 'cases'
+    : 'series';
+  const showBottomBar =
+    screen.name === 'series' ||
+    screen.name === 'questions' ||
+    screen.name === 'settings' ||
+    screen.name === 'cases';
 
   return (
     <View style={styles.root}>
@@ -100,9 +112,20 @@ export default function App() {
         {screen.name === 'questions' && (
           <QuestionsScreen onClose={() => setScreen({ name: 'series' })} />
         )}
+
+        {screen.name === 'cases' && (
+          <CasesScreen onSelect={(caseId) => setScreen({ name: 'case-game', caseId })} />
+        )}
+
+        {screen.name === 'case-game' && (
+          <CaseGameScreen
+            caseId={screen.caseId}
+            onExit={() => setScreen({ name: 'cases' })}
+          />
+        )}
       </View>
 
-      {/* 3 Main Bottom Navigation Buttons: 教材 (Decks), 作成 (Create Custom Q&A), 設定 (Settings) */}
+      {/* 4 Main Bottom Navigation Buttons: 教材 (Decks), 案件 (Cases), 作成 (Create Custom Q&A), 設定 (Settings) */}
       {showBottomBar && (
         <View style={styles.bottomNav}>
           <Pressable
@@ -112,6 +135,16 @@ export default function App() {
             <Text style={styles.navIcon}>📚</Text>
             <Text style={[styles.navLabel, activeTab === 'series' && styles.navLabelActive]}>
               教材
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setScreen({ name: 'cases' })}
+            style={[styles.navBtn, activeTab === 'cases' && styles.navBtnActive]}
+          >
+            <Text style={styles.navIcon}>💼</Text>
+            <Text style={[styles.navLabel, activeTab === 'cases' && styles.navLabelActive]}>
+              案件
             </Text>
           </Pressable>
 
