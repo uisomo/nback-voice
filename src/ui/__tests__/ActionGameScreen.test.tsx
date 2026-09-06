@@ -1,66 +1,55 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { listSequences } from '../../actions/actions';
-import { eligibleCards } from '../../actions/plan';
+import { ja } from '../../strings';
 import { ActionGameScreen } from '../ActionGameScreen';
+import { getTheme } from '../theme';
 
-// The screen constructs the real ExpoSpeaker/ExpoListener via realDeps, which
-// pull in expo-speech and expo-speech-recognition at module load. Neither has
-// a native backend under Jest, so both are faked — exactly as GameScreen.test
-// does — to let the deterministic shell render without a TTS/recognizer.
-jest.mock('expo-speech-recognition', () => ({
-  useSpeechRecognitionEvent: jest.fn(),
-  AVAudioSessionCategory: { playAndRecord: 'playAndRecord' },
-  AVAudioSessionCategoryOptions: {
-    defaultToSpeaker: 'defaultToSpeaker',
-    allowBluetooth: 'allowBluetooth',
-  },
-  AVAudioSessionMode: { default: 'default' },
-  ExpoSpeechRecognitionModule: {
-    requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
-    supportsOnDeviceRecognition: jest.fn(() => false),
-    getSupportedLocales: jest.fn(async () => ({ locales: [], installedLocales: [] })),
-    start: jest.fn(),
-    stop: jest.fn(),
-  },
-}));
-jest.mock('expo-speech', () => ({ speak: jest.fn(), stop: jest.fn() }));
+// expo-speech / expo-speech-recognition のモックは無い。この画面はもう
+// 音声スタックを import しないので、モック無しで描画できること自体が
+// 依存が切れている証拠になる（spec §3・§7）。
 
 const SEQ = listSequences()[0];
+const THEME = getTheme();
 
-describe('ActionGameScreen', () => {
-  it('shows the intro with the goal and the card-title preview', () => {
+/** N を 1 に落として学習段を開始する。ラグが短いほど手数が少なくて済む。 */
+function startStudyAtN1() {
+  render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
+  fireEvent.press(screen.getByTestId('action-n-down')); // 2 -> 1
+  fireEvent.press(screen.getByTestId('action-start'));
+}
+
+const bgOf = (testID: string) =>
+  StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor;
+
+/** step 0 の読む面を抜け、step 1 でカード1を問われる面まで進む。 */
+function reachFirstQuestion() {
+  startStudyAtN1();
+  fireEvent.press(screen.getByTestId('action-read-next')); // step 0 -> step 1
+  fireEvent.press(screen.getByTestId('action-read-next')); // step 1 の読む面 -> 答える面
+}
+
+describe('intro', () => {
+  it('shows the scenario, the goal and every card title', () => {
     render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
     expect(screen.getByTestId('action-intro')).toBeTruthy();
-    // The goal text is shown.
-    expect(screen.getByText(new RegExp(SEQ.goal))).toBeTruthy();
-    // Every eligible Layer-1 card's title is previewed.
-    for (const card of eligibleCards(SEQ, 'purpose')) {
-      expect(screen.getByText(card.title)).toBeTruthy();
-    }
+    expect(screen.getByText(SEQ.scenario)).toBeTruthy();
+    for (const card of SEQ.cards) expect(screen.getByText(card.title)).toBeTruthy();
   });
 
-  it('the N picker updates the shown N', () => {
+  it('shows the three stages in order as a non-interactive nav', () => {
     render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
-    const before = screen.getByTestId('action-n-value').props.children;
+    expect(screen.getByTestId('action-nav-study').props.children).toBe(ja.actions.stageStudy);
+    expect(screen.getByTestId('action-nav-purpose').props.children).toBe(ja.actions.stagePurpose);
+    expect(screen.getByTestId('action-nav-action').props.children).toBe(ja.actions.stageAction);
+  });
+
+  it('picks N, flooring at 1', () => {
+    render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
     fireEvent.press(screen.getByTestId('action-n-up'));
-    const after = screen.getByTestId('action-n-value').props.children;
-    expect(after).not.toBe(before);
-  });
-
-  it('the N picker floors at 1', () => {
-    render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
-    // Default is 2; two down presses would reach 0 without a floor.
-    fireEvent.press(screen.getByTestId('action-n-down'));
-    fireEvent.press(screen.getByTestId('action-n-down'));
-    fireEvent.press(screen.getByTestId('action-n-down'));
+    expect(screen.getByTestId('action-n-value').props.children).toBe(3);
+    for (let i = 0; i < 5; i += 1) fireEvent.press(screen.getByTestId('action-n-down'));
     expect(screen.getByTestId('action-n-value').props.children).toBe(1);
-  });
-
-  it('start moves from intro to the play phase with a prompt', async () => {
-    render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
-    fireEvent.press(screen.getByTestId('action-start'));
-    await waitFor(() => expect(screen.getByTestId('action-prompt')).toBeTruthy());
-    expect(screen.queryByTestId('action-intro')).toBeNull();
   });
 
   it('renders a back affordance and exits when the sequence is unknown', () => {
@@ -68,5 +57,111 @@ describe('ActionGameScreen', () => {
     render(<ActionGameScreen sequenceId="no-such-sequence" onExit={onExit} />);
     fireEvent.press(screen.getByTestId('action-back'));
     expect(onExit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the study stage', () => {
+  it('opens on a read pane with the card nesting and no input fields', () => {
+    startStudyAtN1();
+    expect(screen.getByTestId('action-play')).toBeTruthy();
+    expect(screen.getByText(SEQ.cards[0].title)).toBeTruthy();
+    expect(screen.getByTestId('action-read-purpose').props.children).toBe(SEQ.cards[0].purpose);
+    expect(screen.queryByTestId('action-input-purpose')).toBeNull();
+  });
+
+  it('keeps the grand purpose and the asked ordinal in the header', () => {
+    startStudyAtN1();
+    expect(screen.getByTestId('action-header-goal').props.children).toBe(SEQ.goal);
+    // 先頭手は出題が無いので、読んでいるカードの序数を出す。
+    expect(screen.getByTestId('action-header-ordinal').props.children).toBe(
+      ja.actions.ordinalOf(1, SEQ.cards.length),
+    );
+    expect(screen.getByTestId('action-header-n').props.children).toEqual([1, '-back']);
+  });
+
+  it('toggles the green check on the read pane', () => {
+    startStudyAtN1();
+    expect(screen.queryByTestId('action-read-checked')).toBeNull();
+    fireEvent.press(screen.getByTestId('action-read'));
+    expect(screen.getByTestId('action-read-checked')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('action-read'));
+    expect(screen.queryByTestId('action-read-checked')).toBeNull();
+  });
+
+  it('asks the n-back card, not the one on screen', () => {
+    reachFirstQuestion();
+    // 画面には カード2 が出ているが、問われているのは カード1 である。
+    expect(screen.getByTestId('action-header-ordinal').props.children).toBe(
+      ja.actions.ordinalOf(1, SEQ.cards.length),
+    );
+    expect(screen.getByTestId('action-input-purpose')).toBeTruthy();
+    expect(screen.getByTestId('action-input-action')).toBeTruthy();
+  });
+});
+
+describe('answering and revealing', () => {
+  it('reveals both answers and paints the local verdict per field', () => {
+    reachFirstQuestion();
+    fireEvent.changeText(screen.getByTestId('action-input-purpose'), SEQ.cards[0].purpose);
+    fireEvent.changeText(screen.getByTestId('action-input-action'), 'まったく関係のない答えを書いた');
+    fireEvent.press(screen.getByTestId('action-next'));
+
+    expect(screen.getByTestId('action-your-purpose').props.children).toBe(SEQ.cards[0].purpose);
+    expect(screen.getByTestId('action-model-purpose').props.children).toBe(SEQ.cards[0].purpose);
+    expect(bgOf('action-verdict-purpose')).toBe(THEME.accentSuccess);
+    expect(bgOf('action-verdict-action')).toBe(THEME.accentWarning);
+  });
+
+  it('lets self-grading repaint the verdict in both directions', () => {
+    reachFirstQuestion();
+    fireEvent.changeText(screen.getByTestId('action-input-purpose'), SEQ.cards[0].purpose);
+    fireEvent.press(screen.getByTestId('action-next'));
+    expect(bgOf('action-verdict-purpose')).toBe(THEME.accentSuccess);
+
+    fireEvent.press(screen.getByTestId('action-self-wrong-purpose'));
+    expect(bgOf('action-verdict-purpose')).toBe(THEME.accentWarning);
+    fireEvent.press(screen.getByTestId('action-self-correct-purpose'));
+    expect(bgOf('action-verdict-purpose')).toBe(THEME.accentSuccess);
+  });
+
+  it('moves to the next step from the reveal pane', () => {
+    reachFirstQuestion();
+    fireEvent.press(screen.getByTestId('action-next'));
+    fireEvent.press(screen.getByTestId('action-next-question'));
+    // step 2 の読む面。問われるのは カード2。
+    expect(screen.getByTestId('action-read')).toBeTruthy();
+    expect(screen.getByTestId('action-header-ordinal').props.children).toBe(
+      ja.actions.ordinalOf(2, SEQ.cards.length),
+    );
+  });
+});
+
+describe('stage transitions', () => {
+  /** 現在の面がどれであれ、1ステップ分だけ最短で進める。 */
+  function stepThrough() {
+    if (screen.queryByTestId('action-read-next')) fireEvent.press(screen.getByTestId('action-read-next'));
+    if (screen.queryByTestId('action-observe-next')) fireEvent.press(screen.getByTestId('action-observe-next'));
+    if (screen.queryByTestId('action-next')) fireEvent.press(screen.getByTestId('action-next'));
+    if (screen.queryByTestId('action-next-question')) fireEvent.press(screen.getByTestId('action-next-question'));
+  }
+
+  it('ends the study stage on a results screen and leads into the purpose stage', () => {
+    startStudyAtN1();
+    // 学習段は カード枚数 + N 手。
+    for (let i = 0; i < SEQ.cards.length + 1; i += 1) stepThrough();
+
+    expect(screen.getByTestId('action-results')).toBeTruthy();
+    expect(screen.getByTestId('action-results-stage').props.children).toBe(ja.actions.stageStudy);
+    // 何も入力しなかったので全問不正解。
+    expect(screen.getByTestId('action-results-score').props.children).toEqual([
+      ja.actions.stageScoreLabel, ': ', '0%',
+    ]);
+
+    fireEvent.press(screen.getByTestId('action-next-stage'));
+    expect(screen.getByTestId('action-play')).toBeTruthy();
+    // 目的段には読む面が無く、先頭N手は観察のみになる。
+    expect(screen.queryByTestId('action-read')).toBeNull();
+    expect(screen.getByTestId('action-observe-next')).toBeTruthy();
+    expect(screen.getByTestId('action-header-ordinal').props.children).toBe('—');
   });
 });

@@ -7,7 +7,7 @@ import { join } from 'path';
  * held by convention only; this makes it a failing test instead of a review
  * note.
  */
-const DEVICE_FREE_DIRS = ['engine', 'judge', 'content'];
+const DEVICE_FREE_DIRS = ['actions', 'engine', 'judge', 'content'];
 
 const FORBIDDEN = [
   /^react$/,
