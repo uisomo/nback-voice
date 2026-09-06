@@ -1,5 +1,25 @@
 import type { ActionCard, Sequence } from '../actions';
-import { buildSteps, buildUnits, nextStage, STAGE_ORDER, unitKey } from '../drill';
+import {
+  actionAnswer,
+  advance,
+  answerFor,
+  buildSteps,
+  buildUnits,
+  createDrill,
+  currentStep,
+  fieldsFor,
+  isFinished,
+  nextStage,
+  purposeAnswer,
+  setSelfGrade,
+  stageScore,
+  STAGE_ORDER,
+  submitAnswer,
+  toggleChecked,
+  unitContent,
+  unitKey,
+  updatedN,
+} from '../drill';
 
 function sub(cardId: string, k: number) {
   return {
@@ -136,5 +156,187 @@ describe('buildSteps', () => {
 
   it('numbers step.index from 0 in walk order', () => {
     expect(steps('study', 2).map((s) => s.index)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+});
+
+const CORRECT = 'purpose-c1';
+const WRONG = 'まったく関係のない答えを書いた';
+
+describe('drill cursor', () => {
+  it('starts at step 0 with no answers and nothing checked', () => {
+    const d = createDrill(SEQ, 'study', 2);
+    expect(d.stage).toBe('study');
+    expect(d.n).toBe(2);
+    expect(d.cursor).toBe(0);
+    expect(d.answers).toEqual([]);
+    expect(d.checked.size).toBe(0);
+    expect(d.steps).toHaveLength(6);
+    expect(currentStep(d)).toBe(d.steps[0]);
+    expect(isFinished(d)).toBe(false);
+  });
+
+  it('advances one step at a time and finishes past the last step', () => {
+    let d = createDrill(SEQ, 'study', 2);
+    for (let i = 0; i < 6; i += 1) {
+      expect(isFinished(d)).toBe(false);
+      expect(currentStep(d)?.index).toBe(i);
+      d = advance(d);
+    }
+    expect(isFinished(d)).toBe(true);
+    expect(currentStep(d)).toBeNull();
+  });
+
+  it('does not mutate the state it is given', () => {
+    const d = createDrill(SEQ, 'study', 2);
+    advance(d);
+    expect(d.cursor).toBe(0);
+  });
+});
+
+describe('step content and fields', () => {
+  it('resolves a unit to its card, and to its subAction in the action stage', () => {
+    const study = createDrill(SEQ, 'study', 2);
+    expect(unitContent(SEQ, study.units[1])).toEqual({ card: SEQ.cards[1], subAction: null });
+    const action = createDrill(SEQ, 'action', 1);
+    // units[3] は c2 の2つ目の小目的。
+    expect(unitContent(SEQ, action.units[3])).toEqual({
+      card: SEQ.cards[1],
+      subAction: SEQ.cards[1].subActions[1],
+    });
+  });
+
+  it('shows both fields in the study stage and one field in the others', () => {
+    expect(fieldsFor('study', SEQ.cards[0])).toEqual(['purpose', 'action']);
+    expect(fieldsFor('purpose', SEQ.cards[0])).toEqual(['purpose']);
+    expect(fieldsFor('action', SEQ.cards[0])).toEqual(['action']);
+  });
+
+  it('drops the action field in the study stage for a card with no subActions', () => {
+    expect(fieldsFor('study', SEQ.cards[3])).toEqual(['purpose']);
+  });
+});
+
+describe('model answers', () => {
+  it('puts the model answer itself at the head of the accept set', () => {
+    const spec = purposeAnswer(SEQ.cards[0]);
+    expect(spec.model).toBe('purpose-c1');
+    expect(spec.accept[0]).toBe('purpose-c1');
+    expect(spec.accept).toContain('p-c1');
+  });
+
+  it('targets one subAction when the action stage names it', () => {
+    const spec = actionAnswer(SEQ.cards[1], 2)!;
+    expect(spec.model).toBe('sa-c2-3');
+    expect(spec.accept).toEqual(['sa-c2-3', 'aa-c2-3']);
+  });
+
+  it('merges every subAction when the study stage asks the card as a whole', () => {
+    const spec = actionAnswer(SEQ.cards[0], null)!;
+    // 開示は全列挙、照合は合併集合。一手順でも言い当てれば正解（spec §6.2）。
+    expect(spec.model).toBe('sa-c1-1\nsa-c1-2');
+    expect(spec.accept).toEqual(['sa-c1-1', 'aa-c1-1', 'sa-c1-2', 'aa-c1-2']);
+  });
+
+  it('has no action answer at all for a card with no subActions', () => {
+    expect(actionAnswer(SEQ.cards[3], null)).toBeNull();
+  });
+});
+
+describe('answers, self-grading and adaptive N', () => {
+  const atStep = (stage: Parameters<typeof createDrill>[1], n: number, step: number) => {
+    let d = createDrill(SEQ, stage, n);
+    while (d.cursor < step) d = advance(d);
+    return d;
+  };
+
+  it('grades a submitted answer locally and records the raw input', () => {
+    const d = submitAnswer(atStep('study', 2, 2), 'purpose', CORRECT, purposeAnswer(SEQ.cards[0]));
+    const rec = answerFor(d, 2, 'purpose')!;
+    expect(rec).toEqual({ stepIndex: 2, field: 'purpose', input: CORRECT, correct: true });
+    expect(stageScore(d)).toBe(1);
+  });
+
+  it('marks an unrelated answer wrong', () => {
+    const d = submitAnswer(atStep('study', 2, 2), 'purpose', WRONG, purposeAnswer(SEQ.cards[0]));
+    expect(answerFor(d, 2, 'purpose')!.correct).toBe(false);
+    expect(stageScore(d)).toBe(0);
+  });
+
+  it('keeps one record per step and field, replacing a resubmission', () => {
+    let d = submitAnswer(atStep('study', 2, 2), 'purpose', WRONG, purposeAnswer(SEQ.cards[0]));
+    d = submitAnswer(d, 'purpose', CORRECT, purposeAnswer(SEQ.cards[0]));
+    expect(d.answers).toHaveLength(1);
+    expect(answerFor(d, 2, 'purpose')!.correct).toBe(true);
+  });
+
+  it('keeps the two study-stage fields as separate records', () => {
+    let d = submitAnswer(atStep('study', 2, 2), 'purpose', CORRECT, purposeAnswer(SEQ.cards[0]));
+    d = submitAnswer(d, 'action', WRONG, actionAnswer(SEQ.cards[0], null)!);
+    expect(d.answers).toHaveLength(2);
+    expect(stageScore(d)).toBe(0.5);
+  });
+
+  it('lets self-grading overwrite the local verdict in both directions', () => {
+    let d = submitAnswer(atStep('study', 2, 2), 'purpose', WRONG, purposeAnswer(SEQ.cards[0]));
+    d = setSelfGrade(d, 2, 'purpose', true);
+    expect(answerFor(d, 2, 'purpose')!.correct).toBe(true);
+    expect(stageScore(d)).toBe(1);
+    d = setSelfGrade(d, 2, 'purpose', false);
+    expect(stageScore(d)).toBe(0);
+  });
+
+  it('ignores a self-grade for a step and field that was never answered', () => {
+    const d = setSelfGrade(createDrill(SEQ, 'study', 2), 4, 'action', true);
+    expect(d.answers).toEqual([]);
+    expect(stageScore(d)).toBeNull();
+  });
+
+  it('raises N only on a perfect stage', () => {
+    const d = submitAnswer(atStep('purpose', 2, 2), 'purpose', CORRECT, purposeAnswer(SEQ.cards[0]));
+    expect(stageScore(d)).toBe(1);
+    expect(updatedN(d)).toBe(3);
+  });
+
+  it('lowers N at or below half, and floors it at 1', () => {
+    let d = submitAnswer(atStep('purpose', 2, 2), 'purpose', CORRECT, purposeAnswer(SEQ.cards[0]));
+    d = submitAnswer(advance(d), 'purpose', WRONG, purposeAnswer(SEQ.cards[1]));
+    expect(stageScore(d)).toBe(0.5);
+    expect(updatedN(d)).toBe(1);
+
+    const bottom = submitAnswer(atStep('purpose', 1, 1), 'purpose', WRONG, purposeAnswer(SEQ.cards[0]));
+    expect(updatedN(bottom)).toBe(1);
+  });
+
+  it('holds N steady between half and perfect', () => {
+    let d = submitAnswer(atStep('purpose', 2, 2), 'purpose', CORRECT, purposeAnswer(SEQ.cards[0]));
+    d = submitAnswer(advance(d), 'purpose', CORRECT, purposeAnswer(SEQ.cards[1]));
+    d = submitAnswer(advance(d), 'purpose', WRONG, purposeAnswer(SEQ.cards[2]));
+    expect(stageScore(d)).toBeCloseTo(2 / 3);
+    expect(updatedN(d)).toBe(2);
+  });
+
+  it('leaves N alone when nothing was judged', () => {
+    // 単位が0件なら全ステップが観察のみ。判定済み0件なので N は動かない。
+    const d = createDrill({ ...SEQ, cards: [SEQ.cards[3]] }, 'action', 3);
+    expect(d.steps).toHaveLength(3);
+    expect(stageScore(d)).toBeNull();
+    expect(updatedN(d)).toBe(3);
+  });
+});
+
+describe('study-stage green checks', () => {
+  it('toggles on and off and never touches the score', () => {
+    const key = unitKey({ cardIndex: 0, subIndex: null });
+    let d = toggleChecked(createDrill(SEQ, 'study', 2), key);
+    expect(d.checked.has(key)).toBe(true);
+    expect(stageScore(d)).toBeNull();
+    d = toggleChecked(d, key);
+    expect(d.checked.has(key)).toBe(false);
+  });
+
+  it('does not mutate the state it is given', () => {
+    const d = createDrill(SEQ, 'study', 2);
+    toggleChecked(d, unitKey({ cardIndex: 0, subIndex: null }));
+    expect(d.checked.size).toBe(0);
   });
 });

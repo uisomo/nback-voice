@@ -1,4 +1,6 @@
-import type { Sequence } from './actions';
+import { nextN } from '../engine/adaptive';
+import type { ActionCard, Sequence, SubAction } from './actions';
+import { gradeAnswer } from './grade';
 
 export type Stage = 'study' | 'purpose' | 'action';
 
@@ -79,4 +81,172 @@ export function buildSteps(
       subIndex: targetIndex !== null ? units[targetIndex].subIndex : null,
     };
   });
+}
+
+export type Field = 'purpose' | 'action';
+
+/** 開示に使う模範解答と、照合に使う許容集合。model は必ず accept に含まれる。 */
+export interface AnswerSpec {
+  model: string;
+  accept: string[];
+}
+
+export interface AnswerRecord {
+  stepIndex: number;
+  field: Field;
+  /** ユーザーが打った生の文字列。開示画面で「あなたの答え」として出す。 */
+  input: string;
+  /** ローカル照合の結果。自己採点で上書きされる。 */
+  correct: boolean;
+}
+
+export interface StepContent {
+  card: ActionCard;
+  /** 具体アクション段でのみ非 null。 */
+  subAction: SubAction | null;
+}
+
+export interface DrillState {
+  stage: Stage;
+  n: number;
+  units: DrillUnit[];
+  steps: DrillStep[];
+  cursor: number;
+  answers: AnswerRecord[];
+  /** 学習段の緑チェック。セッション限りの飾りで、採点にも進行にも無関係。 */
+  checked: Set<string>;
+}
+
+export function createDrill(seq: Sequence, stage: Stage, n: number): DrillState {
+  const units = buildUnits(seq, stage);
+  return {
+    stage,
+    n,
+    units,
+    steps: buildSteps(units, n, stage, seq.cards.length),
+    cursor: 0,
+    answers: [],
+    checked: new Set(),
+  };
+}
+
+export function currentStep(state: DrillState): DrillStep | null {
+  return state.steps[state.cursor] ?? null;
+}
+
+export function isFinished(state: DrillState): boolean {
+  return state.cursor >= state.steps.length;
+}
+
+export function advance(state: DrillState): DrillState {
+  return { ...state, cursor: state.cursor + 1 };
+}
+
+export function toggleChecked(state: DrillState, key: string): DrillState {
+  const checked = new Set(state.checked);
+  if (checked.has(key)) checked.delete(key);
+  else checked.add(key);
+  return { ...state, checked };
+}
+
+export function unitContent(seq: Sequence, unit: DrillUnit): StepContent {
+  const card = seq.cards[unit.cardIndex];
+  return {
+    card,
+    subAction: unit.subIndex === null ? null : card.subActions[unit.subIndex],
+  };
+}
+
+/**
+ * その段でその カードについて開く入力欄。学習段は中目的と具体アクションの
+ * 2欄だが、subActions を持たないカードは具体アクション欄を出さない。
+ */
+export function fieldsFor(stage: Stage, card: ActionCard): Field[] {
+  if (stage === 'purpose') return ['purpose'];
+  if (stage === 'action') return ['action'];
+  return card.subActions.length > 0 ? ['purpose', 'action'] : ['purpose'];
+}
+
+export function purposeAnswer(card: ActionCard): AnswerSpec {
+  return { model: card.purpose, accept: [card.purpose, ...card.purposeAccept] };
+}
+
+/**
+ * subIndex が与えられればその小目的1本の答え。null（学習段）ならカードの
+ * 全 subActions を合併する — 開示は全列挙、照合は合併集合で、一手順でも
+ * 言い当てれば正解にする。テストではなく学習の段なので網羅は求めない。
+ */
+export function actionAnswer(card: ActionCard, subIndex: number | null): AnswerSpec | null {
+  if (subIndex !== null) {
+    const sub = card.subActions[subIndex];
+    if (!sub) return null;
+    return { model: sub.action, accept: [sub.action, ...sub.actionAccept] };
+  }
+  if (card.subActions.length === 0) return null;
+  return {
+    model: card.subActions.map((s) => s.action).join('\n'),
+    accept: card.subActions.flatMap((s) => [s.action, ...s.actionAccept]),
+  };
+}
+
+export function answerFor(
+  state: DrillState,
+  stepIndex: number,
+  field: Field,
+): AnswerRecord | undefined {
+  return state.answers.find((a) => a.stepIndex === stepIndex && a.field === field);
+}
+
+export function submitAnswer(
+  state: DrillState,
+  field: Field,
+  input: string,
+  spec: AnswerSpec,
+): DrillState {
+  const record: AnswerRecord = {
+    stepIndex: state.cursor,
+    field,
+    input,
+    correct: gradeAnswer(input, spec.accept),
+  };
+  const answers = state.answers.filter(
+    (a) => !(a.stepIndex === record.stepIndex && a.field === field),
+  );
+  return { ...state, answers: [...answers, record] };
+}
+
+/**
+ * 自己採点。ローカル照合はあくまで初期値で、ユーザーの ✓／✕ が最終になる。
+ * 閾値の誤りが学習を壊さないための逃げ道である（spec §5）。
+ */
+export function setSelfGrade(
+  state: DrillState,
+  stepIndex: number,
+  field: Field,
+  correct: boolean,
+): DrillState {
+  return {
+    ...state,
+    answers: state.answers.map((a) =>
+      a.stepIndex === stepIndex && a.field === field ? { ...a, correct } : a,
+    ),
+  };
+}
+
+/** 正解数 ÷ 判定済み数。判定済みが0件なら null。 */
+export function stageScore(state: DrillState): number | null {
+  if (state.answers.length === 0) return null;
+  const correct = state.answers.filter((a) => a.correct).length;
+  return correct / state.answers.length;
+}
+
+/**
+ * 段末の適応N。位置チャネルが無いので roundScore は answerScore に等しく、
+ * 既存ルールどおり満点でだけ上がり、0.5以下で下がる。判定済み0件なら
+ * 据え置き。
+ */
+export function updatedN(state: DrillState): number {
+  const score = stageScore(state);
+  if (score === null) return state.n;
+  return nextN(score, state.n, { positionScore: null, answerScore: score });
 }
