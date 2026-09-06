@@ -124,19 +124,35 @@ export interface Strings {
   };
   actions: {
     tab: string;
-    layer1: string;
-    layer2: string;
-    promptPurpose: string;
-    promptAction: string;
-    answer: string;
+    /** 三段ナビのラベル。 */
+    stageStudy: string;
+    stagePurpose: string;
+    stageAction: string;
+    /** プレイ画面のヘッダと本文のラベル。 */
+    grandPurposeLabel: string;
+    meansLabel: string;
+    midPurposeLabel: string;
+    subPurposeLabel: string;
+    concreteActionLabel: string;
+    /** 「全 7 個中 3 個目のアクション」。 */
+    ordinalOf: (m: number, total: number) => string;
+    observeOnly: string;
+    /** 開示画面。 */
+    yourAnswer: string;
+    modelAnswer: string;
+    selfGradeLabel: string;
+    selfGradeCorrect: string;
+    selfGradeWrong: string;
     next: string;
-    toLayer2: string;
+    nextQuestion: string;
+    nextStage: string;
     again: string;
     backToList: string;
     start: string;
     nLabel: string;
     goalLabel: string;
     cardsPreview: string;
+    stageScoreLabel: string;
     productLabel: (p: string) => string;
   };
 }
@@ -270,19 +286,31 @@ export const ja: Strings = {
   },
   actions: {
     tab: 'アクション',
-    layer1: '目的',
-    layer2: '具体アクション',
-    promptPurpose: 'N手前のカードの目的は？',
-    promptAction: 'N手前のカードで具体的に何をする？',
-    answer: '答える',
-    next: '次へ',
-    toLayer2: 'Layer 2 へ',
+    stageStudy: '学習',
+    stagePurpose: '目的',
+    stageAction: '具体アクション',
+    grandPurposeLabel: '大目的',
+    meansLabel: '手段の総称',
+    midPurposeLabel: '目的',
+    subPurposeLabel: '小目的',
+    concreteActionLabel: '具体アクション',
+    ordinalOf: (m, total) => `全 ${total} 個中 ${m} 個目のアクション`,
+    observeOnly: 'この手は観察のみ',
+    yourAnswer: 'あなたの答え',
+    modelAnswer: '模範解答',
+    selfGradeLabel: '自己採点',
+    selfGradeCorrect: '✓',
+    selfGradeWrong: '✕',
+    next: 'つぎへ',
+    nextQuestion: '次の問題へ',
+    nextStage: '次の段へ',
     again: 'もう一度',
     backToList: '一覧へ',
     start: 'はじめる',
     nLabel: 'N',
     goalLabel: '目標',
     cardsPreview: 'カードの並び',
+    stageScoreLabel: '正答率',
     productLabel: (p) =>
       p === 'sub-finance' ? 'サブスクリプション・ファイナンス'
       : p === 'nav-finance' ? 'NAV ファイナンス'
@@ -421,19 +449,31 @@ export const en: Strings = {
   },
   actions: {
     tab: 'Actions',
-    layer1: 'Purpose',
-    layer2: 'Concrete action',
-    promptPurpose: 'Purpose of the card N steps back?',
-    promptAction: 'What do you concretely do for the card N steps back?',
-    answer: 'Answer',
+    stageStudy: 'Study',
+    stagePurpose: 'Purpose',
+    stageAction: 'Concrete action',
+    grandPurposeLabel: 'Overall goal',
+    meansLabel: 'Name of the move',
+    midPurposeLabel: 'Purpose',
+    subPurposeLabel: 'Sub-purpose',
+    concreteActionLabel: 'Concrete action',
+    ordinalOf: (m, total) => `Action ${m} of ${total}`,
+    observeOnly: 'Observe only',
+    yourAnswer: 'Your answer',
+    modelAnswer: 'Model answer',
+    selfGradeLabel: 'Self-grade',
+    selfGradeCorrect: '✓',
+    selfGradeWrong: '✕',
     next: 'Next',
-    toLayer2: 'To Layer 2',
+    nextQuestion: 'Next question',
+    nextStage: 'Next stage',
     again: 'Again',
     backToList: 'Back to list',
     start: 'Start',
     nLabel: 'N',
     goalLabel: 'Goal',
     cardsPreview: 'Card order',
+    stageScoreLabel: 'Score',
     productLabel: (p) =>
       p === 'sub-finance' ? 'Subscription Finance'
       : p === 'nav-finance' ? 'NAV Finance'
