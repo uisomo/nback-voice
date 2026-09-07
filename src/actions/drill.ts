@@ -28,8 +28,16 @@ export interface DrillStep {
   targetIndex: number | null;
   /** 「読む」面に出す単位。学習段でカードが残っている間だけ非 null。 */
   displayIndex: number | null;
-  /** 「全 7 個中 M 個目」の M（1始まり）。何も出さない手では null。 */
-  ordinal: number | null;
+  /**
+   * 「読む」面に出しているカードの「全 7 個中 M 個目」の M（1始まり）。
+   * displayIndex が無い手では null。設問の無い面はこちらを名指す。
+   */
+  displayOrdinal: number | null;
+  /**
+   * 問われているカードの M（1始まり）。targetIndex が無い手では null。
+   * 答える面と開示面はこちらを名指す — 目的段ではこれ自体が設問になる。
+   */
+  targetOrdinal: number | null;
   /** 「全 7 個中」の 7。常にカード枚数。 */
   totalCards: number;
   /** 問う対象の小目的の添字。具体アクション段でのみ非 null。 */
@@ -66,17 +74,12 @@ export function buildSteps(
   return Array.from({ length: units.length + n }, (_, index) => {
     const targetIndex = index >= n ? index - n : null;
     const displayIndex = stage === 'study' && index < units.length ? index : null;
-    const ordinal =
-      targetIndex !== null
-        ? ordinalOf(targetIndex)
-        : displayIndex !== null
-          ? ordinalOf(displayIndex)
-          : null;
     return {
       index,
       targetIndex,
       displayIndex,
-      ordinal,
+      displayOrdinal: displayIndex !== null ? ordinalOf(displayIndex) : null,
+      targetOrdinal: targetIndex !== null ? ordinalOf(targetIndex) : null,
       totalCards,
       subIndex: targetIndex !== null ? units[targetIndex].subIndex : null,
     };

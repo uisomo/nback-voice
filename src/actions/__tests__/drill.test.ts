@@ -122,16 +122,22 @@ describe('buildSteps', () => {
     expect(steps('action', 1).every((s) => s.displayIndex === null)).toBe(true);
   });
 
-  it('numbers the header by the card being asked, falling back to the card being read', () => {
-    // 学習段 step0/1 は出題が無いので、読んでいるカードの序数を出す。
-    expect(steps('study', 2).map((s) => s.ordinal)).toEqual([1, 2, 1, 2, 3, 4]);
-    // 目的段には読む対象が無いので、観察のみの手は序数を持たない。
-    expect(steps('purpose', 2).map((s) => s.ordinal)).toEqual([null, null, 1, 2, 3, 4]);
+  it('numbers the read card and the asked card independently', () => {
+    // 学習段では両方が同時に非 null になる。読む面はいま出しているカードを、
+    // 答える面と開示面は問われているカードを名指す必要がある。
+    const study = steps('study', 2);
+    expect(study.map((s) => s.displayOrdinal)).toEqual([1, 2, 3, 4, null, null]);
+    expect(study.map((s) => s.targetOrdinal)).toEqual([null, null, 1, 2, 3, 4]);
+    // 目的段には読む対象が無いので、観察のみの手はどちらの序数も持たない。
+    const purpose = steps('purpose', 2);
+    expect(purpose.every((s) => s.displayOrdinal === null)).toBe(true);
+    expect(purpose.map((s) => s.targetOrdinal)).toEqual([null, null, 1, 2, 3, 4]);
   });
 
   it('counts the ordinal in cards even when the action stage walks subActions', () => {
     const s = steps('action', 1);
-    expect(s.map((x) => x.ordinal)).toEqual([null, 1, 1, 2, 2, 2, 3, 3]);
+    expect(s.map((x) => x.targetOrdinal)).toEqual([null, 1, 1, 2, 2, 2, 3, 3]);
+    expect(s.every((x) => x.displayOrdinal === null)).toBe(true);
     expect(s.map((x) => x.subIndex)).toEqual([null, 0, 1, 0, 1, 2, 0, 1]);
     expect(s.every((x) => x.totalCards === 4)).toBe(true);
   });
@@ -151,7 +157,9 @@ describe('buildSteps', () => {
   it('yields n observation-only steps and nothing else when there are no units', () => {
     const s = buildSteps([], 2, 'action', 4);
     expect(s).toHaveLength(2);
-    expect(s.every((x) => x.targetIndex === null && x.ordinal === null)).toBe(true);
+    expect(
+      s.every((x) => x.targetIndex === null && x.targetOrdinal === null && x.displayOrdinal === null),
+    ).toBe(true);
   });
 
   it('numbers step.index from 0 in walk order', () => {

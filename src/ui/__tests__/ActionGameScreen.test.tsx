@@ -74,14 +74,25 @@ describe('the study stage', () => {
     expect(screen.queryByTestId('action-input-purpose')).toBeNull();
   });
 
-  it('keeps the grand purpose and the asked ordinal in the header', () => {
+  it('keeps the grand purpose and the read cards ordinal in the header of a read pane', () => {
     startStudyAtN1();
     expect(screen.getByTestId('action-header-goal').props.children).toBe(SEQ.goal);
-    // 先頭手は出題が無いので、読んでいるカードの序数を出す。
+    // step 0 の読む面。カード1を出しているので序数も1。
     expect(screen.getByTestId('action-header-ordinal').props.children).toBe(
       ja.actions.ordinalOf(1, SEQ.cards.length),
     );
     expect(screen.getByTestId('action-header-n').props.children).toEqual([1, '-back']);
+  });
+
+  it('numbers a read pane by the card on screen even when another card is being asked', () => {
+    startStudyAtN1();
+    fireEvent.press(screen.getByTestId('action-read-next')); // step 0 -> step 1
+    // step 1 の読む面。出しているのは カード2、この手で問われるのは カード1。
+    // 読む面には設問が無いので、名指すべきは画面のカード＝2 である。
+    expect(screen.getByTestId('action-read')).toBeTruthy();
+    expect(screen.getByTestId('action-header-ordinal').props.children).toBe(
+      ja.actions.ordinalOf(2, SEQ.cards.length),
+    );
   });
 
   it('toggles the green check on the read pane', () => {
@@ -95,7 +106,8 @@ describe('the study stage', () => {
 
   it('asks the n-back card, not the one on screen', () => {
     reachFirstQuestion();
-    // 画面には カード2 が出ているが、問われているのは カード1 である。
+    // step 1 の答える面。直前まで読んでいたのは カード2 だが、
+    // 設問が乗った面なので序数は問われているカード＝1 を名指す。
     expect(screen.getByTestId('action-header-ordinal').props.children).toBe(
       ja.actions.ordinalOf(1, SEQ.cards.length),
     );
@@ -142,10 +154,11 @@ describe('answering and revealing', () => {
     reachFirstQuestion();
     fireEvent.press(screen.getByTestId('action-next'));
     fireEvent.press(screen.getByTestId('action-next-question'));
-    // step 2 の読む面。問われるのは カード2。
+    // step 2 の読む面。画面に出るのは カード3 なので、序数もそれを名指す
+    //（この手で問われるのは カード2 だが、それは答える面に移ってから）。
     expect(screen.getByTestId('action-read')).toBeTruthy();
     expect(screen.getByTestId('action-header-ordinal').props.children).toBe(
-      ja.actions.ordinalOf(2, SEQ.cards.length),
+      ja.actions.ordinalOf(3, SEQ.cards.length),
     );
   });
 });

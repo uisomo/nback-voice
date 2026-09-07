@@ -227,6 +227,9 @@ export function ActionGameScreen({
   const display = step.displayIndex === null ? null : unitContent(seq, drill.units[step.displayIndex]);
   const target = step.targetIndex === null ? null : unitContent(seq, drill.units[step.targetIndex]);
   const fields = target ? fieldsFor(drill.stage, target.card) : [];
+  // 序数は面ごとに指すものが変わる。読む面には設問が無いので画面のカードを、
+  // 答える面と開示面は問われているカードを名指す。観察のみの手は両方 null。
+  const headerOrdinal = pane === 'read' ? step.displayOrdinal : step.targetOrdinal;
 
   const submitAll = () => {
     if (!target) return;
@@ -253,9 +256,9 @@ export function ActionGameScreen({
       </Text>
       <View style={styles.headerRow}>
         <Text testID="action-header-ordinal" style={[styles.ordinal, { color: theme.textSecondary }]}>
-          {step.ordinal === null
+          {headerOrdinal === null
             ? '—'
-            : strings.actions.ordinalOf(step.ordinal, step.totalCards)}
+            : strings.actions.ordinalOf(headerOrdinal, step.totalCards)}
         </Text>
         <Text testID="action-header-n" style={[styles.backTag, { color: theme.textMuted }]}>
           {drill.n}-back
