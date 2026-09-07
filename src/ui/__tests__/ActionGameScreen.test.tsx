@@ -27,6 +27,29 @@ function startStudyAtN1() {
 const bgOf = (testID: string) =>
   StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor;
 
+/**
+ * いまの面がどれであれ、1ステップ分だけ最短で進める。selfCorrect を渡すと
+ * 開示面で出ている欄を全部 ✓ にしてから次へ行く（満点の段を作るため）。
+ */
+function stepThrough({ selfCorrect = false }: { selfCorrect?: boolean } = {}) {
+  if (screen.queryByTestId('action-read-next')) fireEvent.press(screen.getByTestId('action-read-next'));
+  if (screen.queryByTestId('action-observe-next')) fireEvent.press(screen.getByTestId('action-observe-next'));
+  if (screen.queryByTestId('action-next')) fireEvent.press(screen.getByTestId('action-next'));
+  if (selfCorrect) {
+    for (const field of ['purpose', 'action'] as const) {
+      const btn = screen.queryByTestId(`action-self-correct-${field}`);
+      if (btn) fireEvent.press(btn);
+    }
+  }
+  if (screen.queryByTestId('action-next-question')) fireEvent.press(screen.getByTestId('action-next-question'));
+}
+
+/** 段を最後まで（結果画面が出るまで）タップし切る。手数は 単位数 + N。 */
+function finishStage(steps: number, opts: { selfCorrect?: boolean } = {}) {
+  for (let i = 0; i < steps; i += 1) stepThrough(opts);
+  expect(screen.getByTestId('action-results')).toBeTruthy();
+}
+
 /** step 0 の読む面を抜け、step 1 でカード1を問われる面まで進む。 */
 function reachFirstQuestion() {
   startStudyAtN1();
@@ -164,14 +187,6 @@ describe('answering and revealing', () => {
 });
 
 describe('stage transitions', () => {
-  /** 現在の面がどれであれ、1ステップ分だけ最短で進める。 */
-  function stepThrough() {
-    if (screen.queryByTestId('action-read-next')) fireEvent.press(screen.getByTestId('action-read-next'));
-    if (screen.queryByTestId('action-observe-next')) fireEvent.press(screen.getByTestId('action-observe-next'));
-    if (screen.queryByTestId('action-next')) fireEvent.press(screen.getByTestId('action-next'));
-    if (screen.queryByTestId('action-next-question')) fireEvent.press(screen.getByTestId('action-next-question'));
-  }
-
   it('ends the study stage on a results screen and leads into the purpose stage', () => {
     startStudyAtN1();
     // 学習段は カード枚数 + N 手。
@@ -190,5 +205,78 @@ describe('stage transitions', () => {
     expect(screen.queryByTestId('action-read')).toBeNull();
     expect(screen.getByTestId('action-observe-next')).toBeTruthy();
     expect(screen.getByTestId('action-header-ordinal').props.children).toBe('—');
+  });
+});
+
+/** 具体アクション段の出題単位は小目的なので、カード枚数ではなくこの数で歩く。 */
+const SUB_UNITS = SEQ.cards.reduce((total, card) => total + card.subActions.length, 0);
+const FIRST_SUB = SEQ.cards[0].subActions[0];
+
+/** 学習段と目的段を無回答で踏破し、具体アクション段の step 0 に立つ。 */
+function reachActionStage() {
+  startStudyAtN1(); // N=1。無回答＝0% なので N は床の 1 に留まり、以降も 1。
+  finishStage(SEQ.cards.length + 1);
+  fireEvent.press(screen.getByTestId('action-next-stage'));
+  finishStage(SEQ.cards.length + 1);
+  fireEvent.press(screen.getByTestId('action-next-stage'));
+  expect(screen.getByTestId('action-header-n').props.children).toEqual([1, '-back']);
+}
+
+describe('the action stage', () => {
+  it('asks the sub-purpose and takes only the concrete action', () => {
+    reachActionStage();
+    fireEvent.press(screen.getByTestId('action-observe-next')); // step 0 は観察のみ
+    // 問題文は小目的（なぜ踏むのか）。ここに action を出したら答えが露出する。
+    expect(screen.getByTestId('action-prompt').props.children).toBe(FIRST_SUB.purpose);
+    expect(screen.getByTestId('action-prompt').props.children).not.toBe(FIRST_SUB.action);
+    expect(screen.getByTestId('action-input-action')).toBeTruthy();
+    expect(screen.queryByTestId('action-input-purpose')).toBeNull();
+  });
+
+  it('reveals that one sub-actions wording, not the merged study-stage list', () => {
+    reachActionStage();
+    fireEvent.press(screen.getByTestId('action-observe-next'));
+    fireEvent.press(screen.getByTestId('action-next'));
+    const model = screen.getByTestId('action-model-action').props.children;
+    expect(model).toBe(FIRST_SUB.action);
+    // 学習段の合併開示（改行連結）が漏れていない。
+    expect(model).not.toContain('\n');
+    expect(screen.queryByTestId('action-model-purpose')).toBeNull();
+  });
+
+  it('ends the last stage with a replay, not a next stage', () => {
+    reachActionStage();
+    finishStage(SUB_UNITS + 1);
+    expect(screen.getByTestId('action-results-stage').props.children).toBe(ja.actions.stageAction);
+    expect(screen.getByTestId('action-again')).toBeTruthy();
+    expect(screen.queryByTestId('action-next-stage')).toBeNull();
+    // 無回答＝0% で N は下がろうとするが、床が 1 なので据え置き。
+    expect(screen.getByTestId('action-results-n').props.children).toEqual([ja.actions.nLabel, ': ', 1]);
+  });
+});
+
+describe('N across stages', () => {
+  it('raises N on a perfect stage and starts the next stage from it', () => {
+    startStudyAtN1(); // N=1
+    finishStage(SEQ.cards.length + 1, { selfCorrect: true });
+    expect(screen.getByTestId('action-results-score').props.children).toEqual([
+      ja.actions.stageScoreLabel, ': ', '100%',
+    ]);
+    expect(screen.getByTestId('action-results-n').props.children).toEqual([ja.actions.nLabel, ': ', 2]);
+
+    fireEvent.press(screen.getByTestId('action-next-stage'));
+    // 段をまたいで N が持ち越されることが、この画面唯一の適応機構である。
+    expect(screen.getByTestId('action-header-n').props.children).toEqual([2, '-back']);
+  });
+
+  it('lowers N on a stage at or below half and starts the next stage from it', () => {
+    render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
+    fireEvent.press(screen.getByTestId('action-n-up')); // 2 -> 3
+    fireEvent.press(screen.getByTestId('action-start'));
+    finishStage(SEQ.cards.length + 3); // 無回答＝0%
+    expect(screen.getByTestId('action-results-n').props.children).toEqual([ja.actions.nLabel, ': ', 2]);
+
+    fireEvent.press(screen.getByTestId('action-next-stage'));
+    expect(screen.getByTestId('action-header-n').props.children).toEqual([2, '-back']);
   });
 });
