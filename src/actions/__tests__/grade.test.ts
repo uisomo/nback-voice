@@ -47,7 +47,7 @@ describe('gradeAnswer', () => {
   });
 
   it('accepts partial recall of the model wording', () => {
-    // 実測: 模範解答の先頭40%で全17枚の最小が 0.519、閾値0.45に対して余裕がある。
+    // 実測: 模範解答の先頭40%で全17枚の最小が 0.552、閾値0.45に対して余裕がある。
     const partial = MODEL.slice(0, Math.round(MODEL.length * 0.4));
     expect(gradeAnswer(partial, ACCEPT)).toBe(true);
   });
@@ -70,6 +70,22 @@ describe('gradeAnswer', () => {
       for (const other of cards) {
         if (other.id === c.id) continue;
         expect(gradeAnswer(other.purpose, set)).toBe(false);
+      }
+    }
+  });
+
+  it('never marks one subAction correct against another subAction accept set', () => {
+    // 閾値は中目的（正規化後の中央値128字）で引いたが、具体アクション段では
+    // ずっと短い小目的の手順（同45字）を裁く。短い文ほど字面が偶然重なりやすい
+    // ので、同じ線がそこでも保つことを別に押さえる。実測の最大は 0.237。
+    // 同一カード内の組も含める — 語彙を最も共有し、将来いちばん衝突しやすい。
+    const subs = listSequences().flatMap((s) => s.cards.flatMap((c) => c.subActions));
+    expect(subs.length).toBeGreaterThan(40);
+    for (let i = 0; i < subs.length; i += 1) {
+      const set = [subs[i].action, ...subs[i].actionAccept];
+      for (let j = 0; j < subs.length; j += 1) {
+        if (i === j) continue;
+        expect(gradeAnswer(subs[j].action, set)).toBe(false);
       }
     }
   });

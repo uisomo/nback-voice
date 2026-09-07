@@ -1,3 +1,4 @@
+import { getSequence } from '../actions';
 import type { ActionCard, Sequence } from '../actions';
 import {
   actionAnswer,
@@ -243,6 +244,30 @@ describe('model answers', () => {
     // 開示は全列挙、照合は合併集合。一手順でも言い当てれば正解（spec §6.2）。
     expect(spec.model).toBe('sa-c1-1\nsa-c1-2');
     expect(spec.accept).toEqual(['sa-c1-1', 'aa-c1-1', 'sa-c1-2', 'aa-c1-2']);
+  });
+
+  it('grades any one of the merged subActions correct in the study stage', () => {
+    // spec §6.2 の本文そのもの: 学習段は網羅を求めない。合併集合に対して
+    // どれか1本を正確に言えれば正解になる — 3本目でも1本目でも同じ。
+    const card = SEQ.cards[1]; // 小目的3本
+    const spec = actionAnswer(card, null)!;
+    for (const sub of card.subActions) {
+      const d = submitAnswer(createDrill(SEQ, 'study', 2), 'action', sub.action, spec);
+      expect(answerFor(d, 0, 'action')!.correct).toBe(true);
+    }
+    expect(answerFor(submitAnswer(createDrill(SEQ, 'study', 2), 'action', WRONG, spec), 0, 'action')!.correct).toBe(
+      false,
+    );
+  });
+
+  it('grades a real sequence one-of-three the same way', () => {
+    // 作りものの短い文字列ではなく、実データの言い回しでも成り立つこと。
+    const card = getSequence('ch02')!.cards[0];
+    expect(card.subActions.length).toBeGreaterThan(1);
+    const spec = actionAnswer(card, null)!;
+    const last = card.subActions[card.subActions.length - 1];
+    const d = submitAnswer(createDrill(SEQ, 'study', 2), 'action', last.action, spec);
+    expect(answerFor(d, 0, 'action')!.correct).toBe(true);
   });
 
   it('has no action answer at all for a card with no subActions', () => {

@@ -80,6 +80,12 @@ describe('intro', () => {
     expect(screen.getByTestId('action-n-value').props.children).toBe(1);
   });
 
+  it('caps N at the card count, past which no question would ever be asked', () => {
+    render(<ActionGameScreen sequenceId={SEQ.id} onExit={jest.fn()} />);
+    for (let i = 0; i < SEQ.cards.length + 3; i += 1) fireEvent.press(screen.getByTestId('action-n-up'));
+    expect(screen.getByTestId('action-n-value').props.children).toBe(SEQ.cards.length);
+  });
+
   it('renders a back affordance and exits when the sequence is unknown', () => {
     const onExit = jest.fn();
     render(<ActionGameScreen sequenceId="no-such-sequence" onExit={onExit} />);

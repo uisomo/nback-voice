@@ -155,7 +155,15 @@ export function ActionGameScreen({
           <Text testID="action-n-value" style={[styles.nValue, { color: theme.accentGold }]}>
             {n}
           </Text>
-          <Pressable testID="action-n-up" onPress={() => setN((v) => v + 1)} style={styles.nBtn}>
+          {/*
+            上限はカード枚数。これを超えると全ステップが観察のみになり、
+            一問も出ないまま段が終わる（判定済み0件なので N も動かない）。
+          */}
+          <Pressable
+            testID="action-n-up"
+            onPress={() => setN((v) => Math.min(seq.cards.length, v + 1))}
+            style={styles.nBtn}
+          >
             <Text style={[styles.nBtnText, { color: theme.textPrimary }]}>＋</Text>
           </Pressable>
         </View>

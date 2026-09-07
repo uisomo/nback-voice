@@ -88,7 +88,12 @@ export function buildSteps(
 
 export type Field = 'purpose' | 'action';
 
-/** 開示に使う模範解答と、照合に使う許容集合。model は必ず accept に含まれる。 */
+/**
+ * 開示に使う模範解答と、照合に使う許容集合。accept は照合専用、model は開示
+ * 専用で、両者は一致しなくてよい。単一の小目的を問うときだけ
+ * `accept[0] === model` になる — 学習段の合併では model は全手順を改行で
+ * 連ねた開示用の文字列で、それ自体は accept の要素ではない。
+ */
 export interface AnswerSpec {
   model: string;
   accept: string[];
